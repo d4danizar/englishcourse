@@ -1,0 +1,20 @@
+{
+  "node": {
+    "409ca4730e8fffd99e0ffa54281945e0899eb43903": {
+      "workers": {
+        "app/(student)/student/evaluations/page": {
+          "moduleId": 46045,
+          "async": false,
+          "exportedName": "getStudentDescriptiveEvaluations",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/evaluations/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/evaluations/page": "rsc"
+      },
+      "exportedName": "getStudentDescriptiveEvaluations",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/evaluations/actions.ts"
+    }
+  },
+  "edge": {}
+}

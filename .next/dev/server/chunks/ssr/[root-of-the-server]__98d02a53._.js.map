@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/dinar/Desktop/Belajar%20Programming/KampungInggris/src/app/page.tsx"],"sourcesContent":["import Link from \"next/link\";\n\nexport default function HomePage() {\n  return (\n    <main className=\"flex min-h-screen flex-col items-center justify-center p-24\">\n      <h1 className=\"text-4xl font-bold mb-8\">Course Management System</h1>\n      <div className=\"flex gap-4\">\n        <Link href=\"/login\" className=\"px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700\">\n          Login\n        </Link>\n      </div>\n    </main>\n  );\n}\n"],"names":[],"mappings":";;;;;AAAA;;;AAEe,SAAS;IACtB,qBACE,mSAAC;QAAK,WAAU;;0BACd,mSAAC;gBAAG,WAAU;0BAA0B;;;;;;0BACxC,mSAAC;gBAAI,WAAU;0BACb,cAAA,mSAAC,+OAAI;oBAAC,MAAK;oBAAS,WAAU;8BAAgE;;;;;;;;;;;;;;;;;AAMtG"}}]
+}

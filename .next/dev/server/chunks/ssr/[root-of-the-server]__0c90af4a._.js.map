@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/dinar/Desktop/Belajar%20Programming/KampungInggris/src/components/auth/SignOutButton.tsx"],"sourcesContent":["\"use client\";\n\nimport { signOut } from \"next-auth/react\";\nimport { LogOut } from \"lucide-react\";\n\nexport function SignOutButton({ className }: { className?: string }) {\n  return (\n    <button\n      onClick={() => signOut({ callbackUrl: \"/login\" })}\n      className={\n        className ||\n        \"flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-xl transition-all\"\n      }\n    >\n      <LogOut className=\"w-4 h-4\" />\n      Sign Out\n    </button>\n  );\n}\n"],"names":[],"mappings":";;;;;AAEA;AACA;AAHA;;;;AAKO,SAAS,cAAc,EAAE,SAAS,EAA0B;IACjE,qBACE,mSAAC;QACC,SAAS,IAAM,IAAA,8MAAO,EAAC;gBAAE,aAAa;YAAS;QAC/C,WACE,aACA;;0BAGF,mSAAC,oNAAM;gBAAC,WAAU;;;;;;YAAY;;;;;;;AAIpC"}}]
+}

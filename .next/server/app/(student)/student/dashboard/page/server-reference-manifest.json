@@ -1,0 +1,50 @@
+{
+  "node": {
+    "40249b7cf8cc996b88d1d570e5507ca4e43c1eacad": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": 72354,
+          "async": false,
+          "exportedName": "getStudentEvaluations",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentEvaluations",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    },
+    "402f70e40db1f662f9f4f117ac5b9069033bb09eb0": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": 72354,
+          "async": false,
+          "exportedName": "getStudentAttendances",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentAttendances",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    },
+    "40e59133cc911027aa1a3d86a523ae321a052b681e": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": 72354,
+          "async": false,
+          "exportedName": "getStudentProfile",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentProfile",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    }
+  },
+  "edge": {}
+}

@@ -1,0 +1,18 @@
+{
+  "status": 307,
+  "headers": {
+    "location": "/tutor/dashboard",
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(tutor)/layout,_N_T_/(tutor)/tutor/layout,_N_T_/(tutor)/tutor/page,_N_T_/tutor"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHR1dG9yKQ/tutor/__PAGE__",
+    "/!KHR1dG9yKQ/tutor",
+    "/!KHR1dG9yKQ",
+    "/_index",
+    "/_head"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "node": {
+    "407e5f95615e1cc8096abbf34d8fdbbfe5bc4d753d": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": "[project]/Desktop/Belajar Programming/KampungInggris/.next-internal/server/app/(student)/student/dashboard/page/actions.js { ACTIONS_MODULE0 => \"[project]/Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getStudentAttendances",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentAttendances",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    },
+    "4085081def06be04aef7a07627aa459dec557f7c76": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": "[project]/Desktop/Belajar Programming/KampungInggris/.next-internal/server/app/(student)/student/dashboard/page/actions.js { ACTIONS_MODULE0 => \"[project]/Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getStudentEvaluations",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentEvaluations",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    },
+    "40bbe997b4623ba608374c217a890a02d8a84ecc8e": {
+      "workers": {
+        "app/(student)/student/dashboard/page": {
+          "moduleId": "[project]/Desktop/Belajar Programming/KampungInggris/.next-internal/server/app/(student)/student/dashboard/page/actions.js { ACTIONS_MODULE0 => \"[project]/Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getStudentProfile",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/dashboard/page": "rsc"
+      },
+      "exportedName": "getStudentProfile",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/dashboard/actions.ts"
+    }
+  },
+  "edge": {}
+}

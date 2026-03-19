@@ -1,0 +1,20 @@
+{
+  "/(admin)/admin/classes/page": "/admin/classes",
+  "/(admin)/admin/dashboard/page": "/admin/dashboard",
+  "/(admin)/admin/payroll/page": "/admin/payroll",
+  "/(admin)/admin/users/page": "/admin/users",
+  "/(auth)/login/page": "/login",
+  "/(student)/student/certificate/page": "/student/certificate",
+  "/(student)/student/dashboard/page": "/student/dashboard",
+  "/(student)/student/evaluations/page": "/student/evaluations",
+  "/(student)/student/page": "/student",
+  "/(student)/student/schedules/page": "/student/schedules",
+  "/(tutor)/tutor/dashboard/page": "/tutor/dashboard",
+  "/(tutor)/tutor/evaluations/page": "/tutor/evaluations",
+  "/(tutor)/tutor/page": "/tutor",
+  "/(tutor)/tutor/schedules/page": "/tutor/schedules",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
+  "/page": "/"
+}

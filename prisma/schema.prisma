@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// --- ENUMS ---
+enum Role {
+  ADMIN
+  TUTOR
+  STUDENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED // Izin
+  SICK
+}
+
+// ============================================================
+// --- MODELS (Open Pool / Gym Membership Architecture) ---
+// ============================================================
+
+// TODO: Run 'npx prisma db push' after saving this schema
+
+// User: Admin, Tutor, atau Student
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  phoneNumber   String?
+  role          Role     @default(STUDENT)
+  createdAt     DateTime @default(now())
+
+  // Paket aktif siswa (hanya relevan untuk STUDENT)
+  // Contoh: "Regular", "Fullday", "Asrama", "EFK", "Private", "TOEFL"
+  activeProgram  String?
+  startDate      DateTime? // Tanggal mulai kursus
+  endDate        DateTime? // Tanggal lulus/berakhirnya paket (auto-calculated)
+  durationOption String?   // Pilihan durasi: "1_WEEK", "2_WEEKS", "3_WEEKS", "1_MONTH", "2_MONTHS"
+  programBatch   String?   // Sesi/Jam default untuk Regular: "08:00 - 09:30", dll
+  batchSchedule  String?   // Jadwal batch EFK/EFT: "Senin-Rabu", "Selasa-Kamis", "Jumat-Sabtu"
+
+  // Relasi
+  sessionsTaught Session[]      @relation("SessionTutor")  // Sesi yang diajar (untuk TUTOR)
+  attendances    Attendance[]                                // Kehadiran siswa (untuk STUDENT)
+  announcements  Announcement[]                              // Pengumuman (untuk ADMIN)
+  StudentEvaluations DescriptiveEvaluation[] @relation("StudentEvaluations")
+  TutorEvaluations   DescriptiveEvaluation[] @relation("TutorEvaluations")
+  assignedSessions   Session[] @relation("SessionAssignments")
+}
+
+model DescriptiveEvaluation {
+  id            String   @id @default(cuid())
+  fluency       String   @db.Text
+  pronunciation String   @db.Text
+  vocabulary    String   @db.Text
+  notes         String?  @db.Text
+  studentId     String
+  tutorId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student       User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor         User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
+}
+
+// Session: Entitas utama jadwal (seperti "kelas gym" yang dijadwalkan)
+// Setiap sesi adalah 1 pertemuan independen, tidak terikat ke "Kelas" tertentu.
+model Session {
+  id          String   @id @default(cuid())
+  title       String   // cth: "Conversation - Room A", "Grammar Intensif - Room B"
+  date        DateTime // Tanggal sesi berlangsung
+  timeSlot    String   // cth: "08:00 - 09:30"
+  programType String   // cth: "Conversation", "Grammar", "EFK", "Private", "TOEFL"
+  isCompleted Boolean  @default(false) // true = tutor sudah submit absen (trigger payroll)
+
+  // Tutor yang mengajar sesi ini
+  tutorId String
+  tutor   User   @relation("SessionTutor", fields: [tutorId], references: [id])
+
+  // Relasi
+  attendances Attendance[] // Siswa yang hadir di sesi ini
+  assignedStudents User[]  @relation("SessionAssignments")
+}
+
+// Attendance: Tiket masuk siswa + Rapor evaluasi per sesi
+// Ini adalah "join table" antara Student dan Session,
+// sekaligus menyimpan hasil evaluasi granular dari tutor.
+model Attendance {
+  id        String           @id @default(cuid())
+  sessionId String
+  studentId String
+  status    AttendanceStatus @default(PRESENT)
+
+  // Evaluasi Speaking (Opsional, diisi tutor saat submit attendance)
+  pronunciation Int?    // Skala 1-5
+  fluency       Int?    // Skala 1-5
+  vocabulary    Int?    // Skala 1-5
+  tutorNotes    String? @db.Text
+
+  // Catatan reschedule (khusus Private Class)
+  rescheduleNotes String? @db.Text
+
+  // Relasi
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User    @relation(fields: [studentId], references: [id])
+
+  // 1 siswa tidak bisa punya 2 record attendance di sesi yang sama
+  @@unique([sessionId, studentId])
+}
+
+// Sistem Pengumuman (Admin broadcast ke Tutor/Student)
+model Announcement {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @db.Text
+  targetRole Role?    // null = untuk semua role
+  authorId   String
+  createdAt  DateTime @default(now())
+
+  author User @relation(fields: [authorId], references: [id])
+}

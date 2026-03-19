@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40a24b71e9de26a988dd1063c4db5f1d5419fc6bcd": {
+      "workers": {
+        "app/(student)/student/evaluations/page": {
+          "moduleId": "[project]/Desktop/Belajar Programming/KampungInggris/.next-internal/server/app/(student)/student/evaluations/page/actions.js { ACTIONS_MODULE0 => \"[project]/Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/evaluations/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "getStudentDescriptiveEvaluations",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/evaluations/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/evaluations/page": "rsc"
+      },
+      "exportedName": "getStudentDescriptiveEvaluations",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/evaluations/actions.ts"
+    }
+  },
+  "edge": {}
+}

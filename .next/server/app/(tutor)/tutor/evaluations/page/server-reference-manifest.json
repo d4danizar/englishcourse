@@ -1,0 +1,35 @@
+{
+  "node": {
+    "60569c7a56bd0979a57073732f8814cc43435cb828": {
+      "workers": {
+        "app/(tutor)/tutor/evaluations/page": {
+          "moduleId": 36328,
+          "async": false,
+          "exportedName": "getStudentsForEvaluation",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(tutor)/tutor/evaluations/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(tutor)/tutor/evaluations/page": "action-browser"
+      },
+      "exportedName": "getStudentsForEvaluation",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(tutor)/tutor/evaluations/actions.ts"
+    },
+    "4085dd0f87a4da12d2076fa0eda7144f3740c0d721": {
+      "workers": {
+        "app/(tutor)/tutor/evaluations/page": {
+          "moduleId": 36328,
+          "async": false,
+          "exportedName": "submitDescriptiveEvaluation",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(tutor)/tutor/evaluations/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(tutor)/tutor/evaluations/page": "action-browser"
+      },
+      "exportedName": "submitDescriptiveEvaluation",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(tutor)/tutor/evaluations/actions.ts"
+    }
+  },
+  "edge": {}
+}

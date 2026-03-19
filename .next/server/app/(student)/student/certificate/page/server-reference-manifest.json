@@ -1,0 +1,20 @@
+{
+  "node": {
+    "408ed1d84065ab3d8a86c407387e83a407add10f39": {
+      "workers": {
+        "app/(student)/student/certificate/page": {
+          "moduleId": 77225,
+          "async": false,
+          "exportedName": "generateCertificateData",
+          "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/certificate/actions.ts"
+        }
+      },
+      "layer": {
+        "app/(student)/student/certificate/page": "rsc"
+      },
+      "exportedName": "generateCertificateData",
+      "filename": "Desktop/Belajar Programming/KampungInggris/src/app/(student)/student/certificate/actions.ts"
+    }
+  },
+  "edge": {}
+}

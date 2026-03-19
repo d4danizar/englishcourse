@@ -1,0 +1,20 @@
+{
+  "/(admin)/admin/classes/page": "app/(admin)/admin/classes/page.js",
+  "/(admin)/admin/dashboard/page": "app/(admin)/admin/dashboard/page.js",
+  "/(admin)/admin/payroll/page": "app/(admin)/admin/payroll/page.js",
+  "/(admin)/admin/users/page": "app/(admin)/admin/users/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(student)/student/certificate/page": "app/(student)/student/certificate/page.js",
+  "/(student)/student/dashboard/page": "app/(student)/student/dashboard/page.js",
+  "/(student)/student/evaluations/page": "app/(student)/student/evaluations/page.js",
+  "/(student)/student/page": "app/(student)/student/page.js",
+  "/(student)/student/schedules/page": "app/(student)/student/schedules/page.js",
+  "/(tutor)/tutor/dashboard/page": "app/(tutor)/tutor/dashboard/page.js",
+  "/(tutor)/tutor/evaluations/page": "app/(tutor)/tutor/evaluations/page.js",
+  "/(tutor)/tutor/page": "app/(tutor)/tutor/page.js",
+  "/(tutor)/tutor/schedules/page": "app/(tutor)/tutor/schedules/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/page": "app/page.js"
+}
