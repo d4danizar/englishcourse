@@ -100,9 +100,9 @@ model Attendance {
   status    AttendanceStatus @default(PRESENT)
 
   // Evaluasi Speaking (Opsional, diisi tutor saat submit attendance)
-  pronunciation Int?    // Skala 1-5
-  fluency       Int?    // Skala 1-5
-  vocabulary    Int?    // Skala 1-5
+  pronunciation Int?    // Skala 1-10
+  fluency       Int?    // Skala 1-10
+  vocabulary    Int?    // Skala 1-10
   tutorNotes    String? @db.Text
 
   // Catatan reschedule (khusus Private Class)
