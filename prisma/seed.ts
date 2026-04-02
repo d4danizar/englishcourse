@@ -17,7 +17,7 @@ async function main() {
       name: 'System Admin',
       email: 'admin@test.com',
       passwordHash: hashedPassword,
-      role: Role.ADMIN,
+      role: Role.CS,
     },
   })
 
