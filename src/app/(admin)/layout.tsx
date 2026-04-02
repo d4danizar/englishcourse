@@ -20,11 +20,12 @@ export default async function AdminLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-slate-50">
+    <div className="flex min-h-screen w-full flex-col md:flex-row bg-slate-50">
       <AdminSidebar
         user={{
           name: session?.user?.name,
           email: session?.user?.email,
+          role: session?.user?.role,
         }}
       />
       {/* Main Content */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { differenceInDays, format } from "date-fns";
+import { differenceInBusinessDays, format } from "date-fns";
 import { 
   CalendarDays, 
   Clock, 
@@ -14,9 +14,13 @@ import {
   CalendarCheck2,
   FileText,
   Star,
-  Award
+  Award,
+  Settings
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import { COMPANY_INFO } from "@/lib/constants/branding";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 
 type ProfileContent = {
   id: string;
@@ -26,6 +30,8 @@ type ProfileContent = {
   batchSchedule: string | null;
   startDate: Date | null;
   endDate: Date | null;
+  leaveQuota?: number;
+  leaveUsed?: number;
 };
 
 type AttendanceWithSession = {
@@ -63,7 +69,7 @@ export function StudentDashboardClient({
   attendances: AttendanceWithSession[];
   evaluations: DescriptiveEvaluation[];
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations" | "settings">("overview");
 
   // Calculate Days Left
   const today = new Date();
@@ -73,7 +79,7 @@ export function StudentDashboardClient({
   if (profile.endDate) {
     const end = new Date(profile.endDate);
     end.setHours(0, 0, 0, 0);
-    daysLeft = differenceInDays(end, today);
+    daysLeft = differenceInBusinessDays(end, today);
   }
 
   // Attendance Stats
@@ -101,29 +107,44 @@ export function StudentDashboardClient({
     <div className="flex flex-col gap-6">
       
       {/* 1. Membership Card (Always Visible) */}
-      <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl border border-indigo-700/50">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3" />
+      <div className="bg-white rounded-3xl p-6 sm:p-8 text-slate-900 relative overflow-hidden shadow-xl border border-slate-100">
         
-        <div className="relative z-10 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+        {/* Watermark Gaib */}
+        <div className="absolute -bottom-10 -right-10 w-64 h-64 opacity-5 pointer-events-none rotate-12">
+          <Image src={COMPANY_INFO.logoSmallUrl} alt="Watermark" fill unoptimized style={{ objectFit: "contain" }} />
+        </div>
+
+        {/* Tipografi Vertikal */}
+        <div 
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black tracking-[0.3em] text-slate-200 pointer-events-none hidden sm:block" 
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
+          {COMPANY_INFO.name}
+        </div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center pr-0 sm:pr-8">
           
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-md">
-                {profile.name.charAt(0).toUpperCase()}
-              </span>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-sm shrink-0 overflow-hidden relative">
+              <Image 
+                src={COMPANY_INFO.logoSmallUrl} 
+                alt="Avatar" 
+                fill
+                unoptimized
+                style={{ objectFit: "contain", padding: "10px" }}
+              />
             </div>
             <div className="flex flex-col gap-1">
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-                {profile.name} <Sparkles className="w-5 h-5 text-amber-400" />
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
+                {profile.name}
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-1 relative z-20">
-                <span className="px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-xs font-medium text-indigo-50 tracking-wide uppercase flex items-center gap-1.5">
+                <span className="px-2.5 py-1 bg-slate-900 rounded-lg text-xs font-bold text-white tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
                   <GraduationCap className="w-3.5 h-3.5" />
                   {profile.activeProgram || "No Active Program"}
                 </span>
                 {profile.programBatch && (
-                  <span className="text-sm font-medium text-indigo-200">
+                  <span className="text-sm font-bold text-slate-500">
                     • {profile.programBatch}
                   </span>
                 )}
@@ -132,32 +153,31 @@ export function StudentDashboardClient({
           </div>
 
           {/* Membership Days Left Indicator */}
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 w-full md:w-auto flex flex-col items-center justify-center min-w-[140px] shadow-inner relative z-20">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-200 mb-1">Masa Aktif</p>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 w-full md:w-auto flex flex-col items-center justify-center min-w-[140px] shadow-sm relative z-20 shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Masa Aktif</p>
             {daysLeft === null ? (
-              <span className="text-sm font-bold text-white uppercase">—</span>
+              <span className="text-sm font-bold text-slate-900 uppercase">—</span>
             ) : daysLeft < 0 ? (
-              <div className="flex items-center gap-1.5 text-red-400 bg-red-400/10 px-3 py-1 rounded-full border border-red-400/20">
+              <div className="flex items-center gap-1.5 text-slate-500 bg-slate-200 px-3 py-1 rounded-full border border-slate-300">
                 <ShieldAlert className="w-4 h-4" />
                 <span className="font-bold text-sm tracking-wide">EXPIRED</span>
               </div>
             ) : (
               <div className="flex items-end gap-1.5">
-                <span className={`text-3xl font-black leading-none tracking-tighter ${daysLeft <= 3 ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" : "text-white"}`}>
+                <span className={`text-3xl font-black leading-none tracking-tighter ${daysLeft <= 3 ? "text-red-500" : "text-slate-900"}`}>
                   {daysLeft}
                 </span>
-                <span className={`text-sm font-bold pb-0.5 ${daysLeft <= 3 ? "text-amber-400/80" : "text-indigo-200"}`}>
-                  hari lagi
+                <span className={`text-sm font-bold pb-0.5 ${daysLeft <= 3 ? "text-red-400" : "text-slate-500"}`}>
+                  hari aktif
                 </span>
               </div>
             )}
             {profile.endDate && (
-              <p className="text-[10px] font-medium text-indigo-300 mt-2">
+              <p className="text-[10px] font-bold text-slate-400 mt-2 tracking-wide">
                 s.d. {format(new Date(profile.endDate), "dd MMM yyyy")}
               </p>
             )}
           </div>
-          
         </div>
       </div>
       
@@ -192,6 +212,7 @@ export function StudentDashboardClient({
           { id: "overview", label: "Overview", icon: Clock4 },
           { id: "attendance", label: "Riwayat Kelas", icon: CalendarCheck2 },
           { id: "evaluations", label: "Rapor (Evaluasi)", icon: FileText },
+          { id: "settings", label: "Pengaturan", icon: Settings },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -201,7 +222,7 @@ export function StudentDashboardClient({
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all relative z-20 ${
                 isActive 
-                  ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-900/5" 
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-900/5" 
                   : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
               }`}
             >
@@ -239,6 +260,12 @@ export function StudentDashboardClient({
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Jam Belajar</p>
                 <p className="text-sm font-medium text-slate-900">{profile.batchSchedule || "-"}</p>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Kuota Izin Extend</p>
+                <p className="text-sm font-medium text-slate-700">
+                  <strong className="text-indigo-600">{profile.leaveUsed || 0}</strong> terpakai dari <strong>{profile.leaveQuota || 0}</strong> hari
+                </p>
               </div>
             </div>
           </div>
@@ -399,6 +426,13 @@ export function StudentDashboardClient({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === "settings" && (
+          <div className="max-w-lg">
+            <ChangePasswordForm userId={profile.id} />
           </div>
         )}
 

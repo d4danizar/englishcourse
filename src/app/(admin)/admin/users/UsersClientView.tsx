@@ -204,33 +204,66 @@ export function UsersClientView({
     return matchesTab && matchesSearch;
   });
 
-  // Client-side CSV Export logic
-  const handleExportCSV = () => {
-    const headers = ["Name", "Email", "Phone Number", "Program", "Sesi/Batch", "Role", "Joined Date"];
-    const rows = filteredUsers.map(u => {
-      const escapedName = `"${u.name.replace(/"/g, '""')}"`;
-      const escapedEmail = `"${u.email.replace(/"/g, '""')}"`;
-      const escapedPhone = `"${u.phoneNumber || '-'}"`;
-      const escapedProgram = `"${u.activeProgram || '-'}"`;
-      const escapedBatch = `"${u.programBatch || u.batchSchedule || '-'}"`;
-      const formattedDate = `"${new Date(u.createdAt).toLocaleDateString()}"`;
-      return [escapedName, escapedEmail, escapedPhone, escapedProgram, escapedBatch, `"${u.role}"`, formattedDate].join(",");
-    });
-    const csvString = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `users_data_${activeTab.toLowerCase()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // State for export
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Client-side Excel Export logic
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      // Lazy load xlsx to avoid huge bundle payload initially
+      const XLSX = await import("xlsx");
+      const { getExportStudentsData } = await import("./export-actions");
+
+      const res = await getExportStudentsData();
+      if (!res?.success || !res?.data) {
+        throw new Error(res?.error || "Gagal mengambil data dari server");
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(res.data);
+
+      // Sizing columns for anti-dempet
+      worksheet["!cols"] = [
+        { wch: 25 }, // Nomor Invoice
+        { wch: 15 }, // Status
+        { wch: 25 }, // Nama Lengkap
+        { wch: 30 }, // Email
+        { wch: 18 }, // No. WA
+        { wch: 15 }, // Jenis Kelamin
+        { wch: 25 }, // TTL
+        { wch: 15 }, // Aktivitas
+        { wch: 20 }, // Tahu dari Mana
+        { wch: 25 }, // Program
+        { wch: 25 }, // Detail Kelas
+        { wch: 18 }, // Jenis Pembayaran
+        { wch: 15 }, // Total Harga
+        { wch: 15 }, // Nominal Dibayar
+        { wch: 15 }, // Tanggal
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa");
+      XLSX.writeFile(workbook, "Data_Siswa_KampungInggris.xlsx");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Gagal mengekspor data.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "ADMIN":
-        return <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Admin</span>;
+      case "SUPER_ADMIN":
+        return <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Super Admin</span>;
+      case "MANAGER":
+        return <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Manager</span>;
+      case "CS":
+        return <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> CS</span>;
+      case "MARKETING":
+        return <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 border border-pink-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Marketing</span>;
+      case "CREATOR":
+        return <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Creator</span>;
       case "TUTOR":
         return <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><BookOpen className="w-3 h-3"/> Tutor</span>;
       default:
@@ -383,11 +416,21 @@ export function UsersClientView({
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button 
-            onClick={handleExportCSV}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm disabled:opacity-50"
           >
-            <Download className="w-4 h-4" />
-            Download Data
+            {isExporting ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-slate-400 border-t-slate-700 rounded-full animate-spin" />
+                Mengekspor...
+              </span>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Download Data
+              </>
+            )}
           </button>
           <button 
             onClick={() => setIsAddModalOpen(true)}
@@ -570,7 +613,11 @@ export function UsersClientView({
                   >
                     <option value="STUDENT">Student</option>
                     <option value="TUTOR">Tutor</option>
-                    <option value="ADMIN">Admin</option>
+                    <option value="CS">CS (Customer Service)</option>
+                    <option value="MANAGER">Manager (SPV)</option>
+                    <option value="MARKETING">Marketing</option>
+                    <option value="CREATOR">Creator</option>
+                    <option value="SUPER_ADMIN">Super Admin (Owner)</option>
                   </select>
                 </div>
                 
@@ -644,7 +691,11 @@ export function UsersClientView({
                   >
                     <option value="STUDENT">Student</option>
                     <option value="TUTOR">Tutor</option>
-                    <option value="ADMIN">Admin</option>
+                    <option value="CS">CS (Customer Service)</option>
+                    <option value="MANAGER">Manager (SPV)</option>
+                    <option value="MARKETING">Marketing</option>
+                    <option value="CREATOR">Creator</option>
+                    <option value="SUPER_ADMIN">Super Admin (Owner)</option>
                   </select>
                 </div>
 

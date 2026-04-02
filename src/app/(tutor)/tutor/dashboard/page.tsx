@@ -89,8 +89,8 @@ export default async function TutorDashboardPage() {
         });
       }
 
-      // Use shared helper for global pool (broad, no time/batch filter)
-      const globalPoolRaw = await getGlobalPoolForSession({ programType: s.programType });
+      // Use shared helper for global pool (broad, with contains filter for search)
+      const globalPoolRaw = await getGlobalPoolForSession({ programType: s.programType, timeSlot: s.timeSlot });
       const globalPoolStudents: StudentSearchItem[] = globalPoolRaw
         .map((gp) => ({ id: gp.id, name: gp.name, activeProgram: gp.activeProgram }));
 

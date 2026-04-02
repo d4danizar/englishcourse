@@ -3,30 +3,53 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { COMPANY_INFO } from "@/lib/constants/branding";
 
-const navItems = [
-  { label: "Dashboard", href: "/admin/dashboard", emoji: "📊" },
+// Standard ops items accessible to all admin roles
+const standardNavItems = [
   { label: "Classes", href: "/admin/classes", emoji: "📚" },
   { label: "Users", href: "/admin/users", emoji: "👥" },
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
 ];
 
+// Role-gated helpers
+const CRM_ROLES = ["SUPER_ADMIN", "CS", "MARKETING"];
+const KPI_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR"];
+
 export function AdminSidebar({
   user,
 }: {
-  user: { name?: string | null; email?: string | null };
+  user: { name?: string | null; email?: string | null; role?: string | null };
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const role = (user?.role ?? "") as string;
+
+  const visibleNavItems = [
+    // Dashboard Bisnis — SUPER_ADMIN only (top priority)
+    ...(role === "SUPER_ADMIN" ? [{ label: "Dashboard Bisnis", href: "/admin/dashboard", emoji: "📊" }] : []),
+    // Keuangan — SUPER_ADMIN, MANAGER, CS
+    ...(["SUPER_ADMIN", "MANAGER", "CS"].includes(role) ? [{ label: "Keuangan", href: "/admin/finance", emoji: "💰" }] : []),
+    // CRM — SUPER_ADMIN, CS, MARKETING
+    ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
+    // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
+    ...(KPI_ROLES.includes(role) ? [{ label: "KPI & WIG", href: "/admin/kpi", emoji: "🎯" }] : []),
+    // Standard items for everyone in admin panel
+    ...standardNavItems,
+  ];
 
   return (
     <>
       {/* Mobile Top Navbar (Hamburger) */}
       <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-40 shadow-md">
-        <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
-          <span className="text-lg">🎓</span>
-          KampungInggris
-        </h2>
+        <div className="flex flex-col justify-center">
+          <h1 className="text-white font-extrabold text-base tracking-wider leading-tight">
+            KAMPUNG INGGRIS
+            <span className="block text-blue-400 font-medium text-[10px] tracking-widest mt-0.5">
+              SOLO
+            </span>
+          </h1>
+        </div>
         <button
           onClick={() => setIsOpen(true)}
           className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors cursor-pointer block"
@@ -46,20 +69,19 @@ export function AdminSidebar({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] min-w-[260px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] min-w-[260px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:overflow-y-auto md:translate-x-0 ${
           isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
         {/* Brand */}
-        <div className="px-6 py-5 border-b border-slate-700/50 shrink-0 flex justify-between items-center bg-slate-900">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 m-0 leading-tight">
-              <span className="text-xl">🎓</span>
-              KampungInggris
-            </h2>
-            <p className="text-xs font-medium text-slate-400 mt-1 tracking-wide uppercase">
-              Admin Panel
-            </p>
+        <div className="flex justify-between items-center h-20 px-6 border-b border-white/10 bg-black/20 shrink-0">
+          <div className="flex flex-col justify-center">
+            <h1 className="text-white font-extrabold text-lg tracking-wider leading-tight m-0">
+              KAMPUNG INGGRIS
+              <span className="block text-blue-400 font-medium text-sm tracking-widest mt-0.5">
+                SOLO
+              </span>
+            </h1>
           </div>
           <button
             onClick={() => setIsOpen(false)}
@@ -72,7 +94,7 @@ export function AdminSidebar({
 
         {/* Navigation — scrollable */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1 bg-slate-900">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -109,6 +131,13 @@ export function AdminSidebar({
             <span className="block">🚪</span>
             <span className="block">Sign Out</span>
           </Link>
+
+          {/* SaaS Footer Credit */}
+          <div className="mt-4 pt-3 border-t border-slate-800 text-center">
+             <p className="text-[10px] text-slate-500 font-medium tracking-wide">
+               Powered by <span className="font-bold text-slate-400">dspaceweb</span>
+             </p>
+          </div>
         </div>
       </aside>
     </>

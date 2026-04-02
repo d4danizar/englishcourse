@@ -73,6 +73,7 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
   // Get global pool for manual add (broad)
   const globalPoolStudents = await getGlobalPoolForSession({
     programType: session.programType,
+    timeSlot: session.timeSlot
   });
 
   // Build attendance IDs set for exclusion from global pool

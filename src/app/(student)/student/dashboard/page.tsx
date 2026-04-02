@@ -3,6 +3,8 @@ import { authOptions } from "../../../../lib/auth";
 import { redirect } from "next/navigation";
 import { getStudentProfile, getStudentAttendances, getStudentEvaluations } from "./actions";
 import { StudentDashboardClient } from "./StudentDashboardClient";
+import Image from "next/image";
+import { COMPANY_INFO } from "@/lib/constants/branding";
 
 export default async function StudentDashboardPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -22,8 +24,16 @@ export default async function StudentDashboardPage() {
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] px-4">
+        <Image 
+          src={COMPANY_INFO.logoSmallUrl} 
+          alt="Logo" 
+          width={80} 
+          height={80} 
+          className="mb-8 opacity-80 object-contain grayscale"
+          priority
+        />
         <h2 className="text-xl font-bold text-slate-800">Profil tidak ditemukan</h2>
-        <p className="text-sm text-slate-500 mt-2">Gagal memuat data pelajar.</p>
+        <p className="text-sm text-slate-500 mt-2">Gagal memuat atau belum ada data pelajar aktif.</p>
       </div>
     );
   }
@@ -33,13 +43,18 @@ export default async function StudentDashboardPage() {
       <div className="max-w-4xl mx-auto flex flex-col gap-6">
         
         {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Student Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 text-balance">
-            Lihat masa aktif program, riwayat kehadiran, dan evaluasi belajarmu di sini.
-          </p>
+        <div className="flex justify-between items-end border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+              STUDENT PROFILE
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 leading-none">
+              {profile.name}
+            </h1>
+            <p className="mt-1.5 text-sm font-medium text-slate-500 tracking-wide">
+              {sessionUser.user.email}
+            </p>
+          </div>
         </div>
 
         {/* Client Component */}

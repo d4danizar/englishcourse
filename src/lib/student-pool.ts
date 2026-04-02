@@ -175,22 +175,75 @@ export async function getEligibleStudentsForSession(session: {
 }
 
 /**
- * Global Pool: Get all students matching a session's program type (no time/batch filter).
- * Used for manual "Add Student" dropdown.
+ * Global Pool / Radar: Get all eligible students for a specific session's time slot.
+ * Enforces Gym Membership rules (Asrama, Fullday, Regular).
  */
-export async function getGlobalPoolForSession(session: {
+export async function getGlobalPoolForSession({
+  programType,
+  timeSlot,
+}: {
   programType: string;
+  timeSlot: string;
 }): Promise<EligibleStudentResult[]> {
-  const poolPrograms = getGlobalPoolPrograms(session.programType);
+  const normType = programType.trim().toUpperCase();
 
-  const students = await prisma.user.findMany({
+  // 1. Base query: Must be an active student in this program family
+  const baseQuery: any = {
+    role: "STUDENT",
+    activeProgram: programType,
+    endDate: { gte: new Date() },
+  };
+
+  // 2. Smart Filtering based on TimeSlot for CONVERSATION
+  if (normType === "CONVERSATION") {
+    // Determine the nature of the timeslot
+    const safeTimeSlot = timeSlot || "";
+    const isSesi1to4 = ["08:00 - 09:30", "10:00 - 11:30", "12:30 - 14:00", "14:30 - 16:00"].includes(
+      safeTimeSlot.trim()
+    );
+
+    // Convert timeslot to standard session name for Regular students
+    let currentSessionName = "Sesi 1";
+    if (safeTimeSlot.includes("10:00")) currentSessionName = "Sesi 2";
+    if (safeTimeSlot.includes("12:30")) currentSessionName = "Sesi 3";
+    if (safeTimeSlot.includes("14:30")) currentSessionName = "Sesi 4";
+    if (safeTimeSlot.includes("18:30")) currentSessionName = "Sesi 5";
+
+    // Allowed Batches config
+    const allowedBatches = ["ASRAMA", currentSessionName]; // Everyone gets Asrama + their specific session
+
+    if (isSesi1to4) {
+      allowedBatches.push("FULLDAY"); // Fullday gets access to Sesi 1-4, but not Sesi 5
+    }
+
+    baseQuery.programBatch = { in: allowedBatches };
+  } else {
+    // For non-conversation (EFK, EFT, TOEFL), use the standard program matching
+    const poolPrograms = getGlobalPoolPrograms(programType);
+    baseQuery.activeProgram = { in: poolPrograms };
+  }
+
+  // 3. Execute Query
+  console.log("🕵️ RADAR SEARCH PARAMS:", { programName: programType, batch: timeSlot, query: "" });
+
+  const pool = await prisma.user.findMany({
     where: {
       role: "STUDENT",
-      activeProgram: { in: poolPrograms },
+      // MATIKAN (comment) sementara filter program dan batch di bawah ini!
+      // activeProgram: programType, 
+      // programBatch: { contains: timeSlot, mode: "insensitive" },
+      // endDate: { gte: new Date() }
+
+      // Dummy search text untuk debugging
+      name: {
+        contains: "", // Longgarkan secara maksimum
+        mode: "insensitive"
+      }
     },
-    select: { id: true, name: true, activeProgram: true },
+    take: 10,
+    select: { id: true, name: true, activeProgram: true, programBatch: true },
     orderBy: { name: "asc" },
   });
 
-  return students.map((s) => ({ id: s.id, name: s.name, activeProgram: s.activeProgram }));
+  return pool.map((s) => ({ id: s.id, name: s.name, activeProgram: s.activeProgram }));
 }

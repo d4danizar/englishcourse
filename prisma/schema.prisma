@@ -10,9 +10,36 @@ datasource db {
 
 // --- ENUMS ---
 enum Role {
-  ADMIN
+  SUPER_ADMIN
+  MANAGER
+  CS
+  MARKETING
+  CREATOR
   TUTOR
   STUDENT
+}
+
+enum LeadStatus {
+  NEW
+  FOLLOW_UP
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum InvoiceStatus {
+  PENDING
+  WAITING_CONFIRMATION
+  DP_PAID
+  PAID
+  CANCELLED
+}
+
+enum TrackingType {
+  MANUAL          // Di-update oleh user via UI (Contoh: Creator upload video)
+  AUTO_LEAD       // Di-update otomatis oleh sistem saat ada lead baru
+  AUTO_REVENUE    // Di-update otomatis saat invoice lunas
+  AUTO_ATTENDANCE // Di-update otomatis saat kelas selesai
 }
 
 enum AttendanceStatus {
@@ -20,6 +47,21 @@ enum AttendanceStatus {
   ABSENT
   EXCUSED // Izin
   SICK
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  REGISTRATION_FEE
+  OPERATIONAL
+  SALARY
+  MARKETING
+  OTHER
+  DP
+  PELUNASAN
 }
 
 // ============================================================
@@ -41,11 +83,20 @@ model User {
   // Paket aktif siswa (hanya relevan untuk STUDENT)
   // Contoh: "Regular", "Fullday", "Asrama", "EFK", "Private", "TOEFL"
   activeProgram  String?
-  startDate      DateTime? // Tanggal mulai kursus
+  programStartDate  DateTime? // Tanggal masuk / Onboarding (Senin selanjutnya)
+  startDate      DateTime? // Tanggal mulai kursus (legacy, untuk backward comp)
   endDate        DateTime? // Tanggal lulus/berakhirnya paket (auto-calculated)
   durationOption String?   // Pilihan durasi: "1_WEEK", "2_WEEKS", "3_WEEKS", "1_MONTH", "2_MONTHS"
   programBatch   String?   // Sesi/Jam default untuk Regular: "08:00 - 09:30", dll
   batchSchedule  String?   // Jadwal batch EFK/EFT: "Senin-Rabu", "Selasa-Kamis", "Jumat-Sabtu"
+  
+  // Student Pool / Kelas Utama (Rombel)
+  classGroupId   String?
+  classGroup     ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+
+  // Leave / Make-up Quota
+  leaveQuota     Int       @default(0)
+  leaveUsed      Int       @default(0)
 
   // Relasi
   sessionsTaught Session[]      @relation("SessionTutor")  // Sesi yang diajar (untuk TUTOR)
@@ -54,6 +105,16 @@ model User {
   StudentEvaluations DescriptiveEvaluation[] @relation("StudentEvaluations")
   TutorEvaluations   DescriptiveEvaluation[] @relation("TutorEvaluations")
   assignedSessions   Session[] @relation("SessionAssignments")
+
+  // CRM & Dashboard Preferences
+  dashboardLayout    Json?
+  leadsHandled       Lead[]         @relation("UserLeads")
+
+  // KPI Engine
+  targets            StaffTarget[]
+
+  // Financial
+  cashflows          Cashflow[]
 }
 
 model DescriptiveEvaluation {
@@ -81,6 +142,10 @@ model Session {
   programType String   // cth: "Conversation", "Grammar", "EFK", "Private", "TOEFL"
   isCompleted Boolean  @default(false) // true = tutor sudah submit absen (trigger payroll)
 
+  // Relasi Rombel
+  classGroupId String?
+  classGroup   ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+
   // Tutor yang mengajar sesi ini
   tutorId String
   tutor   User   @relation("SessionTutor", fields: [tutorId], references: [id])
@@ -88,6 +153,20 @@ model Session {
   // Relasi
   attendances Attendance[] // Siswa yang hadir di sesi ini
   assignedStudents User[]  @relation("SessionAssignments")
+}
+
+// Model Rombongan Belajar (Rombel)
+model ClassGroup {
+  id          String   @id @default(cuid())
+  name        String   // misal: "Reguler - Sesi 1"
+  program     String   // misal: "Regular", "Fullday"
+  
+  // Relasi
+  students    User[]   // Siswa tetap di rombel ini
+  sessions    Session[] // Sesi kelas mingguan rombel ini
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // Attendance: Tiket masuk siswa + Rapor evaluasi per sesi
@@ -98,6 +177,7 @@ model Attendance {
   sessionId String
   studentId String
   status    AttendanceStatus @default(PRESENT)
+  isGuest   Boolean          @default(false) // Tandai jika ini siswa sit-in
 
   // Evaluasi Speaking (Opsional, diisi tutor saat submit attendance)
   pronunciation Int?    // Skala 1-10
@@ -126,4 +206,103 @@ model Announcement {
   createdAt  DateTime @default(now())
 
   author User @relation(fields: [authorId], references: [id])
+}
+
+// ============================================================
+// --- CRM & LEADS ---
+// ============================================================
+
+model Lead {
+  id          String       @id @default(cuid())
+  name        String
+  whatsapp    String
+  status      LeadStatus   @default(NEW)
+  notes       String?      @db.Text
+  
+  // Relasi ke CS/Admin yang menangani
+  assigneeId  String?
+  assignee    User?        @relation("UserLeads", fields: [assigneeId], references: [id])
+
+  invoices    Invoice[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+// ── KPI / WIG Universal Target Engine ────────────────────────────────────────
+model StaffTarget {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+
+  period       String       // Format: "MM-YYYY" (Contoh: "03-2026")
+  title        String       // Nama KPI (Contoh: "Upload Tiktok", "Target Omzet")
+  targetValue  Float        // Float untuk mendukung nominal uang besar
+  currentValue Float        @default(0)
+  unitName     String       // Satuan (Contoh: "Video", "Rupiah", "Leads")
+
+  trackingType TrackingType @default(MANUAL)
+  // proofLink dipindah ke ProgressLog untuk audit trail per-hari
+
+  logs         ProgressLog[]
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ── Audit Trail: daily progress logs ─────────────────────────────────────────
+model ProgressLog {
+  id         String      @id @default(cuid())
+  targetId   String
+  target     StaffTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  valueAdded Float       // Angka penambahan hari ini
+  notes      String?     @db.Text  // Catatan pekerjaan hari ini
+  proofLink  String?     @db.Text  // Link bukti harian (GDrive/Tiktok)
+
+  createdAt  DateTime    @default(now())
+}
+
+// ── Invoice / Tagihan Siswa ───────────────────────────────────────────────────
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique // Format: INV-20260324-001
+
+  // Relasi ke Lead (prospek yang ditagih)
+  leadId        String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Detail program & pembayaran
+  programName   String
+  amountDue     Float
+  totalAmount   Int           @default(0)
+  paidAmount    Int           @default(0)
+  status        InvoiceStatus @default(PENDING)
+
+  paymentMethod String?      // "MANUAL_TRANSFER" | "CASH_ON_SITE" | "GATEWAY"
+  paymentProof  String?      @db.Text // URL foto struk transfer
+
+  // Data form pendaftaran (alamat, asal sekolah, dll)
+  studentData   Json?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  cashflows     Cashflow[]
+}
+
+// ── Financial / Cashflow ──────────────────────────────────────────────────────
+model Cashflow {
+  id           String              @id @default(cuid())
+  type         TransactionType
+  category     TransactionCategory
+  amount       Int
+  description  String
+  date         DateTime            @default(now())
+  
+  invoiceId    String?
+  invoice      Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  recordedById String?
+  recordedBy   User?               @relation(fields: [recordedById], references: [id], onDelete: SetNull)
 }

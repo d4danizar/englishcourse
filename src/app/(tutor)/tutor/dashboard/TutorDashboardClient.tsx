@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   Calendar,
   Clock,
@@ -15,7 +15,7 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import { submitAttendance } from "../actions";
+import { submitAttendance, searchStudentsForAttendance } from "../actions";
 import { SessionDetailModal } from "../../../../components/session/SessionDetailModal";
 
 // --- Types ---
@@ -81,59 +81,59 @@ export function TutorDashboardClient({
   const [tutorNotes, setTutorNotes] = useState("");
   const [rescheduleNotes, setRescheduleNotes] = useState("");
 
-  // Manual add student state
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [addStudentSearch, setAddStudentSearch] = useState("");
-  const [manuallyAdded, setManuallyAdded] = useState<StudentSearchItem[]>([]);
+  // Grab-and-Go Search & Claim State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [modalStudents, setModalStudents] = useState<EligibleStudent[]>([]);
+  const [searchResults, setSearchResults] = useState<StudentSearchItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // All students in the modal (eligible + manually added)
-  const modalStudents = useMemo(() => {
-    if (!selectedTask) return [];
-    const existingIds = new Set(selectedTask.students.map((s) => s.id));
-    const extras = manuallyAdded.filter((s) => !existingIds.has(s.id));
-    return [
-      ...selectedTask.students,
-      ...extras.map((s) => ({
-        id: s.id,
-        name: s.name,
-        activeProgram: s.activeProgram,
-        existingStatus: null,
-        existingPronunciation: null,
-        existingFluency: null,
-        existingVocabulary: null,
-        existingNotes: null,
-      } as EligibleStudent)),
-    ];
-  }, [selectedTask, manuallyAdded]);
+  // Skenario Mayoritas: Live dynamic fetching populating officially tracked students initially, plus explicit external searches.
+  useEffect(() => {
+    if (!selectedTask) return;
+    let isCancelled = false;
 
-  // Search results for manual add — uses per-session globalPoolStudents
-  // Excludes any student already showing in the attendance list (eligible + manually added)
-  const searchResults = useMemo(() => {
-    if (!selectedTask || !addStudentSearch || addStudentSearch.length < 2) return [];
-    const q = addStudentSearch.toLowerCase();
-    // Build exclusion set from ALL students currently in the modal
-    const alreadyInModalIds = new Set(modalStudents.map((s) => s.id));
-    // Filter from the broader global pool (NOT eligibleStudents)
-    return selectedTask.globalPoolStudents
-      .filter((s) => !alreadyInModalIds.has(s.id) && s.name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [addStudentSearch, selectedTask, modalStudents]);
+    const q = searchQuery.trim().toLowerCase();
+    setIsSearching(true);
+
+    if (!selectedTask || q.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    searchStudentsForAttendance(selectedTask.programType, selectedTask.timeSlot || "", q)
+      .then((students) => {
+        if (isCancelled) return;
+        // SEARCH INPUT DYNAMIC
+        const excludeIds = new Set(modalStudents.map((m) => m.id));
+        setSearchResults(students.filter((s) => !excludeIds.has(s.id)));
+      })
+      .catch((err) => console.error("Dynamic Student Search Error:", err))
+      .finally(() => {
+        if (!isCancelled) setIsSearching(false);
+      });
+
+    return () => { isCancelled = true; };
+  }, [selectedTask?.id, searchQuery]);
 
   const handleOpenModal = (task: SessionTask) => {
     setSelectedTask(task);
     setTutorNotes("");
     setRescheduleNotes("");
-    setManuallyAdded([]);
-    setShowAddStudent(false);
-    setAddStudentSearch("");
+    setSearchQuery("");
+    
+    // Load all eligible native students directly from the SSR task payload
+    const initialStudentsToGrade = task.students;
+    setModalStudents(initialStudentsToGrade);
+
     // Initialize evals from existing attendance data or defaults
     const initialEvals: typeof studentEvals = {};
-    task.students.forEach((s) => {
+    initialStudentsToGrade.forEach((s) => {
       initialEvals[s.id] = {
         status: s.existingStatus || "PRESENT",
-        pronunciation: s.existingPronunciation ?? 3,
-        fluency: s.existingFluency ?? 3,
-        vocabulary: s.existingVocabulary ?? 3,
+        pronunciation: s.existingPronunciation ?? 5,
+        fluency: s.existingFluency ?? 5,
+        vocabulary: s.existingVocabulary ?? 5,
       };
     });
     setStudentEvals(initialEvals);
@@ -141,16 +141,38 @@ export function TutorDashboardClient({
 
   const handleCloseModal = () => {
     setSelectedTask(null);
-    setManuallyAdded([]);
+    setModalStudents([]);
   };
 
-  const handleAddStudent = (student: StudentSearchItem) => {
-    setManuallyAdded((prev) => [...prev, student]);
+  const handleClaimStudent = (studentToClaim: StudentSearchItem) => {
+    setModalStudents((prev) => [
+      ...prev,
+      {
+        id: studentToClaim.id,
+        name: studentToClaim.name,
+        activeProgram: studentToClaim.activeProgram,
+        existingStatus: "PRESENT",
+        existingPronunciation: null,
+        existingFluency: null,
+        existingVocabulary: null,
+        existingNotes: null,
+      } as EligibleStudent,
+    ]);
+
     setStudentEvals((prev) => ({
       ...prev,
-      [student.id]: { status: "PRESENT", pronunciation: 7, fluency: 7, vocabulary: 7 },
+      [studentToClaim.id]: { status: "PRESENT", pronunciation: 5, fluency: 5, vocabulary: 5 },
     }));
-    setAddStudentSearch("");
+    setSearchQuery("");
+  };
+
+  const handleRemoveStudent = (studentId: string) => {
+    setModalStudents((prev) => prev.filter((s) => s.id !== studentId));
+    setStudentEvals((prev) => {
+      const updated = { ...prev };
+      delete updated[studentId];
+      return updated;
+    });
   };
 
   const handleSubmit = () => {
@@ -350,60 +372,51 @@ export function TutorDashboardClient({
             {/* Modal Body (Scrollable) */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
 
-              {/* Student Count Info */}
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  {modalStudents.length} Students
-                  {!isEvalDay && <span className="ml-2 text-slate-400 normal-case font-medium">(status only — evaluations on designated days)</span>}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudent(!showAddStudent)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Add Student
-                </button>
+              {/* --- STUDENT SEARCH & CLAIM BAR --- */}
+              <div className="mb-6 relative z-[60]">
+                <label className="block text-sm font-bold text-slate-900 mb-2">
+                  🔍 Cari & Klaim Siswa
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ketik nama siswa (contoh: Budi)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto overflow-x-hidden">
+                    {searchResults.map((student) => (
+                      <button
+                        key={student.id}
+                        type="button"
+                        onClick={() => handleClaimStudent(student)}
+                        className="w-full text-left px-4 py-3 hover:bg-indigo-50 border-b border-slate-100 last:border-0 flex justify-between items-center transition-colors"
+                      >
+                        <span className="font-semibold text-slate-800">{student.name}</span>
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded uppercase tracking-wider">
+                          {student.activeProgram || "Unknown"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Manual Add Student Search */}
-              {showAddStudent && (
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 flex flex-col gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={addStudentSearch}
-                      onChange={(e) => setAddStudentSearch(e.target.value)}
-                      placeholder="Search student name..."
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 placeholder:text-slate-400"
-                    />
-                  </div>
-                  {searchResults.length > 0 && (
-                    <div className="flex flex-col gap-1">
-                      {searchResults.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => handleAddStudent(s)}
-                          className="flex items-center justify-between px-3 py-2 text-sm bg-white hover:bg-indigo-50 rounded-lg border border-slate-100 transition-colors text-left"
-                        >
-                          <span className="font-medium text-slate-900">{s.name}</span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">{s.activeProgram || "—"}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {addStudentSearch.length >= 2 && searchResults.length === 0 && (
-                    <p className="text-xs text-slate-400 font-medium text-center py-2">No students found</p>
-                  )}
-                </div>
-              )}
+              {/* Student Count Info */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  {modalStudents.length} Students Claimed
+                  {!isEvalDay && <span className="ml-2 text-slate-400 normal-case font-medium">(status only — evaluations on designated days)</span>}
+                </p>
+              </div>
 
               {/* Per-Student Attendance & Evaluation */}
               {modalStudents.length === 0 ? (
                 <div className="text-center text-sm text-slate-500 py-8 font-medium">
-                  No eligible students found. Use &quot;Add Student&quot; to add manually.
+                  Belum ada siswa yang diklaim. Silakan cari nama siswa di atas.
                 </div>
               ) : (
                 modalStudents.map((student) => {
@@ -418,11 +431,21 @@ export function TutorDashboardClient({
                           </div>
                           <span className="text-sm font-bold text-slate-900">{student.name}</span>
                         </div>
-                        {student.activeProgram && (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-100">
-                            {student.activeProgram}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {student.activeProgram && (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-100">
+                              {student.activeProgram}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudent(student.id)}
+                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Batalkan Klaim"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Attendance Status Buttons */}

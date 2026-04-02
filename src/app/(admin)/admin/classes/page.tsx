@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { CalendarDays, Clock } from "lucide-react";
 import { SchedulePageHeader } from "./SchedulePageHeader";
 import { SessionRowActions } from "./SessionRowActions";
+import AutoAbsenceButton from "../../../../components/admin/AutoAbsenceButton";
 import { ScheduleTabsWrapper } from "./ScheduleTabsWrapper";
 import { WeeklyRosterBuilder } from "./WeeklyRosterBuilder";
 
@@ -167,7 +168,14 @@ export default async function ScheduleManagementPage() {
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
       {/* Page Header (Client Component with single-session modal) */}
-      <SchedulePageHeader tutors={tutors} />
+      <div className="flex flex-col gap-6">
+        <SchedulePageHeader tutors={tutors} />
+        
+        {/* Sweep / Auto-Alpa Button Tracker */}
+        <div className="flex justify-end pr-1 border-b border-slate-100 pb-6">
+          <AutoAbsenceButton />
+        </div>
+      </div>
 
       {/* Tab Navigation: Active Sessions | Weekly Roster Builder */}
       <ScheduleTabsWrapper

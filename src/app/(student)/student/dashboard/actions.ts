@@ -13,6 +13,8 @@ export async function getStudentProfile(studentId: string) {
       batchSchedule: true,
       startDate: true,
       endDate: true,
+      leaveQuota: true,
+      leaveUsed: true,
     },
   });
   return profile;

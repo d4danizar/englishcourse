@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -10,6 +11,7 @@ function LoginForm() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -75,15 +77,24 @@ function LoginForm() {
           <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="password">
             Password
           </label>
-          <input 
-            id="password"
-            type="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-            placeholder="••••••••" 
-            required 
-          />
+          <div className="relative w-full">
+            <input 
+              id="password"
+              type={showPassword ? "text" : "password"} 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-3 pr-12 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
+              placeholder="••••••••" 
+              required 
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
         <button 
           type="submit" 
@@ -110,12 +121,8 @@ export default function LoginPage() {
       <Suspense fallback={<div className="text-center text-sm text-gray-500">Loading...</div>}>
         <LoginForm />
       </Suspense>
-      <div className="mt-8 text-center text-sm text-gray-500">
-        <p>Demo Accounts:</p>
-        <p className="mt-1">Admin: admin@test.com</p>
-        <p>Tutor: tutor@test.com</p>
-        <p>Student: student@test.com</p>
-        <p className="mt-2 font-medium">Password: dummy_hash_123</p>
+      <div className="mt-8 text-center text-xs font-medium text-gray-400">
+        Powered by dspaceweb
       </div>
     </div>
   );
