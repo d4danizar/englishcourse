@@ -3,13 +3,14 @@
 import { prisma } from "../../../../lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { Role } from "@prisma/client";
 
 export async function createUser(formData: FormData) {
   try {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
-    const role = formData.get("role") as "ADMIN" | "TUTOR" | "STUDENT";
+    const role = formData.get("role") as Role;
     const activeProgram = formData.get("activeProgram") as string;
     const startDateStr = formData.get("startDate") as string;
     const endDateStr = formData.get("endDate") as string;
@@ -57,7 +58,7 @@ export async function editUser(formData: FormData) {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
-    const role = formData.get("role") as "ADMIN" | "TUTOR" | "STUDENT";
+    const role = formData.get("role") as Role;
 
     // Student-specific fields
     const activeProgram = formData.get("activeProgram") as string;
