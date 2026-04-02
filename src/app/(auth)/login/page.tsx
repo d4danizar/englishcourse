@@ -4,6 +4,8 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
+import { COMPANY_INFO } from "@/lib/constants/branding";
 
 function LoginForm() {
   const router = useRouter();
@@ -45,9 +47,22 @@ function LoginForm() {
 
   return (
     <>
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Welcome Back</h1>
-        <p className="text-sm text-gray-500">Sign in to access your dashboard</p>
+      <div className="flex flex-col items-center text-center mb-8 gap-3">
+        <Image
+          src={COMPANY_INFO.logoSmallUrl}
+          alt="Logo"
+          width={80}
+          height={80}
+          className="object-contain"
+          unoptimized
+          priority
+        />
+        <div>
+          <h1 className="text-xl font-bold text-zinc-900 tracking-tight leading-tight">
+            KAMPUNG INGGRIS SOLO
+            <span className="block text-sm font-medium text-zinc-400 tracking-widest mt-0.5">PORTAL</span>
+          </h1>
+        </div>
       </div>
 
       {(error || urlError === "unauthorized") && (
@@ -99,7 +114,7 @@ function LoginForm() {
         <button 
           type="submit" 
           disabled={isLoading}
-          className="w-full flex justify-center items-center bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full flex justify-center items-center bg-zinc-900 text-white font-semibold py-3 px-4 rounded-lg hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 transition-all mt-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
