@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { calculateInvoiceAmount } from "../utils/pricing";
 import { nextMonday, addWeeks, addMonths } from "date-fns";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "CS"];
 
@@ -36,6 +37,8 @@ export async function createInvoice(
     const finalProgramName = duration ? `${programName} — ${duration}` : programName;
     const newAmountDue = totalAmount - paidAmount;
 
+    const branchFilter = await getBranchFilter();
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
@@ -45,7 +48,8 @@ export async function createInvoice(
         totalAmount,
         paidAmount,
         status: "PENDING",
-        paymentMethod: paymentType, // store DP or FULL
+        paymentMethod: paymentType,
+        branch: branchFilter.branch,
       },
     });
 
@@ -168,6 +172,7 @@ export async function approvePayment(invoiceId: string) {
             description: `${paymentLabel} - ${studentName}`,
             invoiceId: invoice.id,
             recordedById: (session.user as any)?.id || null,
+            branch: invoice.branch,
           } as any
         });
       } catch (cfErr) {
@@ -376,7 +381,8 @@ export async function settlePaymentOnSite(invoiceId: string) {
           description: `Pelunasan - ${studentName}`,
           invoiceId: invoice.id,
           recordedById: (session.user as any)?.id || null,
-        } as any // bypass TS cache
+          branch: invoice.branch,
+        } as any
       });
     });
 

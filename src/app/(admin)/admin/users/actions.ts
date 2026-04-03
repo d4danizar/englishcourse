@@ -3,7 +3,7 @@
 import { prisma } from "../../../../lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { Role } from "@prisma/client";
+import { Role, BranchLocation } from "@prisma/client";
 
 export async function createUser(formData: FormData) {
   try {
@@ -11,6 +11,7 @@ export async function createUser(formData: FormData) {
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const role = formData.get("role") as Role;
+    const branch = (formData.get("branch") as BranchLocation) || "KARTASURA";
     const activeProgram = formData.get("activeProgram") as string;
     const startDateStr = formData.get("startDate") as string;
     const endDateStr = formData.get("endDate") as string;
@@ -32,6 +33,7 @@ export async function createUser(formData: FormData) {
         email,
         phoneNumber: phoneNumber || null,
         role,
+        branch,
         passwordHash,
         activeProgram: isStudent && activeProgram ? activeProgram : null,
         startDate: isStudent && startDateStr ? new Date(startDateStr) : null,
@@ -59,6 +61,7 @@ export async function editUser(formData: FormData) {
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const role = formData.get("role") as Role;
+    const branch = (formData.get("branch") as BranchLocation) || "KARTASURA";
 
     // Student-specific fields
     const activeProgram = formData.get("activeProgram") as string;
@@ -81,6 +84,7 @@ export async function editUser(formData: FormData) {
         email,
         phoneNumber: phoneNumber || null,
         role,
+        branch,
         activeProgram: isStudent && activeProgram ? activeProgram : null,
         programBatch: isStudent && programBatch ? programBatch : null,
         startDate: isStudent && startDateStr ? new Date(startDateStr) : null,

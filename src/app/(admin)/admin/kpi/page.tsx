@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../../lib/prisma";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 import { AssignKpiModal } from "../../../../components/admin/AssignKpiModal";
 import { AddProgressModal } from "../../../../components/admin/AddProgressModal";
 
@@ -48,16 +49,17 @@ export default async function KPIPage() {
   let staffUsers: { id: string; name: string; role: string }[] = [];
 
   if (isManagerial) {
+    const branchFilter = await getBranchFilter();
     [allTargets, staffUsers] = await Promise.all([
       prisma.staffTarget.findMany({
         include: {
           user: { select: { id: true, name: true, role: true } },
-          logs: { orderBy: { createdAt: "desc" }, take: 1 }, // last log for preview
+          logs: { orderBy: { createdAt: "desc" }, take: 1 },
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.user.findMany({
-        where: { role: { in: STAFF_ROLES as any } },
+        where: { role: { in: STAFF_ROLES as any }, ...branchFilter },
         select: { id: true, name: true, role: true },
         orderBy: { name: "asc" },
       }),

@@ -64,6 +64,12 @@ enum TransactionCategory {
   PELUNASAN
 }
 
+enum BranchLocation {
+  KARTASURA
+  CABANG_2
+  CABANG_3
+}
+
 // ============================================================
 // --- MODELS (Open Pool / Gym Membership Architecture) ---
 // ============================================================
@@ -78,6 +84,7 @@ model User {
   passwordHash  String
   phoneNumber   String?
   role          Role     @default(STUDENT)
+  branch        BranchLocation @default(KARTASURA)
   createdAt     DateTime @default(now())
 
   // Paket aktif siswa (hanya relevan untuk STUDENT)
@@ -140,6 +147,7 @@ model Session {
   date        DateTime // Tanggal sesi berlangsung
   timeSlot    String   // cth: "08:00 - 09:30"
   programType String   // cth: "Conversation", "Grammar", "EFK", "Private", "TOEFL"
+  branch      BranchLocation @default(KARTASURA)
   isCompleted Boolean  @default(false) // true = tutor sudah submit absen (trigger payroll)
 
   // Relasi Rombel
@@ -160,6 +168,7 @@ model ClassGroup {
   id          String   @id @default(cuid())
   name        String   // misal: "Reguler - Sesi 1"
   program     String   // misal: "Regular", "Fullday"
+  branch      BranchLocation @default(KARTASURA)
   
   // Relasi
   students    User[]   // Siswa tetap di rombel ini
@@ -218,6 +227,7 @@ model Lead {
   whatsapp    String
   status      LeadStatus   @default(NEW)
   notes       String?      @db.Text
+  branch      BranchLocation @default(KARTASURA)
   
   // Relasi ke CS/Admin yang menangani
   assigneeId  String?
@@ -278,6 +288,7 @@ model Invoice {
   totalAmount   Int           @default(0)
   paidAmount    Int           @default(0)
   status        InvoiceStatus @default(PENDING)
+  branch        BranchLocation @default(KARTASURA)
 
   paymentMethod String?      // "MANUAL_TRANSFER" | "CASH_ON_SITE" | "GATEWAY"
   paymentProof  String?      @db.Text // URL foto struk transfer
@@ -299,6 +310,7 @@ model Cashflow {
   amount       Int
   description  String
   date         DateTime            @default(now())
+  branch       BranchLocation      @default(KARTASURA)
   
   invoiceId    String?
   invoice      Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)

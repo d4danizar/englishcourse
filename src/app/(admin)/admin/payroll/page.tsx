@@ -2,6 +2,7 @@ import { prisma } from "../../../../lib/prisma";
 import { PayrollClientView } from "./PayrollClientView";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export default async function AdminPayrollPage() {
   await getServerSession(authOptions); // Ensure access
@@ -12,10 +13,12 @@ export default async function AdminPayrollPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+  const branchFilter = await getBranchFilter();
+
   // 2. Query: Get all tutors with their completed sessions this month
   // Open Pool model: Sessions are directly linked to tutors via `sessionsTaught`
   const rawTutors = await prisma.user.findMany({
-    where: { role: "TUTOR" },
+    where: { role: "TUTOR", ...branchFilter },
     include: {
       sessionsTaught: {
         where: {

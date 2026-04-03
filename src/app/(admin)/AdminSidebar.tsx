@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { COMPANY_INFO } from "@/lib/constants/branding";
+import { BranchSwitcher, BranchBadge } from "@/components/layout/BranchSwitcher";
+import { BranchLocation } from "@prisma/client";
 
 // Standard ops items accessible to all admin roles
 const standardNavItems = [
@@ -11,6 +13,7 @@ const standardNavItems = [
   { label: "Users", href: "/admin/users", emoji: "👥" },
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
+  { label: "Pengaturan", href: "/admin/settings", emoji: "⚙️" },
 ];
 
 // Role-gated helpers
@@ -19,8 +22,10 @@ const KPI_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR"];
 
 export function AdminSidebar({
   user,
+  activeBranch,
 }: {
   user: { name?: string | null; email?: string | null; role?: string | null };
+  activeBranch: BranchLocation;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const role = (user?.role ?? "") as string;
@@ -92,8 +97,17 @@ export function AdminSidebar({
           </button>
         </div>
 
+        {/* Branch Switcher — workspace-level, top of sidebar */}
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          {(role === "SUPER_ADMIN" || role === "MANAGER") ? (
+            <BranchSwitcher initialBranch={activeBranch} />
+          ) : (
+            <BranchBadge branch={activeBranch} />
+          )}
+        </div>
+
         {/* Navigation — scrollable */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1 bg-slate-900">
+        <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1 bg-slate-900">
           {visibleNavItems.map((item) => (
             <Link
               key={item.href}

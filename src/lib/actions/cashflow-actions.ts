@@ -3,6 +3,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth";
 import { prisma } from "../prisma";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 type TransactionCategory = "DP" | "PELUNASAN" | "REGISTRATION_FEE" | "OPERATIONAL" | "SALARY" | "MARKETING" | "OTHER";
 
@@ -19,6 +20,8 @@ export async function createManualExpense(data: {
     const recordedById = (session.user as any)?.id;
     if (!recordedById) return { error: "Sesi user kadaluarsa, mohon login ulang." };
 
+    const branchFilter = await getBranchFilter();
+
     const expense = await (prisma as any).cashflow.create({
       data: {
         type: "EXPENSE",
@@ -27,6 +30,7 @@ export async function createManualExpense(data: {
         description: data.description,
         recordedById: recordedById,
         date: data.date ? new Date(data.date) : new Date(),
+        branch: branchFilter.branch,
       } as any, 
     });
     return { success: true, data: expense };
@@ -43,8 +47,10 @@ export async function getFinanceStats(startDateStr: string, endDateStr: string) 
     const endDate = new Date(endDateStr);
     endDate.setHours(23, 59, 59, 999);
 
+    const branchFilter = await getBranchFilter();
+
     const transactions = await (prisma as any).cashflow.findMany({
-      where: { date: { gte: startDate, lte: endDate } },
+      where: { ...branchFilter, date: { gte: startDate, lte: endDate } },
       orderBy: { date: "desc" },
       include: {
         recordedBy: { select: { name: true } },
@@ -89,7 +95,10 @@ export async function getFinanceStats(startDateStr: string, endDateStr: string) 
 
 export async function getRecentTransactions() {
   try {
+    const branchFilter = await getBranchFilter();
+
     const transactions = await (prisma as any).cashflow.findMany({
+      where: { ...branchFilter },
       take: 20,
       orderBy: { date: "desc" },
       include: {

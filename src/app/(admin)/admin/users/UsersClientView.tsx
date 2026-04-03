@@ -26,6 +26,7 @@ type UserType = {
   email: string;
   phoneNumber: string | null;
   role: string;
+  branch: string;
   createdAt: string;
   activeProgram: string;
   programBatch: string | null;
@@ -67,9 +68,11 @@ function calculateEndDate(program: string, startDate: string, duration: string):
 }
 
 export function UsersClientView({ 
-  initialUsers 
+  initialUsers,
+  activeBranch = "KARTASURA",
 }: { 
   initialUsers: UserType[];
+  activeBranch?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"ALL" | "TUTOR" | "STUDENT">("ALL");
@@ -79,6 +82,7 @@ export function UsersClientView({
   
   // === ADD FORM STATE ===
   const [newUserRole, setNewUserRole] = useState<string>("STUDENT");
+  const [newUserBranch, setNewUserBranch] = useState<string>(activeBranch);
   const [formProgram, setFormProgram] = useState("");
   const [formStartDate, setFormStartDate] = useState("");
   const [formDuration, setFormDuration] = useState("");
@@ -92,6 +96,7 @@ export function UsersClientView({
   const [editBatch, setEditBatch] = useState("");
   const [editProgramBatch, setEditProgramBatch] = useState("");
   const [editRole, setEditRole] = useState("");
+  const [editBranch, setEditBranch] = useState("KARTASURA");
 
   // Auto-calculate endDate for ADD form
   const calculatedEndDate = useMemo(() => {
@@ -107,6 +112,7 @@ export function UsersClientView({
   useEffect(() => {
     if (editingUser) {
       setEditRole(editingUser.role);
+      setEditBranch(editingUser.branch || "KARTASURA");
       setEditProgram(editingUser.activeProgram === "-" ? "" : editingUser.activeProgram);
       setEditStartDate(editingUser.startDate ? editingUser.startDate.split("T")[0] : "");
       setEditDuration(editingUser.durationOption || "");
@@ -164,6 +170,7 @@ export function UsersClientView({
 
   const resetAddForm = () => {
     setNewUserRole("STUDENT");
+    setNewUserBranch(activeBranch);
     setFormProgram("");
     setFormStartDate("");
     setFormDuration("");
@@ -620,6 +627,20 @@ export function UsersClientView({
                     <option value="SUPER_ADMIN">Super Admin (Owner)</option>
                   </select>
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cabang</label>
+                  <select 
+                    name="branch" 
+                    required 
+                    value={newUserBranch}
+                    onChange={(e) => setNewUserBranch(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
+                  >
+                    <option value="KARTASURA">Kartasura</option>
+                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_3">Cabang 3</option>
+                  </select>
+                </div>
                 
                 {/* Student-only fields */}
                 {newUserRole === "STUDENT" && renderStudentFields(
@@ -696,6 +717,20 @@ export function UsersClientView({
                     <option value="MARKETING">Marketing</option>
                     <option value="CREATOR">Creator</option>
                     <option value="SUPER_ADMIN">Super Admin (Owner)</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cabang</label>
+                  <select 
+                    name="branch" 
+                    required 
+                    value={editBranch}
+                    onChange={(e) => setEditBranch(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
+                  >
+                    <option value="KARTASURA">Kartasura</option>
+                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
 

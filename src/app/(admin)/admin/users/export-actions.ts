@@ -3,6 +3,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export async function getExportStudentsData() {
   try {
@@ -12,10 +13,13 @@ export async function getExportStudentsData() {
       return { error: "Akses ditolak." };
     }
 
+    const branchFilter = await getBranchFilter();
+
     // Ambil invoice dengan status PAID atau DP_PAID
     const invoices = await prisma.invoice.findMany({
       where: {
         status: { in: ["PAID", "DP_PAID"] },
+        ...branchFilter,
       },
       orderBy: { createdAt: "desc" },
     });

@@ -9,6 +9,7 @@ const navItems = [
   { label: "Daily Schedule", href: "/tutor/dashboard", emoji: "📋" },
   { label: "Global Schedules", href: "/tutor/schedules", emoji: "🌎" },
   { label: "Evaluations", href: "/tutor/evaluations", emoji: "📝" },
+  { label: "Pengaturan", href: "/tutor/settings", emoji: "⚙️" },
 ];
 
 export function TutorSidebar() {

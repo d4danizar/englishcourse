@@ -3,6 +3,7 @@ import { authOptions } from "../../../../lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "../../../../lib/prisma";
 import { CRMTable } from "./CRMTable";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export const metadata = {
   title: "CRM Leads | Admin",
@@ -23,9 +24,10 @@ export default async function CRMPage({
 
   const resolvedParams = await searchParams;
   const statusStr = resolvedParams.status as string | undefined;
+  const branchFilter = await getBranchFilter();
 
   const leads = await prisma.lead.findMany({
-    where: statusStr ? { status: statusStr as any } : undefined,
+    where: statusStr ? { status: statusStr as any, ...branchFilter } : { ...branchFilter },
     include: {
       invoices: {
         select: {

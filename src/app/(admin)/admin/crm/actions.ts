@@ -3,15 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "../../../../lib/prisma";
 import { LeadStatus } from "@prisma/client";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export async function createLead(data: { name: string; whatsapp: string; notes?: string; assigneeId?: string }) {
   try {
+    const branchFilter = await getBranchFilter();
     const lead = await prisma.lead.create({
       data: {
         name: data.name,
         whatsapp: data.whatsapp,
         notes: data.notes,
         assigneeId: data.assigneeId,
+        branch: branchFilter.branch,
       },
     });
     

@@ -2,6 +2,7 @@
 
 import { prisma } from "../../../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export async function createSession(formData: FormData) {
   try {
@@ -15,6 +16,8 @@ export async function createSession(formData: FormData) {
       return { error: "All fields are required: Title, Date, Time Slot, Program Type, and Tutor." };
     }
 
+    const branchFilter = await getBranchFilter();
+
     await prisma.session.create({
       data: {
         title,
@@ -22,6 +25,7 @@ export async function createSession(formData: FormData) {
         timeSlot,
         programType,
         tutorId,
+        branch: branchFilter.branch,
       },
     });
 

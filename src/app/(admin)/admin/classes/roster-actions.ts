@@ -2,6 +2,7 @@
 
 import { prisma } from "../../../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 type SessionPayload = {
   title: string;
@@ -24,6 +25,8 @@ export async function bulkCreateSessions(payload: SessionPayload[]) {
       }
     }
 
+    const branchFilter = await getBranchFilter();
+
     await prisma.session.createMany({
       data: payload.map((s) => ({
         title: s.title,
@@ -31,6 +34,7 @@ export async function bulkCreateSessions(payload: SessionPayload[]) {
         timeSlot: s.timeSlot,
         programType: s.programType,
         tutorId: s.tutorId,
+        branch: branchFilter.branch,
       })),
     });
 

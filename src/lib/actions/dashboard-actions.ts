@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { eachDayOfInterval, format } from "date-fns";
 import * as XLSX from "xlsx";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 // Helper function untuk menghitung range tanggal
 function getDateRange(timeframe: string) {
@@ -28,10 +29,12 @@ function getDateRange(timeframe: string) {
 export async function getDashboardData(timeframe: string = "this_month") {
   try {
     const { startDate, endDate } = getDateRange(timeframe);
+    const branchFilter = await getBranchFilter();
 
     // 1. Ambil data Lead masuk
     const leadsIn = await prisma.lead.findMany({
       where: {
+        ...branchFilter,
         createdAt: { gte: startDate, lte: endDate }
       },
       select: { createdAt: true }
@@ -40,6 +43,7 @@ export async function getDashboardData(timeframe: string = "this_month") {
     // 2. Ambil data Closing (Lead yang menang)
     const leadsClosed = await prisma.lead.findMany({
       where: {
+        ...branchFilter,
         status: "CLOSED_WON",
         updatedAt: { gte: startDate, lte: endDate } 
       },
@@ -49,6 +53,7 @@ export async function getDashboardData(timeframe: string = "this_month") {
     // 3. Ambil total Revenue dari uang masuk kategori akademi (DP & PELUNASAN)
     const revenueFlows = await prisma.cashflow.findMany({
       where: {
+        ...branchFilter,
         type: "INCOME",
         category: { in: ["DP", "PELUNASAN"] },
         date: { gte: startDate, lte: endDate }
@@ -108,11 +113,12 @@ export async function getDashboardData(timeframe: string = "this_month") {
 // 2. BUAT FUNGSI BARU untuk EXPORT RAW DATA (Server Base 64 string generator)
 export async function exportRawDashboardData(timeframe: string = "this_month") {
   const { startDate, endDate } = getDateRange(timeframe);
+  const branchFilter = await getBranchFilter();
 
   try {
     // A. Ambil Data Leads
     const leads = await prisma.lead.findMany({
-      where: { createdAt: { gte: startDate, lte: endDate } },
+      where: { ...branchFilter, createdAt: { gte: startDate, lte: endDate } },
       select: { name: true, whatsapp: true, status: true, createdAt: true },
       orderBy: { createdAt: 'desc' }
     });
@@ -120,6 +126,7 @@ export async function exportRawDashboardData(timeframe: string = "this_month") {
     // B. Ambil Data Closing (Misal dari Invoice PAID/DP_PAID)
     const closings = await prisma.invoice.findMany({
       where: { 
+        ...branchFilter,
         status: { in: ["PAID", "DP_PAID"] },
         updatedAt: { gte: startDate, lte: endDate }
       },

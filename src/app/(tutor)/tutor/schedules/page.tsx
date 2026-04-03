@@ -3,6 +3,7 @@ import { authOptions } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
 import { redirect } from "next/navigation";
 import { GlobalSchedulesClient, type GlobalSession } from "./GlobalSchedulesClient";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export default async function GlobalSchedulesPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -20,8 +21,11 @@ export default async function GlobalSchedulesPage() {
   endSearch.setDate(todayStart.getDate() + 14); // Next two weeks
   endSearch.setHours(23, 59, 59, 999);
 
+  const branchFilter = await getBranchFilter();
+
   const sessionsRaw = await prisma.session.findMany({
     where: {
+      ...branchFilter,
       date: {
         gte: todayStart,
         lte: endSearch,

@@ -6,17 +6,21 @@ import { SessionRowActions } from "./SessionRowActions";
 import AutoAbsenceButton from "../../../../components/admin/AutoAbsenceButton";
 import { ScheduleTabsWrapper } from "./ScheduleTabsWrapper";
 import { WeeklyRosterBuilder } from "./WeeklyRosterBuilder";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 export default async function ScheduleManagementPage() {
+  const branchFilter = await getBranchFilter();
+
   // 1. Fetch tutors for dropdowns
   const tutors = await prisma.user.findMany({
-    where: { role: "TUTOR" },
+    where: { role: "TUTOR", ...branchFilter },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
 
   // 2. Fetch all sessions with tutor info
   const sessions = await prisma.session.findMany({
+    where: { ...branchFilter },
     include: {
       tutor: { select: { name: true } },
       _count: { select: { attendances: true } },
