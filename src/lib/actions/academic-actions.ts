@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth";
 import { prisma } from "../prisma";
 import { revalidatePath } from "next/cache";
+import { getBranchFilter } from "./branch-actions";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "MANAGER", "CS"];
 
@@ -92,8 +93,11 @@ export async function searchGuestStudents(program: string, currentSessionId: str
       where: { id: currentSessionId }
     });
 
+    const branchFilter = await getBranchFilter();
+
     const students = await (prisma as any).user.findMany({
       where: {
+        ...branchFilter,
         role: "STUDENT",
         activeProgram: program,
         OR: [

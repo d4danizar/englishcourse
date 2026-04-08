@@ -163,21 +163,17 @@ export async function approvePayment(invoiceId: string) {
       });
 
       // 1b. Insert Cashflow log for this income
-      try {
-        await tx.cashflow.create({
-          data: {
-            type: "INCOME",
-            category: cashflowCategory as any,
-            amount: amountToLog,
-            description: `${paymentLabel} - ${studentName}`,
-            invoiceId: invoice.id,
-            recordedById: (session.user as any)?.id || null,
-            branch: invoice.branch,
-          } as any
-        });
-      } catch (cfErr) {
-        console.error("CASHFLOW ERROR:", cfErr);
-      }
+      await tx.cashflow.create({
+        data: {
+          type: "INCOME",
+          category: cashflowCategory as any,
+          amount: amountToLog,
+          description: `${paymentLabel} - ${studentName}`,
+          invoiceId: invoice.id,
+          recordedById: (session.user as any)?.id || null,
+          branch: invoice.branch,
+        } as any
+      });
 
       // ==========================================================
       // 2. EKSTRAKSI DATA AKADEMIK (DIJALANKAN UNTUK SEMUA APPROVAL)
@@ -281,6 +277,7 @@ export async function approvePayment(invoiceId: string) {
         update: {
           name: studentName,
           role: "STUDENT",
+          branch: invoice.branch,
           activeProgram: finalActiveProgram,
           durationOption: finalDurationOption,
           programBatch: finalBatch,
@@ -295,6 +292,7 @@ export async function approvePayment(invoiceId: string) {
           passwordHash,
           phoneNumber: whatsapp,
           role: "STUDENT",
+          branch: invoice.branch,
           activeProgram: finalActiveProgram,
           durationOption: finalDurationOption,
           programBatch: finalBatch,
@@ -307,10 +305,12 @@ export async function approvePayment(invoiceId: string) {
       });
 
       // 4. Mark the related Lead as CLOSED_WON
-      await tx.lead.update({
-        where: { id: invoice.leadId },
-        data: { status: "CLOSED_WON" },
-      });
+      if (invoice.leadId) {
+        await tx.lead.update({
+          where: { id: invoice.leadId },
+          data: { status: "CLOSED_WON" },
+        });
+      }
     });
 
     // Revalidate routes so UI updates immediately

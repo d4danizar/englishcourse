@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { startOfDay, endOfDay } from "date-fns";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 // Map session programType → eligible student activeProgram values (strict radar)
 function getEligiblePrograms(programType: string): string[] {
@@ -66,9 +67,12 @@ export async function getEligibleStudentsForSession(session: {
   const sessionStartOfDay = startOfDay(session.date);
   const sessionEndOfDay = endOfDay(session.date);
 
+  const branchFilter = await getBranchFilter();
+
   // Broad fetch: all active students with matching programs + valid date range
   const candidateStudents = await prisma.user.findMany({
     where: {
+      ...branchFilter,
       role: "STUDENT",
       activeProgram: { in: eligiblePrograms },
       OR: [
@@ -226,8 +230,11 @@ export async function getGlobalPoolForSession({
   // 3. Execute Query
   console.log("🕵️ RADAR SEARCH PARAMS:", { programName: programType, batch: timeSlot, query: "" });
 
+  const branchFilter = await getBranchFilter();
+
   const pool = await prisma.user.findMany({
     where: {
+      ...branchFilter,
       role: "STUDENT",
       // MATIKAN (comment) sementara filter program dan batch di bawah ini!
       // activeProgram: programType, 
