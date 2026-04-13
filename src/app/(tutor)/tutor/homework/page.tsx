@@ -1,9 +1,18 @@
 import { getRecentHomeworks } from "@/lib/actions/homework-actions";
-import { HomeworkEditor } from "./HomeworkEditor";
-import { HomeworkHistoryClient } from "./HomeworkHistoryClient";
+import { HomeworkEditor } from "@/app/(admin)/admin/homework/HomeworkEditor";
+import { HomeworkHistoryClient } from "@/app/(admin)/admin/homework/HomeworkHistoryClient";
 import { format } from "date-fns";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default async function HomeworkPage() {
+export default async function HeadTutorHomeworkPage() {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || (session.user as any).role !== "HEAD_TUTOR") {
+    redirect("/tutor/dashboard");
+  }
+
   const homeworks = await getRecentHomeworks();
 
   // Build a map of date -> content for the client
@@ -21,10 +30,11 @@ export default async function HomeworkPage() {
           📝 Daily Homework
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Tulis tugas harian untuk murid per cabang aktif. Setiap cabang hanya punya 1 homework per hari.
+          Atur tugas harian (PR) untuk murid di cabang Anda. Homework yang Anda tentukan di sini akan otomatis tampil di dasbor seluruh murid {session.user.branch || "cabang ini"}.
         </p>
       </div>
 
+      {/* Editor Component reused from Admin */}
       <HomeworkEditor initialHomeworkMap={homeworkMap} />
 
       {/* Recent Homework History */}

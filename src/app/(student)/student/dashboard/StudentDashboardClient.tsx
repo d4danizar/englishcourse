@@ -68,12 +68,14 @@ export function StudentDashboardClient({
   attendances,
   evaluations,
   todayHomework,
+  tomorrowHomework,
   topicOffset,
 }: {
   profile: ProfileContent;
   attendances: AttendanceWithSession[];
   evaluations: DescriptiveEvaluation[];
   todayHomework: string | null;
+  tomorrowHomework: string | null;
   topicOffset: number;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations" | "settings">("overview");
@@ -213,28 +215,62 @@ export function StudentDashboardClient({
         </div>
       )}
 
-      {/* 1.6. Daily Homework Card */}
-      {todayHomework && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 sm:p-6 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-amber-100/60 rounded-full -mr-6 -mt-6 pointer-events-none" />
-          <div className="relative z-10 flex gap-4">
-            <div className="p-3 bg-amber-100 rounded-xl flex-shrink-0 h-fit">
-              <ClipboardList className="w-6 h-6 text-amber-700" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-black text-amber-900 uppercase tracking-wider">
-                📝 Daily Homework
-              </h3>
-              <p className="text-sm text-amber-900 font-medium leading-relaxed whitespace-pre-wrap">
-                {todayHomework}
-              </p>
-              <p className="text-[11px] font-bold text-amber-600/80 mt-1 border-t border-amber-200 pt-2">
-                💡 Report to your tutor in the first 30 minutes of your first session.
-              </p>
+      {/* 1.6. Daily Homework Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* Tugas Hari Ini */}
+        {todayHomework ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 sm:p-6 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-100/60 rounded-full -mr-6 -mt-6 pointer-events-none" />
+            <div className="relative z-10 flex gap-4">
+              <div className="p-3 bg-amber-100 rounded-xl flex-shrink-0 h-fit">
+                <ClipboardList className="w-6 h-6 text-amber-700" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-black text-amber-900 uppercase tracking-wider">
+                  📝 Tugas Hari Ini
+                </h3>
+                <p className="text-sm text-amber-900 font-medium leading-relaxed whitespace-pre-wrap">
+                  {todayHomework}
+                </p>
+                <p className="text-[11px] font-bold text-amber-600/80 mt-1 border-t border-amber-200 pt-2">
+                  💡 Report to your tutor in the first 30 minutes of your first session.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-5 sm:p-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col justify-center">
+            <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <h3 className="text-sm font-bold text-slate-700 mb-1">Hore! Belum ada tugas hari ini 🎉</h3>
+            <p className="text-xs text-slate-500 font-medium">PR untuk hari ini akan muncul di sini.</p>
+          </div>
+        )}
+
+        {/* Persiapan Besok */}
+        {tomorrowHomework ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300 opacity-90 transition-opacity hover:opacity-100">
+            <div className="relative z-10 flex gap-4">
+              <div className="p-3 bg-slate-100 rounded-xl flex-shrink-0 h-fit">
+                <BookOpen className="w-6 h-6 text-slate-500" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wider">
+                  📅 Persiapan Besok
+                </h3>
+                <p className="text-sm text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                  {tomorrowHomework}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-5 sm:p-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col justify-center">
+            <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-medium text-slate-500">Tidak ada persiapan untuk besok.</p>
+          </div>
+        )}
+      </div>
 
       {/* 2. Tabs Navigation */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200 max-w-fit relative z-20 mt-4">

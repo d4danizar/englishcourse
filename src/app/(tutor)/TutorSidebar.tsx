@@ -17,7 +17,7 @@ export function TutorSidebar({ userRole = "TUTOR" }: { userRole?: string }) {
 
   // HEAD_TUTOR gets an extra link to the Roster Builder in admin
   const navItems = userRole === "HEAD_TUTOR"
-    ? [...baseNavItems, { label: "Roster Builder", href: "/admin/classes", emoji: "📐" }]
+    ? [...baseNavItems, { label: "Homework", href: "/tutor/homework", emoji: "📝" }, { label: "Roster Builder", href: "/admin/classes", emoji: "📐" }]
     : baseNavItems;
 
   const panelLabel = userRole === "HEAD_TUTOR" ? "Head Tutor Panel" : "Tutor Panel";

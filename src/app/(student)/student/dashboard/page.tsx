@@ -6,7 +6,7 @@ import { getStudentProfile, getStudentAttendances, getStudentEvaluations } from 
 import { StudentDashboardClient } from "./StudentDashboardClient";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
-import { getTodayHomeworkForStudent } from "@/lib/actions/homework-actions";
+import { getDashboardHomeworks } from "@/lib/actions/homework-actions";
 import { BranchLocation } from "@prisma/client";
 
 export default async function StudentDashboardPage() {
@@ -19,11 +19,11 @@ export default async function StudentDashboardPage() {
   const studentBranch = ((sessionUser.user as any)?.branch ?? "KARTASURA") as BranchLocation;
 
   // Concurrent data fetching
-  const [profile, attendances, evaluations, todayHomework] = await Promise.all([
+  const [profile, attendances, evaluations, homeworkData] = await Promise.all([
     getStudentProfile(studentId),
     getStudentAttendances(studentId),
     getStudentEvaluations(studentId),
-    getTodayHomeworkForStudent(studentBranch),
+    getDashboardHomeworks(studentBranch),
   ]);
 
   // Try to find the offset for the student's class group
@@ -78,7 +78,8 @@ export default async function StudentDashboardPage() {
           profile={profile}
           attendances={attendances}
           evaluations={evaluations}
-          todayHomework={todayHomework?.content || null}
+          todayHomework={homeworkData.today}
+          tomorrowHomework={homeworkData.tomorrow}
           topicOffset={topicOffset}
         />
 

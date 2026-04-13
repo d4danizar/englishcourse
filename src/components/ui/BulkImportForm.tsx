@@ -73,7 +73,7 @@ export function BulkImportForm() {
             <br />
             Header wajib (Case-Sensitive): <b className="text-zinc-800">Name</b>, <b className="text-zinc-800">Email</b>, <b className="text-zinc-800">WhatsApp</b>, <b className="text-zinc-800">Program</b>.
             <br />
-            Header opsional: <b className="text-zinc-800">Session</b> <span className="text-zinc-400">(untuk murid Regular)</span>.
+            Header opsional: <b className="text-zinc-800">Session</b> <span className="text-zinc-400">(untuk murid Regular)</span>, <b className="text-zinc-800">JoinedDate</b>, <b className="text-zinc-800">Duration</b> <span className="text-zinc-400">(contoh: &quot;1 week&quot;, &quot;1 month&quot;)</span>.
           </p>
           <label className="cursor-pointer bg-white hover:bg-zinc-100 border border-dashed border-zinc-300 text-zinc-700 font-semibold py-3 px-8 rounded-xl flex items-center gap-2 transition-colors">
             <UploadCloud className="w-5 h-5 text-indigo-600" />

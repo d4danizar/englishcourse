@@ -34,13 +34,53 @@ export async function getHomeworkForDate(
   return homework;
 }
 
-/**
- * Get homework for today at the student's branch.
- * Convenience wrapper using session-based branch detection.
- */
-export async function getTodayHomeworkForStudent(studentBranch: BranchLocation) {
-  const today = new Date();
-  return getHomeworkForDate(today, studentBranch);
+export async function getDashboardHomeworks(studentBranch: BranchLocation) {
+  const now = new Date();
+  
+  // Convert server 'now' to GMT+7 to establish the true local "today"
+  const indonesianTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+  
+  // Format Today
+  const tzYear = indonesianTime.getFullYear();
+  const tzMonth = String(indonesianTime.getMonth() + 1).padStart(2, "0");
+  const tzDay = String(indonesianTime.getDate()).padStart(2, "0");
+  const todayStr = `${tzYear}-${tzMonth}-${tzDay}`;
+  
+  // Format Tomorrow
+  indonesianTime.setDate(indonesianTime.getDate() + 1);
+  const tmrwYear = indonesianTime.getFullYear();
+  const tmrwMonth = String(indonesianTime.getMonth() + 1).padStart(2, "0");
+  const tmrwDay = String(indonesianTime.getDate()).padStart(2, "0");
+  const tomorrowStr = `${tmrwYear}-${tmrwMonth}-${tmrwDay}`;
+
+  // Parse strings to Midnight UTC exactly as saveHomework logic
+  const normalizedToday = new Date(todayStr);
+  normalizedToday.setHours(0, 0, 0, 0);
+
+  const normalizedTomorrow = new Date(tomorrowStr);
+  normalizedTomorrow.setHours(0, 0, 0, 0);
+
+  const homeworks = await prisma.dailyHomework.findMany({
+    where: {
+      branch: studentBranch,
+      date: {
+        in: [normalizedToday, normalizedTomorrow],
+      },
+    },
+    select: {
+      id: true,
+      content: true,
+      date: true,
+    },
+    orderBy: {
+      date: 'asc'
+    }
+  });
+
+  return {
+    today: homeworks.find(hw => hw.date.getTime() === normalizedToday.getTime())?.content || null,
+    tomorrow: homeworks.find(hw => hw.date.getTime() === normalizedTomorrow.getTime())?.content || null,
+  };
 }
 
 /**
@@ -50,7 +90,8 @@ export async function getTodayHomeworkForStudent(studentBranch: BranchLocation) 
  */
 export async function saveHomework(
   dateStr: string,
-  content: string
+  content: string,
+  id?: string
 ) {
   try {
     const branchFilter = await getBranchFilter();
@@ -71,23 +112,32 @@ export async function saveHomework(
       return { success: true, deleted: true };
     }
 
-    // Upsert: create or update
-    await prisma.dailyHomework.upsert({
-      where: {
-        date_branch: {
+    // Upsert or Update logic based on whether ID is explicitly provided
+    if (id) {
+      await prisma.dailyHomework.update({
+        where: { id },
+        data: {
+          content: content.trim(),
+        },
+      });
+    } else {
+      await prisma.dailyHomework.upsert({
+        where: {
+          date_branch: {
+            date: normalizedDate,
+            branch,
+          },
+        },
+        create: {
           date: normalizedDate,
           branch,
+          content: content.trim(),
         },
-      },
-      create: {
-        date: normalizedDate,
-        branch,
-        content: content.trim(),
-      },
-      update: {
-        content: content.trim(),
-      },
-    });
+        update: {
+          content: content.trim(),
+        },
+      });
+    }
 
     revalidatePath("/admin/homework");
     return { success: true };

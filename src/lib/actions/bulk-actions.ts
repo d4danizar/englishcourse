@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth";
 import { revalidatePath } from "next/cache";
+import { calculateEndDate } from "@/lib/utils/date-helpers";
 
 const ImportRowSchema = z.object({
   Name: z.string().min(1, "Name is required"),
@@ -15,6 +16,8 @@ const ImportRowSchema = z.object({
   WhatsApp: z.union([z.string(), z.number()]),
   Program: z.string().min(1, "Program is required"),
   Session: z.union([z.string(), z.number()]).optional(), // Kolom opsional: "Sesi 1", "08:00 - 09:30", dll
+  JoinedDate: z.any().optional(), // Nilai tanggal dari Excel/CSV
+  Duration: z.string().optional(), // Tambahan untuk deteksi endDate (misal: "1 week", "1 month")
 });
 
 export async function processBulkImport(rawData: any[]) {
@@ -49,6 +52,30 @@ export async function processBulkImport(rawData: any[]) {
       const cleanPhone = sanitizePhoneNumber(String(student.WhatsApp));
       const passwordHash = await bcrypt.hash(cleanPhone, 10);
 
+      // Sinkronisasi Tanggal
+      // Jika file hanya memiliki satu kolom tanggal (misal: JoinedDate), konversi dengan benar.
+      // Jika tidak ada fallback ke now.
+      let parsedDate = new Date();
+      if (student.JoinedDate) {
+        if (typeof student.JoinedDate === "number") {
+          // Konversi dari format Excel Serial Date ke JS Date.
+          parsedDate = new Date(Math.round((student.JoinedDate - 25569) * 86400 * 1000));
+        } else {
+          // Format standar string Date
+          parsedDate = new Date(student.JoinedDate);
+        }
+        
+        // Cek fallback jika invalid string
+        if (isNaN(parsedDate.getTime())) {
+          parsedDate = new Date();
+        }
+      }
+
+      // Hitung endDate jika ada kolom Duration
+      const endDateVal = student.Duration 
+        ? calculateEndDate(parsedDate, student.Duration)
+        : null;
+
       return {
         name: student.Name,
         email: student.Email,
@@ -60,6 +87,12 @@ export async function processBulkImport(rawData: any[]) {
         passwordHash,
         leaveQuota: calculateLeaveQuota(student.Program, null),
         leaveUsed: 0,
+        // Pastikan startDate dan joined/createdAt persis identik 
+        startDate: parsedDate,
+        programStartDate: parsedDate, 
+        createdAt: parsedDate,
+        // Hitungan Akhir
+        endDate: endDateVal,
       };
     }));
 
