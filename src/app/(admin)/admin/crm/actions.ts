@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "../../../../lib/prisma";
 import { LeadStatus } from "@prisma/client";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { sanitizePhoneNumber } from "@/lib/formatters";
 
 export async function createLead(data: { name: string; whatsapp: string; notes?: string; assigneeId?: string }) {
   try {
@@ -11,8 +12,8 @@ export async function createLead(data: { name: string; whatsapp: string; notes?:
     const lead = await prisma.lead.create({
       data: {
         name: data.name,
-        whatsapp: data.whatsapp,
-        notes: data.notes,
+        whatsapp: sanitizePhoneNumber(data.whatsapp),
+        notes: data.notes || null,
         assigneeId: data.assigneeId,
         branch: branchFilter.branch,
       },
@@ -52,5 +53,23 @@ export async function deleteLead(leadId: string) {
   } catch (error) {
     console.error("Failed to delete lead:", error);
     return { success: false, error: "Failed to delete lead" };
+  }
+}
+
+export async function updateLeadInfo(leadId: string, data: { name: string; notes?: string }) {
+  try {
+    const lead = await prisma.lead.update({
+      where: { id: leadId },
+      data: { 
+        name: data.name,
+        notes: data.notes || null,
+      },
+    });
+    
+    revalidatePath("/admin/crm");
+    return { success: true, lead };
+  } catch (error) {
+    console.error("Failed to update lead info:", error);
+    return { success: false, error: "Failed to update lead info" };
   }
 }

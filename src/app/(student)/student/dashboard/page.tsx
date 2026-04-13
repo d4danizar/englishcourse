@@ -1,10 +1,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
+import { prisma } from "../../../../lib/prisma";
 import { redirect } from "next/navigation";
 import { getStudentProfile, getStudentAttendances, getStudentEvaluations } from "./actions";
 import { StudentDashboardClient } from "./StudentDashboardClient";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
+import { getTodayHomeworkForStudent } from "@/lib/actions/homework-actions";
+import { BranchLocation } from "@prisma/client";
 
 export default async function StudentDashboardPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -13,13 +16,26 @@ export default async function StudentDashboardPage() {
   }
 
   const studentId = sessionUser.user.id;
+  const studentBranch = ((sessionUser.user as any)?.branch ?? "KARTASURA") as BranchLocation;
 
   // Concurrent data fetching
-  const [profile, attendances, evaluations] = await Promise.all([
+  const [profile, attendances, evaluations, todayHomework] = await Promise.all([
     getStudentProfile(studentId),
     getStudentAttendances(studentId),
     getStudentEvaluations(studentId),
+    getTodayHomeworkForStudent(studentBranch),
   ]);
+
+  // Try to find the offset for the student's class group
+  const historyAggregation = await prisma.session.aggregate({
+    where: {
+      programType: profile?.activeProgram || "",
+      timeSlot: profile?.programBatch || "",
+      branch: studentBranch,
+    },
+    _max: { topicOffset: true },
+  });
+  const topicOffset = historyAggregation._max.topicOffset || 0;
 
   if (!profile) {
     return (
@@ -62,9 +78,12 @@ export default async function StudentDashboardPage() {
           profile={profile}
           attendances={attendances}
           evaluations={evaluations}
+          todayHomework={todayHomework?.content || null}
+          topicOffset={topicOffset}
         />
 
       </div>
     </div>
   );
 }
+

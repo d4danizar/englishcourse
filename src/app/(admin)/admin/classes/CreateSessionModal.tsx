@@ -81,9 +81,9 @@ export function CreateSessionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex shrink-0 items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-2">
             <CalendarPlus className="w-5 h-5 text-indigo-600" />
             <h2 className="text-lg font-bold text-slate-900">Create Schedule</h2>
@@ -99,11 +99,12 @@ export function CreateSessionModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="p-6 flex flex-col gap-4 text-left">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 flex-1 overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
             
             {/* Title */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Title / Room</label>
               <input
                 type="text"
@@ -153,13 +154,13 @@ export function CreateSessionModal({
               
               {isFreeformTime ? (
                 /* Freeform: two time inputs side by side */
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <input
                     type="time"
                     value={timeStart}
                     onChange={(e) => setTimeStart(e.target.value)}
                     required
-                    className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900 min-w-0"
                   />
                   <span className="text-sm font-bold text-slate-400">—</span>
                   <input
@@ -167,7 +168,7 @@ export function CreateSessionModal({
                     value={timeEnd}
                     onChange={(e) => setTimeEnd(e.target.value)}
                     required
-                    className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900 min-w-0"
                   />
                 </div>
               ) : (
@@ -199,10 +200,26 @@ export function CreateSessionModal({
                 ))}
               </select>
             </div>
+
+            {/* Topic Offset */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                Mulai dari Topik Ke-
+                <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">(Opsional)</span>
+              </label>
+              <input
+                type="number"
+                name="topicOffset"
+                min="1"
+                defaultValue="1"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+            </div>
           </div>
+        </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

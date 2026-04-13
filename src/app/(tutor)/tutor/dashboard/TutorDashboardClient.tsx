@@ -38,6 +38,12 @@ export type SessionTask = {
   programType: string;
   students: EligibleStudent[];
   globalPoolStudents: StudentSearchItem[];
+  todayTopic: {
+    moduleName: string;
+    topicNumber: number;
+    topicTitle: string;
+    totalTopics: number;
+  } | null;
 };
 
 export type QuickStat = {
@@ -131,9 +137,9 @@ export function TutorDashboardClient({
     initialStudentsToGrade.forEach((s) => {
       initialEvals[s.id] = {
         status: s.existingStatus || "PRESENT",
-        pronunciation: s.existingPronunciation ?? 5,
-        fluency: s.existingFluency ?? 5,
-        vocabulary: s.existingVocabulary ?? 5,
+        pronunciation: s.existingPronunciation ?? 3,
+        fluency: s.existingFluency ?? 3,
+        vocabulary: s.existingVocabulary ?? 3,
       };
     });
     setStudentEvals(initialEvals);
@@ -161,7 +167,7 @@ export function TutorDashboardClient({
 
     setStudentEvals((prev) => ({
       ...prev,
-      [studentToClaim.id]: { status: "PRESENT", pronunciation: 5, fluency: 5, vocabulary: 5 },
+      [studentToClaim.id]: { status: "PRESENT", pronunciation: 3, fluency: 3, vocabulary: 3 },
     }));
     setSearchQuery("");
   };
@@ -313,6 +319,13 @@ export function TutorDashboardClient({
                           <Users className="w-4 h-4 text-slate-400" />
                           {eligibleCount} Eligible Students
                         </div>
+                        {task.todayTopic && (
+                          <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span className="font-bold">#{task.todayTopic.topicNumber}</span>
+                            <span className="hidden sm:inline">{task.todayTopic.topicTitle}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -360,6 +373,12 @@ export function TutorDashboardClient({
                 <p className="text-sm font-medium text-slate-500 mt-1">
                   {selectedTask.className} • {selectedTask.timeSlot}
                 </p>
+                {selectedTask.todayTopic && (
+                  <div className="mt-2 inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    {selectedTask.todayTopic.moduleName} — #{selectedTask.todayTopic.topicNumber}: {selectedTask.todayTopic.topicTitle}
+                  </div>
+                )}
               </div>
               <button
                 onClick={handleCloseModal}
@@ -473,7 +492,7 @@ export function TutorDashboardClient({
                       {isEvalDay && eval_.status === "PRESENT" && (
                         <div className="flex flex-col gap-3 pt-2 border-t border-slate-200">
                           <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
-                            📝 Evaluation (1-10)
+                            📝 Evaluation (1-5)
                           </span>
                           {(["pronunciation", "fluency", "vocabulary"] as const).map((metric) => (
                             <div key={metric} className="flex flex-col gap-1">
@@ -484,7 +503,7 @@ export function TutorDashboardClient({
                               <input
                                 type="range"
                                 min="1"
-                                max="10"
+                                max="5"
                                 value={eval_[metric]}
                                 onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value))}
                                 className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"

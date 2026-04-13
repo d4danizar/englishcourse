@@ -10,13 +10,13 @@ export default async function AdminUsersPage() {
 
   const branchFilter = await getBranchFilter();
 
-  // Fetch all users with all student-specific fields
+  // Fetch all users (all roles) for this branch
   const rawUsers = await prisma.user.findMany({
-    where: { ...branchFilter, role: "STUDENT" }, // Filter strictly to STUDENT as requested in the prompt
+    where: { ...branchFilter },
     orderBy: { createdAt: "desc" },
   });
 
-  const students = rawUsers.map(user => ({
+  const users = rawUsers.map(user => ({
     id: user.id,
     name: user.name,
     email: user.email,
@@ -36,9 +36,9 @@ export default async function AdminUsersPage() {
     <div className="h-full flex flex-col gap-6 w-full animate-in fade-in duration-500">
       {/* Header section with Light Mode styling */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-zinc-900 font-sans tracking-tight">Manajemen Siswa</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 font-sans tracking-tight">Manajemen Pengguna</h1>
         <p className="text-zinc-500 text-sm">
-          Kelola data pendaftaran siswa. Impor massal siswa baru untuk sinkronisasi cabang secara otomatis.
+          Kelola seluruh data pengguna di cabang ini. Impor massal siswa baru via file Excel.
         </p>
       </div>
 
@@ -47,9 +47,8 @@ export default async function AdminUsersPage() {
 
       {/* Data Table Wrapper */}
       <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden mt-2 p-4">
-         <h2 className="text-lg font-bold text-zinc-900 mb-4 px-2">Data Siswa</h2>
-         {/* We reuse the rich featured table. The table inside UsersClientView is already well structured! */}
-         <UsersClientView initialUsers={students} activeBranch={branchFilter.branch} />
+         <h2 className="text-lg font-bold text-zinc-900 mb-4 px-2">Data Pengguna</h2>
+         <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} />
       </div>
     </div>
   );

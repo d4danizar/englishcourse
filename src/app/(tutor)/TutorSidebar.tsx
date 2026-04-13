@@ -5,15 +5,22 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SignOutButton } from "../../components/auth/SignOutButton";
 
-const navItems = [
+const baseNavItems = [
   { label: "Daily Schedule", href: "/tutor/dashboard", emoji: "📋" },
   { label: "Global Schedules", href: "/tutor/schedules", emoji: "🌎" },
   { label: "Evaluations", href: "/tutor/evaluations", emoji: "📝" },
   { label: "Pengaturan", href: "/tutor/settings", emoji: "⚙️" },
 ];
 
-export function TutorSidebar() {
+export function TutorSidebar({ userRole = "TUTOR" }: { userRole?: string }) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // HEAD_TUTOR gets an extra link to the Roster Builder in admin
+  const navItems = userRole === "HEAD_TUTOR"
+    ? [...baseNavItems, { label: "Roster Builder", href: "/admin/classes", emoji: "📐" }]
+    : baseNavItems;
+
+  const panelLabel = userRole === "HEAD_TUTOR" ? "Head Tutor Panel" : "Tutor Panel";
 
   return (
     <>
@@ -60,7 +67,7 @@ export function TutorSidebar() {
               </span>
             </h1>
             <p className="text-[10px] font-bold text-slate-500 mt-2 tracking-widest uppercase">
-              Tutor Panel
+              {panelLabel}
             </p>
           </div>
           <button

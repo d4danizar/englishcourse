@@ -12,6 +12,7 @@ const standardNavItems = [
   { label: "Classes", href: "/admin/classes", emoji: "📚" },
   { label: "Users", href: "/admin/users", emoji: "👥" },
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
+  { label: "Homework", href: "/admin/homework", emoji: "📝" },
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
   { label: "Pengaturan", href: "/admin/settings", emoji: "⚙️" },
 ];
@@ -30,18 +31,28 @@ export function AdminSidebar({
   const [isOpen, setIsOpen] = useState(false);
   const role = (user?.role ?? "") as string;
 
-  const visibleNavItems = [
-    // Dashboard Bisnis — SUPER_ADMIN only (top priority)
-    ...(role === "SUPER_ADMIN" ? [{ label: "Dashboard Bisnis", href: "/admin/dashboard", emoji: "📊" }] : []),
-    // Keuangan — SUPER_ADMIN, MANAGER, CS
-    ...(["SUPER_ADMIN", "MANAGER", "CS"].includes(role) ? [{ label: "Keuangan", href: "/admin/finance", emoji: "💰" }] : []),
-    // CRM — SUPER_ADMIN, CS, MARKETING
-    ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
-    // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
-    ...(KPI_ROLES.includes(role) ? [{ label: "KPI & WIG", href: "/admin/kpi", emoji: "🎯" }] : []),
-    // Standard items for everyone in admin panel
-    ...standardNavItems,
-  ];
+  const visibleNavItems = (() => {
+    // HEAD_TUTOR only gets access to Classes (Roster Builder) + escape back to Tutor Panel
+    if (role === "HEAD_TUTOR") {
+      return [
+        { label: "Classes", href: "/admin/classes", emoji: "📚" },
+        { label: "Back to Tutor Panel", href: "/tutor/dashboard", emoji: "⬅️" },
+      ];
+    }
+
+    return [
+      // Dashboard Bisnis — SUPER_ADMIN only (top priority)
+      ...(role === "SUPER_ADMIN" ? [{ label: "Dashboard Bisnis", href: "/admin/dashboard", emoji: "📊" }] : []),
+      // Keuangan — SUPER_ADMIN, MANAGER, CS
+      ...(["SUPER_ADMIN", "MANAGER", "CS"].includes(role) ? [{ label: "Keuangan", href: "/admin/finance", emoji: "💰" }] : []),
+      // CRM — SUPER_ADMIN, CS, MARKETING
+      ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
+      // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
+      ...(KPI_ROLES.includes(role) ? [{ label: "KPI & WIG", href: "/admin/kpi", emoji: "🎯" }] : []),
+      // Standard items for everyone in admin panel
+      ...standardNavItems,
+    ];
+  })();
 
   return (
     <>

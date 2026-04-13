@@ -15,12 +15,15 @@ import {
   FileText,
   Star,
   Award,
-  Settings
+  Settings,
+  BookOpen,
+  ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
 import { ChangePasswordForm } from "./ChangePasswordForm";
+import { getTodayTopic } from "@/lib/syllabus-helpers";
 
 type ProfileContent = {
   id: string;
@@ -64,10 +67,14 @@ export function StudentDashboardClient({
   profile,
   attendances,
   evaluations,
+  todayHomework,
+  topicOffset,
 }: {
   profile: ProfileContent;
   attendances: AttendanceWithSession[];
   evaluations: DescriptiveEvaluation[];
+  todayHomework: string | null;
+  topicOffset: number;
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations" | "settings">("overview");
 
@@ -89,8 +96,8 @@ export function StudentDashboardClient({
   // Render Stars Helper
   const renderStars = (score: number) => {
     return (
-      <div className="flex gap-1" title={`${score}/10`}>
-        {[...Array(10)].map((_, idx) => (
+      <div className="flex gap-1" title={`${score}/5`}>
+        {[...Array(5)].map((_, idx) => (
           <Star
             key={idx}
             className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all ${
@@ -98,7 +105,7 @@ export function StudentDashboardClient({
             }`}
           />
         ))}
-        <span className="text-xs font-bold text-amber-600 ml-1">{score}/10</span>
+        <span className="text-xs font-bold text-amber-600 ml-1">{score}/5</span>
       </div>
     );
   };
@@ -206,6 +213,29 @@ export function StudentDashboardClient({
         </div>
       )}
 
+      {/* 1.6. Daily Homework Card */}
+      {todayHomework && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 sm:p-6 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-amber-100/60 rounded-full -mr-6 -mt-6 pointer-events-none" />
+          <div className="relative z-10 flex gap-4">
+            <div className="p-3 bg-amber-100 rounded-xl flex-shrink-0 h-fit">
+              <ClipboardList className="w-6 h-6 text-amber-700" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-sm font-black text-amber-900 uppercase tracking-wider">
+                📝 Daily Homework
+              </h3>
+              <p className="text-sm text-amber-900 font-medium leading-relaxed whitespace-pre-wrap">
+                {todayHomework}
+              </p>
+              <p className="text-[11px] font-bold text-amber-600/80 mt-1 border-t border-amber-200 pt-2">
+                💡 Report to your tutor in the first 30 minutes of your first session.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 2. Tabs Navigation */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200 max-w-fit relative z-20 mt-4">
         {[
@@ -238,7 +268,8 @@ export function StudentDashboardClient({
         
         {/* OVERVIEW TAB */}
         {activeTab === "overview" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Quick Stats */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col justify-center items-center text-center gap-2 shadow-sm relative z-10 transition-shadow hover:shadow-md">
               <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mb-2">
@@ -248,6 +279,52 @@ export function StudentDashboardClient({
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Kehadiran</p>
             </div>
             
+            {/* Leave Quota Card */}
+            {(() => {
+              const quota = profile.leaveQuota || 0;
+              const used = profile.leaveUsed || 0;
+              const remaining = Math.max(0, quota - used);
+              const usedPercent = quota > 0 ? Math.min(100, (used / quota) * 100) : 0;
+              const isExhausted = remaining === 0 && quota > 0;
+              const isLow = remaining > 0 && remaining <= Math.ceil(quota * 0.2);
+
+              return (
+                <div className={`bg-white rounded-2xl border p-6 flex flex-col justify-center items-center text-center gap-3 shadow-sm relative z-10 transition-shadow hover:shadow-md ${
+                  isExhausted ? "border-red-200" : isLow ? "border-amber-200" : "border-slate-200"
+                }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 ${
+                    isExhausted ? "bg-red-50 text-red-500" : isLow ? "bg-amber-50 text-amber-500" : "bg-indigo-50 text-indigo-600"
+                  }`}>
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <p className={`text-3xl font-black tracking-tight ${
+                    isExhausted ? "text-red-500" : isLow ? "text-amber-600" : "text-slate-800"
+                  }`}>
+                    {remaining} <span className="text-lg text-slate-400 font-bold">/ {quota}</span>
+                  </p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sisa Jatah Izin</p>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2 mt-1">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        isExhausted ? "bg-red-400" : isLow ? "bg-amber-400" : "bg-indigo-500"
+                      }`}
+                      style={{ width: `${usedPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {used} izin terpakai
+                  </p>
+                  {isExhausted && (
+                    <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2.5 py-1 rounded-full border border-red-100 mt-1">
+                      ⚠️ Kuota Habis — Izin selanjutnya dihitung Alpa
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col justify-center gap-4 shadow-sm relative z-10 transition-shadow hover:shadow-md">
               <div className="flex items-center gap-3 text-slate-800 font-semibold mb-2">
                 <CalendarDays className="w-5 h-5 text-indigo-500" />
@@ -261,14 +338,35 @@ export function StudentDashboardClient({
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Jam Belajar</p>
                 <p className="text-sm font-medium text-slate-900">{profile.batchSchedule || "-"}</p>
               </div>
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Kuota Izin Extend</p>
-                <p className="text-sm font-medium text-slate-700">
-                  <strong className="text-indigo-600">{profile.leaveUsed || 0}</strong> terpakai dari <strong>{profile.leaveQuota || 0}</strong> hari
-                </p>
-              </div>
             </div>
           </div>
+
+          {/* Today's Topic Card */}
+          {(() => {
+            const slot = profile.programBatch || "";
+            // meetingCount = already attended sessions + 1 (this is the NEXT one)
+            const nextMeetingNumber = totalSessions + 1;
+            const topic = getTodayTopic(slot, nextMeetingNumber, topicOffset, new Date());
+            if (!topic) return null;
+            return (
+              <div className="bg-white rounded-2xl border border-indigo-100 p-6 shadow-sm relative z-10 transition-shadow hover:shadow-md overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -mr-8 -mt-8 opacity-60 pointer-events-none" />
+                <div className="relative z-10">
+                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    Topik Hari Ini — {topic.moduleName}
+                  </p>
+                  <h4 className="text-lg font-black text-slate-900 tracking-tight">
+                    #{topic.topicNumber}: {topic.topicTitle}
+                  </h4>
+                  <p className="text-xs font-medium text-slate-400 mt-2">
+                    Pertemuan ke-{nextMeetingNumber} • {topic.totalTopics} topik dalam modul
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+          </>
         )}
 
         {/* ATTENDANCE HISTORY TAB */}

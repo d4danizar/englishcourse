@@ -16,6 +16,7 @@ enum Role {
   MARKETING
   CREATOR
   TUTOR
+  HEAD_TUTOR
   STUDENT
 }
 
@@ -149,6 +150,7 @@ model Session {
   programType String   // cth: "Conversation", "Grammar", "EFK", "Private", "TOEFL"
   branch      BranchLocation @default(KARTASURA)
   isCompleted Boolean  @default(false) // true = tutor sudah submit absen (trigger payroll)
+  topicOffset Int      @default(0) // Untuk loncat topik
 
   // Relasi Rombel
   classGroupId String?
@@ -189,9 +191,9 @@ model Attendance {
   isGuest   Boolean          @default(false) // Tandai jika ini siswa sit-in
 
   // Evaluasi Speaking (Opsional, diisi tutor saat submit attendance)
-  pronunciation Int?    // Skala 1-10
-  fluency       Int?    // Skala 1-10
-  vocabulary    Int?    // Skala 1-10
+  pronunciation Int?    // Skala 1-5
+  fluency       Int?    // Skala 1-5
+  vocabulary    Int?    // Skala 1-5
   tutorNotes    String? @db.Text
 
   // Catatan reschedule (khusus Private Class)
@@ -317,4 +319,16 @@ model Cashflow {
 
   recordedById String?
   recordedBy   User?               @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// Homework: Papan pengumuman tugas harian per cabang
+model DailyHomework {
+  id        String         @id @default(cuid())
+  date      DateTime       // Tanggal PR ditugaskan (tanpa jam)
+  branch    BranchLocation @default(KARTASURA)
+  content   String         @db.Text // Isi teks PR/Instruksi
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([date, branch]) // 1 cabang hanya punya 1 homework per hari
 }

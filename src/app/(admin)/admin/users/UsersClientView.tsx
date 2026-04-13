@@ -75,7 +75,7 @@ export function UsersClientView({
   activeBranch?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"ALL" | "TUTOR" | "STUDENT">("ALL");
+  const [activeTab, setActiveTab] = useState<string>("ALL");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -273,6 +273,8 @@ export function UsersClientView({
         return <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><ShieldCheck className="w-3 h-3"/> Creator</span>;
       case "TUTOR":
         return <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><BookOpen className="w-3 h-3"/> Tutor</span>;
+      case "HEAD_TUTOR":
+        return <span className="inline-flex items-center gap-1 bg-cyan-50 text-cyan-700 border border-cyan-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><BookOpen className="w-3 h-3"/> Head Tutor</span>;
       default:
         return <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide"><GraduationCap className="w-3 h-3"/> Student</span>;
     }
@@ -456,20 +458,31 @@ export function UsersClientView({
         <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
           
           {/* Tabs */}
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg w-fit">
-            {(["ALL", "TUTOR", "STUDENT"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${
-                  activeTab === tab 
-                    ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50" 
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {tab === "ALL" ? "All Users" : `${tab.charAt(0) + tab.slice(1).toLowerCase()}s`}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg flex-wrap">
+            {(["ALL", "STUDENT", "TUTOR", "HEAD_TUTOR", "CS", "MANAGER", "SUPER_ADMIN"] as const).map((tab) => {
+              const labels: Record<string, string> = {
+                ALL: "All",
+                STUDENT: "Students",
+                TUTOR: "Tutors",
+                HEAD_TUTOR: "Head Tutor",
+                CS: "CS",
+                MANAGER: "Managers",
+                SUPER_ADMIN: "Admins",
+              };
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                    activeTab === tab 
+                      ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/50" 
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {labels[tab] || tab}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Bar */}
@@ -620,6 +633,7 @@ export function UsersClientView({
                   >
                     <option value="STUDENT">Student</option>
                     <option value="TUTOR">Tutor</option>
+                    <option value="HEAD_TUTOR">Head Tutor</option>
                     <option value="CS">CS (Customer Service)</option>
                     <option value="MANAGER">Manager (SPV)</option>
                     <option value="MARKETING">Marketing</option>
@@ -712,6 +726,7 @@ export function UsersClientView({
                   >
                     <option value="STUDENT">Student</option>
                     <option value="TUTOR">Tutor</option>
+                    <option value="HEAD_TUTOR">Head Tutor</option>
                     <option value="CS">CS (Customer Service)</option>
                     <option value="MANAGER">Manager (SPV)</option>
                     <option value="MARKETING">Marketing</option>

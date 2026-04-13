@@ -3,7 +3,7 @@ import { authOptions } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
 import { redirect } from "next/navigation";
 import { GlobalSchedulesClient, type GlobalSession } from "./GlobalSchedulesClient";
-import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { BranchLocation } from "@prisma/client";
 
 export default async function GlobalSchedulesPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -12,20 +12,19 @@ export default async function GlobalSchedulesPage() {
   }
 
   const currentTutorId = sessionUser.user.id;
+  const homeBranch = (sessionUser.user as any).branch as BranchLocation ?? BranchLocation.KARTASURA;
 
-  // Fetch upcoming sessions from today onwards (limit to next 14 days)
+  // Fetch upcoming sessions from the tutor's home branch (default view)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
   const endSearch = new Date();
-  endSearch.setDate(todayStart.getDate() + 14); // Next two weeks
+  endSearch.setDate(todayStart.getDate() + 14);
   endSearch.setHours(23, 59, 59, 999);
-
-  const branchFilter = await getBranchFilter();
 
   const sessionsRaw = await prisma.session.findMany({
     where: {
-      ...branchFilter,
+      branch: homeBranch,
       date: {
         gte: todayStart,
         lte: endSearch,
@@ -57,6 +56,9 @@ export default async function GlobalSchedulesPage() {
     hasAttendance: s._count.attendances > 0,
   }));
 
+  // Pass all available branches for the dropdown
+  const allBranches = Object.values(BranchLocation);
+
   return (
     <div className="flex flex-col gap-6 max-w-5xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
@@ -73,6 +75,8 @@ export default async function GlobalSchedulesPage() {
       <GlobalSchedulesClient
         currentTutorId={currentTutorId}
         sessions={upcomingSessions}
+        homeBranch={homeBranch}
+        allBranches={allBranches}
       />
     </div>
   );

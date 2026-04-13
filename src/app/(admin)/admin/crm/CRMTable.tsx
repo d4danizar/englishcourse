@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Lead, LeadStatus } from "@prisma/client";
-import { updateLeadStatus, deleteLead, createLead } from "./actions";
-import { Plus, Trash2, Phone, MessageSquare, Filter } from "lucide-react";
+import { updateLeadStatus, deleteLead, createLead, updateLeadInfo } from "./actions";
+import { Plus, Trash2, Phone, MessageSquare, Filter, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -42,6 +42,10 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
   const [whatsapp, setWhatsapp] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Edit Modal State
+  const [editModalLead, setEditModalLead] = useState<{ id: string, name: string, notes: string } | null>(null);
+  const [isEditPending, setIsEditPending] = useState(false);
+
   const handleStatusChange = async (leadId: string, newStatus: string) => {
     const res = await updateLeadStatus(leadId, newStatus as LeadStatus);
     if (!res.success) {
@@ -68,6 +72,20 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
       alert("Gagal menambahkan lead");
     }
     setIsPending(false);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModalLead) return;
+    setIsEditPending(true);
+    const res = await updateLeadInfo(editModalLead.id, { name: editModalLead.name, notes: editModalLead.notes });
+    if (res.success) {
+      setEditModalLead(null);
+      router.refresh();
+    } else {
+      alert("Gagal memperbarui info lead");
+    }
+    setIsEditPending(false);
   };
 
   const handleFilterClick = (statusFilter: string) => {
@@ -191,8 +209,15 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
                   </td>
                   <td className="py-4 px-6 text-right whitespace-nowrap">
                     <button
+                      onClick={() => setEditModalLead({ id: lead.id, name: lead.name, notes: lead.notes || "" })}
+                      className="p-2 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 rounded-lg transition-colors inline-block"
+                      title="Edit Lead"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => handleDelete(lead.id)}
-                      className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors inline-block"
+                      className="p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors inline-block ml-1"
                       title="Hapus Lead"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -256,6 +281,53 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
                   className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
                   {isPending ? "Menyimpan..." : "Simpan Lead"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Lead */}
+      {editModalLead && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
+            <h2 className="text-xl font-bold text-slate-800 mb-6">Edit Info Lead</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap / Kontak</label>
+                <input
+                  type="text"
+                  required
+                  value={editModalLead.name}
+                  onChange={(e) => setEditModalLead({...editModalLead, name: e.target.value})}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                  placeholder="Misal: Budi Santoso"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Catatan Lead</label>
+                <textarea
+                  value={editModalLead.notes}
+                  onChange={(e) => setEditModalLead({...editModalLead, notes: e.target.value})}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[120px]"
+                  placeholder="Tambahkan progress percakapan / minat..."
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditModalLead(null)}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditPending}
+                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {isEditPending ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>
               </div>
             </form>

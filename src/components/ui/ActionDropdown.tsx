@@ -41,10 +41,15 @@ export function ActionDropdown({ trigger, items, disabled }: ActionDropdownProps
   return (
     <>
       <button 
+        type="button"
         ref={triggerRef}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!disabled) setIsOpen(!isOpen);
+        }}
         disabled={disabled}
-        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 inline-flex items-center justify-center relative"
+        className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition-colors disabled:opacity-50 inline-flex items-center justify-center relative"
       >
         {trigger}
       </button>
@@ -54,6 +59,7 @@ export function ActionDropdown({ trigger, items, disabled }: ActionDropdownProps
           <div 
             className="fixed inset-0 z-40 bg-transparent" 
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               setIsOpen(false);
             }} 
@@ -69,6 +75,7 @@ export function ActionDropdown({ trigger, items, disabled }: ActionDropdownProps
               <button 
                 key={idx}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   setIsOpen(false);
                   if (!item.disabled) item.onClick();

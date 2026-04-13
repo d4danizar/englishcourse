@@ -3,7 +3,7 @@ import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 
 // All internal staff roles — can access /admin routes
-const STAFF_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR"];
+const STAFF_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR", "HEAD_TUTOR"];
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
@@ -30,13 +30,13 @@ export async function middleware(req: NextRequest) {
         // ✅ Allowed — per-page guards handle finer-grained access
         return NextResponse.next();
       }
-      if (userRole === "TUTOR") return NextResponse.redirect(new URL("/tutor/dashboard", req.url));
+      if (userRole === "TUTOR" || userRole === "HEAD_TUTOR") return NextResponse.redirect(new URL("/tutor/dashboard", req.url));
       if (userRole === "STUDENT") return NextResponse.redirect(new URL("/student/dashboard", req.url));
       return NextResponse.redirect(new URL("/login?error=unauthorized", req.url));
     }
 
-    // /tutor → TUTOR only
-    if (pathname.startsWith("/tutor") && userRole !== "TUTOR") {
+    // /tutor → TUTOR and HEAD_TUTOR
+    if (pathname.startsWith("/tutor") && userRole !== "TUTOR" && userRole !== "HEAD_TUTOR") {
       return NextResponse.redirect(new URL("/login?error=unauthorized", req.url));
     }
 
@@ -54,7 +54,7 @@ export async function middleware(req: NextRequest) {
       if (userRole === "SUPER_ADMIN") return NextResponse.redirect(new URL("/admin/crm", req.url));
       return NextResponse.redirect(new URL("/admin", req.url));
     }
-    if (userRole === "TUTOR") return NextResponse.redirect(new URL("/tutor/dashboard", req.url));
+    if (userRole === "TUTOR" || userRole === "HEAD_TUTOR") return NextResponse.redirect(new URL("/tutor/dashboard", req.url));
     if (userRole === "STUDENT") return NextResponse.redirect(new URL("/student/dashboard", req.url));
   }
 

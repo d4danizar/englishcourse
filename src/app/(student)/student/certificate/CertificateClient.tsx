@@ -99,17 +99,17 @@ export function CertificateClient({ data }: { data: CertificateData }) {
               <div className="flex-[3] bg-slate-50/80 border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-center gap-3">
                 <div className="flex justify-between items-center text-slate-700">
                   <span className="font-semibold text-xs uppercase tracking-widest text-slate-500">Fluency</span>
-                  <span className="font-bold text-base">{scores.fluency.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 10</span></span>
+                  <span className="font-bold text-base">{scores.fluency.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 5</span></span>
                 </div>
                 <div className="w-full h-px bg-slate-200/60" />
                 <div className="flex justify-between items-center text-slate-700">
                   <span className="font-semibold text-xs uppercase tracking-widest text-slate-500">Pronunciation</span>
-                  <span className="font-bold text-base">{scores.pronunciation.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 10</span></span>
+                  <span className="font-bold text-base">{scores.pronunciation.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 5</span></span>
                 </div>
                 <div className="w-full h-px bg-slate-200/60" />
                 <div className="flex justify-between items-center text-slate-700">
                   <span className="font-semibold text-xs uppercase tracking-widest text-slate-500">Vocabulary</span>
-                  <span className="font-bold text-base">{scores.vocabulary.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 10</span></span>
+                  <span className="font-bold text-base">{scores.vocabulary.toFixed(1)} <span className="text-[10px] text-slate-400 font-normal">/ 5</span></span>
                 </div>
               </div>
 

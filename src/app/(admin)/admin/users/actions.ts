@@ -4,6 +4,7 @@ import { prisma } from "../../../../lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { Role, BranchLocation } from "@prisma/client";
+import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
 
 export async function createUser(formData: FormData) {
   try {
@@ -31,7 +32,7 @@ export async function createUser(formData: FormData) {
       data: {
         name,
         email,
-        phoneNumber: phoneNumber || null,
+        phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
         role,
         branch,
         passwordHash,
@@ -40,6 +41,8 @@ export async function createUser(formData: FormData) {
         endDate: isStudent && endDateStr ? new Date(endDateStr) : null,
         durationOption: isStudent && durationOption ? durationOption : null,
         batchSchedule: isStudent && batchSchedule ? batchSchedule : null,
+        leaveQuota: isStudent ? calculateLeaveQuota(activeProgram, durationOption) : 0,
+        leaveUsed: 0,
       },
     });
 
@@ -82,7 +85,7 @@ export async function editUser(formData: FormData) {
       data: {
         name,
         email,
-        phoneNumber: phoneNumber || null,
+        phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
         role,
         branch,
         activeProgram: isStudent && activeProgram ? activeProgram : null,
@@ -91,6 +94,7 @@ export async function editUser(formData: FormData) {
         endDate: isStudent && endDateStr ? new Date(endDateStr) : null,
         durationOption: isStudent && durationOption ? durationOption : null,
         batchSchedule: isStudent && batchSchedule ? batchSchedule : null,
+        leaveQuota: isStudent ? calculateLeaveQuota(activeProgram, durationOption) : 0,
       },
     });
 

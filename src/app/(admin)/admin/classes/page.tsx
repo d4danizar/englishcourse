@@ -2,18 +2,19 @@ import { prisma } from "../../../../lib/prisma";
 import { format } from "date-fns";
 import { CalendarDays, Clock } from "lucide-react";
 import { SchedulePageHeader } from "./SchedulePageHeader";
-import { SessionRowActions } from "./SessionRowActions";
+import { ActiveSessionsView } from "./ActiveSessionsView";
 import AutoAbsenceButton from "../../../../components/admin/AutoAbsenceButton";
 import { ScheduleTabsWrapper } from "./ScheduleTabsWrapper";
 import { WeeklyRosterBuilder } from "./WeeklyRosterBuilder";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { getTodayTopic, TodayTopic } from "@/lib/syllabus-helpers";
 
 export default async function ScheduleManagementPage() {
   const branchFilter = await getBranchFilter();
 
-  // 1. Fetch tutors for dropdowns
+  // 1. Fetch tutors for dropdowns (include HEAD_TUTOR as they also teach)
   const tutors = await prisma.user.findMany({
-    where: { role: "TUTOR", ...branchFilter },
+    where: { role: { in: ["TUTOR", "HEAD_TUTOR"] }, ...branchFilter },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -44,129 +45,42 @@ export default async function ScheduleManagementPage() {
     Asrama: "bg-purple-100 text-purple-700 border-purple-200",
   };
 
-  // ---- Active Sessions Table (rendered as JSX, passed as prop) ----
+  // Calculate meeting counts and topics
+  // Reverse to process chronologically (oldest first)
+  const sessionsAsc = [...sessions].reverse();
+  const classGroupMeetingCount = new Map<string, number>();
+  const classGroupMaxOffset = new Map<string, number>();
+
+  // Determine max offsets
+  sessionsAsc.forEach(s => {
+    const key = `${s.programType}|${s.timeSlot}`;
+    const maxOff = Math.max(classGroupMaxOffset.get(key) || 0, s.topicOffset);
+    classGroupMaxOffset.set(key, maxOff);
+  });
+
+  const sessionsWithData = sessionsAsc.map(session => {
+    const key = `${session.programType}|${session.timeSlot}`;
+    const currentCount = (classGroupMeetingCount.get(key) || 0) + 1;
+    classGroupMeetingCount.set(key, currentCount);
+    
+    // Calculate topic
+    const maxOffset = classGroupMaxOffset.get(key) || 0;
+    const topicData = getTodayTopic(session.timeSlot, currentCount, maxOffset, session.date);
+    
+    return {
+      ...session,
+      topicData
+    };
+  }).reverse(); // Reverse back to descending
+
   const activeSessionsTable = (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50/50">
-            <tr>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Time Slot
-              </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Room / Title
-              </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Program
-              </th>
-              <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Tutor
-              </th>
-              <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {sessions.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="px-6 py-16 text-center text-sm text-slate-500"
-                >
-                  <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-full">
-                      <CalendarDays className="w-12 h-12 text-slate-400" />
-                    </div>
-                    <div>
-                      <p className="text-base font-medium text-slate-900">
-                        No sessions scheduled yet
-                      </p>
-                      <p className="mt-1">
-                        Get started by creating your first schedule or use the Roster Builder.
-                      </p>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              sessions.map((session) => {
-                const pStyle = programStyles[session.programType] || "bg-slate-100 text-slate-700 border-slate-200";
-
-                return (
-                  <tr
-                    key={session.id}
-                    className="hover:bg-slate-50/80 transition-colors"
-                  >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
-                      {format(new Date(session.date), "EEE, MMM dd")}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        {session.timeSlot}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span className="text-sm font-semibold text-slate-900">
-                        {session.title}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold border uppercase tracking-wide ${pStyle}`}
-                      >
-                        {session.programType}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-600">
-                      {session.tutor.name}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-center">
-                      {session.isCompleted ? (
-                        <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
-                          Completed
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                      <SessionRowActions
-                        session={{
-                          id: session.id,
-                          title: session.title,
-                          date: session.date.toISOString(),
-                          timeSlot: session.timeSlot,
-                          programType: session.programType,
-                          tutorId: session.tutorId,
-                          isCompleted: session.isCompleted,
-                        }}
-                        tutors={tutors}
-                      />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Footer */}
-      <div className="bg-slate-50/80 p-4 border-t border-slate-200 text-xs font-medium text-slate-500 text-center sm:text-left">
-        Showing {sessions.length} total sessions
-      </div>
-    </div>
+    <ActiveSessionsView 
+      sessions={sessionsWithData.map(s => ({
+        ...s,
+        date: s.date.toISOString(),
+      }))} 
+      tutors={tutors} 
+    />
   );
 
   return (

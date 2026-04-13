@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { calculateInvoiceAmount } from "../utils/pricing";
 import { nextMonday, addWeeks, addMonths } from "date-fns";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { sanitizePhoneNumber } from "@/lib/formatters";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "CS"];
 
@@ -290,7 +291,7 @@ export async function approvePayment(invoiceId: string) {
           name: studentName,
           email,
           passwordHash,
-          phoneNumber: whatsapp,
+          phoneNumber: sanitizePhoneNumber(whatsapp),
           role: "STUDENT",
           branch: invoice.branch,
           activeProgram: finalActiveProgram,

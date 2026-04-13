@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical, Trash2, Eye, Pencil, Loader2, X, Clock, Calendar, BookOpen, Users } from "lucide-react";
 import { deleteSession, updateSession } from "./actions";
-import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
 import { SessionDetailModal } from "../../../../components/session/SessionDetailModal";
 
 type SessionData = {
@@ -14,6 +14,7 @@ type SessionData = {
   programType: string;
   tutorId: string;
   isCompleted: boolean;
+  topicOffset: number;
 };
 
 type TutorOption = { id: string; name: string };
@@ -41,6 +42,12 @@ export function SessionRowActions({
   const [isPending, startTransition] = useTransition();
   const [showDetail, setShowDetail] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Edit form state
   const [editTitle, setEditTitle] = useState(session.title);
@@ -48,6 +55,7 @@ export function SessionRowActions({
   const [editTimeSlot, setEditTimeSlot] = useState(session.timeSlot);
   const [editProgramType, setEditProgramType] = useState(session.programType);
   const [editTutorId, setEditTutorId] = useState(session.tutorId);
+  const [editTopicOffset, setEditTopicOffset] = useState((session.topicOffset || 0) + 1);
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this session? All attendance records will also be deleted.")) {
@@ -67,6 +75,7 @@ export function SessionRowActions({
       formData.set("timeSlot", editTimeSlot);
       formData.set("programType", editProgramType);
       formData.set("tutorId", editTutorId);
+      formData.set("topicOffset", editTopicOffset.toString());
       const res = await updateSession(formData);
       if (res.error) {
         alert(res.error);
@@ -78,28 +87,81 @@ export function SessionRowActions({
 
   return (
     <>
-      <ActionDropdown
-        disabled={isPending}
-        trigger={isPending ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <MoreVertical className="w-4 h-4" />}
-        items={[
-          {
-            label: "View Details",
-            icon: <Eye />,
-            onClick: () => setShowDetail(true),
-          },
-          {
-            label: "Edit Session",
-            icon: <Pencil />,
-            onClick: () => setShowEdit(true),
-          },
-          {
-            label: "Delete Session",
-            icon: <Trash2 />,
-            onClick: handleDelete,
-            danger: true,
-          },
-        ]}
-      />
+      <div className="relative inline-block text-left">
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setMenuOpen(!menuOpen);
+          }}
+          className="flex h-6 w-6 p-0 items-center justify-center rounded-md hover:bg-slate-100 outline-none transition-colors"
+        >
+          {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" /> : <MoreVertical className="w-4 h-4 text-slate-500" />}
+          <span className="sr-only">Open menu</span>
+        </button>
+
+        {menuOpen && (
+          <>
+            <div 
+              className="fixed inset-0 z-[40] bg-transparent"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen(false);
+              }}
+            />
+            <div 
+              className="absolute right-0 top-8 z-[50] w-48 rounded-md border border-slate-200 bg-white p-1 shadow-md animate-in fade-in zoom-in-95 duration-100"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  setShowDetail(true);
+                }}
+                className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 text-slate-700"
+              >
+                <Eye className="w-4 h-4 text-slate-400" />
+                View Details
+              </button>
+              
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  setShowEdit(true);
+                }}
+                className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 text-slate-700"
+              >
+                <Pencil className="w-4 h-4 text-slate-400" />
+                Edit Session
+              </button>
+              
+              <div className="my-1 h-px bg-slate-100" />
+              
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  handleDelete();
+                }}
+                className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 text-red-600 focus:text-red-700"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+                Delete Session
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* View Details Modal */}
       {showDetail && (
@@ -110,11 +172,11 @@ export function SessionRowActions({
       )}
 
       {/* Edit Session Modal */}
-      {showEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      {showEdit && mounted && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex shrink-0 items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Edit Session</h3>
                 <p className="text-xs font-medium text-slate-500 mt-0.5">Update class details or reassign tutor</p>
@@ -125,9 +187,10 @@ export function SessionRowActions({
             </div>
 
             {/* Form */}
-            <div className="p-6 flex flex-col gap-4">
-              {/* Title */}
-              <div className="flex flex-col gap-1.5">
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Title */}
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
                   <BookOpen className="w-3 h-3" /> Title
                 </label>
@@ -139,35 +202,34 @@ export function SessionRowActions({
                 />
               </div>
 
-              {/* Date + Time Row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3" /> Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
-                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" /> Time Slot
-                  </label>
-                  <select
-                    value={editTimeSlot}
-                    onChange={(e) => setEditTimeSlot(e.target.value)}
-                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
-                    {/* Preserve custom timeSlot if not in standard list */}
-                    {!TIME_SLOTS.includes(editTimeSlot) && (
-                      <option value={editTimeSlot}>{editTimeSlot}</option>
-                    )}
-                  </select>
-                </div>
+              {/* Date */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3" /> Date
+                </label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Time Slot */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Time Slot
+                </label>
+                <select
+                  value={editTimeSlot}
+                  onChange={(e) => setEditTimeSlot(e.target.value)}
+                  className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  {TIME_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {!TIME_SLOTS.includes(editTimeSlot) && (
+                    <option value={editTimeSlot}>{editTimeSlot}</option>
+                  )}
+                </select>
               </div>
 
               {/* Program Type */}
@@ -200,10 +262,26 @@ export function SessionRowActions({
                   ))}
                 </select>
               </div>
+              
+              {/* Topic Offset */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                  Mulai dari Topik Ke-
+                  <span className="text-[9px] font-semibold text-slate-400 normal-case tracking-normal">(Opsional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editTopicOffset}
+                  onChange={(e) => setEditTopicOffset(parseInt(e.target.value) || 1)}
+                  className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex justify-end gap-3">
               <button
                 onClick={() => setShowEdit(false)}
                 disabled={isPending}
@@ -220,7 +298,8 @@ export function SessionRowActions({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

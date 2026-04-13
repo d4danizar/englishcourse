@@ -28,15 +28,17 @@ export function BulkImportForm() {
         const wb = xlsx.read(data, { type: "array" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        
+
         // Konversi Data Worksheet menjadi Array JSON
         const jsonData = xlsx.utils.sheet_to_json(ws);
+
+        const sanitizedData = JSON.parse(JSON.stringify(jsonData));
 
         setStatus("UPLOADING");
         setMessage("Sedang sinkronisasi multi-cabang & mengirim ke server...");
 
         startTransition(async () => {
-          const res = await processBulkImport(jsonData);
+          const res = await processBulkImport(sanitizedData);
           if (res.success) {
             setStatus("SUCCESS");
             setImportedCount(res.count || 0);
@@ -52,7 +54,7 @@ export function BulkImportForm() {
         setMessage("Gagal membaca file. Pastikan formatnya .xlsx atau .xls.");
       }
     };
-    
+
     // Reset the input value so user can upload the same file again if they want
     e.target.value = '';
     reader.readAsArrayBuffer(file);
@@ -69,16 +71,18 @@ export function BulkImportForm() {
           <p className="text-xs text-zinc-600 mb-6 max-w-sm leading-relaxed">
             Format yang didukung: .xlsx atau .xls.
             <br />
-            Wajib mengandung ejaan header (Case-Sensitive): <b className="text-zinc-800">Name</b>, <b className="text-zinc-800">Email</b>, <b className="text-zinc-800">WhatsApp</b>, <b className="text-zinc-800">Program</b>.
+            Header wajib (Case-Sensitive): <b className="text-zinc-800">Name</b>, <b className="text-zinc-800">Email</b>, <b className="text-zinc-800">WhatsApp</b>, <b className="text-zinc-800">Program</b>.
+            <br />
+            Header opsional: <b className="text-zinc-800">Session</b> <span className="text-zinc-400">(untuk murid Regular)</span>.
           </p>
           <label className="cursor-pointer bg-white hover:bg-zinc-100 border border-dashed border-zinc-300 text-zinc-700 font-semibold py-3 px-8 rounded-xl flex items-center gap-2 transition-colors">
             <UploadCloud className="w-5 h-5 text-indigo-600" />
             <span>Pilih File Excel</span>
-            <input 
-              type="file" 
-              accept=".xlsx, .xls" 
-              className="hidden" 
-              onChange={handleFileUpload} 
+            <input
+              type="file"
+              accept=".xlsx, .xls"
+              className="hidden"
+              onChange={handleFileUpload}
               disabled={isPending}
             />
           </label>
@@ -100,7 +104,7 @@ export function BulkImportForm() {
           </div>
           <h3 className="text-zinc-900 font-bold mb-2 text-lg">Impor Berhasil Terinjeksi!</h3>
           <p className="text-sm text-zinc-700 mb-6 font-medium bg-white px-4 py-2 rounded-lg border border-zinc-200">{message}</p>
-          <button 
+          <button
             onClick={() => setStatus("IDLE")}
             className="bg-white hover:bg-zinc-100 text-zinc-700 font-medium py-2 px-6 rounded-xl transition-colors border border-zinc-300 shadow-sm"
           >
@@ -116,7 +120,7 @@ export function BulkImportForm() {
           </div>
           <h3 className="text-zinc-900 font-bold mb-2">Gagal Mengimpor</h3>
           <p className="text-sm text-red-600 mb-6 font-medium">{message}</p>
-          <button 
+          <button
             onClick={() => setStatus("IDLE")}
             className="bg-white hover:bg-zinc-100 text-zinc-700 font-medium py-2 px-6 rounded-xl transition-colors border border-zinc-300 shadow-sm"
           >
