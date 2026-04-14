@@ -33,6 +33,7 @@ type ProfileContent = {
   batchSchedule: string | null;
   startDate: Date | null;
   endDate: Date | null;
+  extendedEndDate: Date | null;
   leaveQuota?: number;
   leaveUsed?: number;
 };
@@ -80,12 +81,28 @@ export function StudentDashboardClient({
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations" | "settings">("overview");
 
-  // Calculate Days Left
+  // Calculate Days Left against EXTENDED END DATE
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  let daysLeft: number | null = null;
   
-  if (profile.endDate) {
+  let daysLeft: number | null = null;
+  let isExtendedStatus = false;
+
+  if (profile.extendedEndDate && profile.endDate) {
+    const originalEnd = new Date(profile.endDate);
+    originalEnd.setHours(0, 0, 0, 0);
+
+    const extEnd = new Date(profile.extendedEndDate);
+    extEnd.setHours(0, 0, 0, 0);
+
+    // Days left calculated against the extended date
+    daysLeft = differenceInBusinessDays(extEnd, today);
+
+    // If today is past original but not past extended
+    if (today > originalEnd && today <= extEnd) {
+      isExtendedStatus = true;
+    }
+  } else if (profile.endDate) {
     const end = new Date(profile.endDate);
     end.setHours(0, 0, 0, 0);
     daysLeft = differenceInBusinessDays(end, today);
@@ -172,18 +189,25 @@ export function StudentDashboardClient({
                 <span className="font-bold text-sm tracking-wide">EXPIRED</span>
               </div>
             ) : (
-              <div className="flex items-end gap-1.5">
-                <span className={`text-3xl font-black leading-none tracking-tighter ${daysLeft <= 3 ? "text-red-500" : "text-slate-900"}`}>
-                  {daysLeft}
-                </span>
-                <span className={`text-sm font-bold pb-0.5 ${daysLeft <= 3 ? "text-red-400" : "text-slate-500"}`}>
-                  hari aktif
-                </span>
+              <div className="flex flex-col items-center">
+                <div className="flex items-end gap-1.5">
+                  <span className={`text-3xl font-black leading-none tracking-tighter ${daysLeft <= 3 ? "text-red-500" : "text-slate-900"}`}>
+                    {daysLeft}
+                  </span>
+                  <span className={`text-sm font-bold pb-0.5 ${daysLeft <= 3 ? "text-red-400" : "text-slate-500"}`}>
+                    hari aktif
+                  </span>
+                </div>
+                {isExtendedStatus && (
+                  <span className="mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-bold rounded uppercase tracking-wider border border-yellow-200 shadow-sm leading-none">
+                    Ext: Kompensasi Izin
+                  </span>
+                )}
               </div>
             )}
-            {profile.endDate && (
+            {profile.extendedEndDate && (
               <p className="text-[10px] font-bold text-slate-400 mt-2 tracking-wide">
-                s.d. {format(new Date(profile.endDate), "dd MMM yyyy")}
+                s.d. {format(new Date(profile.extendedEndDate), "dd MMM yyyy")}
               </p>
             )}
           </div>

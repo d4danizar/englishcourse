@@ -73,6 +73,8 @@ export async function editUser(formData: FormData) {
     const endDateStr = formData.get("endDate") as string;
     const durationOption = formData.get("durationOption") as string;
     const batchSchedule = formData.get("batchSchedule") as string;
+    const totalLeavesStr = formData.get("totalLeaves") as string;
+    const totalLeaves = totalLeavesStr ? parseInt(totalLeavesStr, 10) : 0;
 
     if (!id || !name || !email || !role) {
       return { error: "ID, Name, email, and role are required." };
@@ -95,6 +97,7 @@ export async function editUser(formData: FormData) {
         durationOption: isStudent && durationOption ? durationOption : null,
         batchSchedule: isStudent && batchSchedule ? batchSchedule : null,
         leaveQuota: isStudent ? calculateLeaveQuota(activeProgram, durationOption) : 0,
+        totalLeaves: isStudent ? totalLeaves : 0,
       },
     });
 

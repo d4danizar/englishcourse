@@ -105,6 +105,7 @@ model User {
   // Leave / Make-up Quota
   leaveQuota     Int       @default(0)
   leaveUsed      Int       @default(0)
+  totalLeaves    Int       @default(0) // Akumulasi total izin disetujui (dikonversi ke penambahan extendedEndDate)
 
   // Relasi
   sessionsTaught Session[]      @relation("SessionTutor")  // Sesi yang diajar (untuk TUTOR)

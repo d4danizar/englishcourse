@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { createUser, editUser, resetPassword, deleteUser } from "./actions";
 import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
+import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
 
 type UserType = {
   id: string;
@@ -97,6 +98,7 @@ export function UsersClientView({
   const [editProgramBatch, setEditProgramBatch] = useState("");
   const [editRole, setEditRole] = useState("");
   const [editBranch, setEditBranch] = useState("KARTASURA");
+  const [editTotalLeaves, setEditTotalLeaves] = useState(0);
 
   // Auto-calculate endDate for ADD form
   const calculatedEndDate = useMemo(() => {
@@ -118,6 +120,7 @@ export function UsersClientView({
       setEditDuration(editingUser.durationOption || "");
       setEditBatch(editingUser.batchSchedule || "");
       setEditProgramBatch(editingUser.programBatch || "");
+      setEditTotalLeaves(editingUser.totalLeaves || 0);
     }
   }, [editingUser]);
 
@@ -134,6 +137,7 @@ export function UsersClientView({
       if (editDuration) formData.set("durationOption", editDuration);
       if (editBatch) formData.set("batchSchedule", editBatch);
       if (editProgramBatch) formData.set("programBatch", editProgramBatch);
+      formData.set("totalLeaves", editTotalLeaves.toString());
     }
     
     startTransition(async () => {
@@ -293,8 +297,25 @@ export function UsersClientView({
     setBatch: (v: string) => void,
     programBatch: string,
     setProgramBatch: (v: string) => void,
-    endDate: Date | null
-  ) => (
+    endDate: Date | null,
+    totalLeaves?: number,
+    setTotalLeaves?: (v: number) => void
+  ) => {
+    // Determine Max Leaves based on activeProgram & duration
+    let maxLeaves = 0;
+    if (program === "Regular") {
+      maxLeaves = 5;
+    } else if (program === "Fullday" || program === "Asrama") {
+      if (duration === "1_WEEK") maxLeaves = 1;
+      else if (duration === "2_WEEKS") maxLeaves = 2;
+      else if (duration === "3_WEEKS") maxLeaves = 3;
+      else if (duration === "1_MONTH") maxLeaves = 5;
+      else maxLeaves = 10; // Fallback
+    } else {
+      maxLeaves = 5;
+    }
+
+    return (
     <>
       {/* Divider */}
       <div className="flex items-center gap-3 pt-1">
@@ -393,6 +414,30 @@ export function UsersClientView({
         </div>
       )}
 
+      {/* Total Leaves — Edit Mode Only */}
+      {mode === "edit" && setTotalLeaves && (
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center justify-between text-xs font-bold text-slate-600 uppercase tracking-widest">
+            <span>Jumlah Izin (Total Leaves)</span>
+            {maxLeaves > 0 && <span className="text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">Max: {maxLeaves}</span>}
+          </label>
+          <input
+            type="number"
+            name="totalLeaves"
+            min="0"
+            max={maxLeaves > 0 ? maxLeaves : undefined}
+            value={totalLeaves || 0}
+            onChange={(e) => {
+              const val = Math.max(0, parseInt(e.target.value) || 0);
+              const finalVal = maxLeaves > 0 ? Math.min(val, maxLeaves) : val;
+              setTotalLeaves(finalVal);
+            }}
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
+          />
+          <p className="text-[10px] font-medium text-slate-500">Izin akan memperpanjang masa aktif belajar.</p>
+        </div>
+      )}
+
       {/* Estimated End Date Preview */}
       {endDate && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
@@ -400,7 +445,7 @@ export function UsersClientView({
             <GraduationCap className="w-4 h-4 text-emerald-600" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Estimated End Date</p>
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Original End Date (Static)</p>
             <p className="text-sm font-bold text-emerald-900 mt-0.5">
               {format(endDate, "EEEE, dd MMMM yyyy")}
             </p>
@@ -408,7 +453,7 @@ export function UsersClientView({
         </div>
       )}
     </>
-  );
+  )};
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full pb-12">
@@ -510,7 +555,7 @@ export function UsersClientView({
                 <th className="px-6 py-4">Program</th>
                 <th className="px-6 py-4">Sesi / Batch</th>
                 <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Joined Date</th>
+                <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -550,9 +595,41 @@ export function UsersClientView({
                       {getRoleBadge(user.role)}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-600">
-                      {new Date(user.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'short', day: 'numeric'
-                      })}
+                      {user.role === "STUDENT" ? (
+                        <div className="flex flex-col gap-1">
+                          {(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+
+                            if (!user.startDate) return <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-bold w-fit">Pending</span>;
+
+                            if (!user.endDate) return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold w-fit">Active</span>;
+
+                            const origEnd = new Date(user.endDate);
+                            origEnd.setHours(0, 0, 0, 0);
+
+                            let extEnd = origEnd;
+                            if (user.totalLeaves && user.totalLeaves > 0 && user.activeProgram && user.startDate) {
+                              extEnd = calculateExtendedEndDate(
+                                new Date(user.startDate),
+                                user.durationOption || "1_MONTH",
+                                user.totalLeaves,
+                                user.activeProgram
+                              );
+                            }
+                            
+                            if (today > extEnd) {
+                              return <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold w-fit uppercase border border-red-200">Expired</span>;
+                            } else if (today > origEnd && today <= extEnd) {
+                              return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[10px] font-bold w-fit uppercase border border-amber-200">Active (Extended)</span>;
+                            } else {
+                              return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold w-fit uppercase border border-emerald-200">Active</span>;
+                            }
+                          })()}
+                        </div>
+                      ) : (
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold w-fit">Active</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <ActionDropdown
@@ -753,7 +830,8 @@ export function UsersClientView({
                 {editRole === "STUDENT" && renderStudentFields(
                   "edit", editProgram, setEditProgram, editStartDate, setEditStartDate,
                   editDuration, setEditDuration, editBatch, setEditBatch,
-                  editProgramBatch, setEditProgramBatch, editCalculatedEndDate
+                  editProgramBatch, setEditProgramBatch, editCalculatedEndDate,
+                  editTotalLeaves, setEditTotalLeaves
                 )}
               </div>
               <div className="p-5 border-t border-slate-100 gap-3 flex justify-end bg-slate-50/50">

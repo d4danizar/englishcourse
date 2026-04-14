@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "../../../../lib/prisma";
+import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
 
 export async function getStudentProfile(studentId: string) {
   const profile = await prisma.user.findUnique({
@@ -15,9 +16,27 @@ export async function getStudentProfile(studentId: string) {
       endDate: true,
       leaveQuota: true,
       leaveUsed: true,
+      totalLeaves: true,
+      durationOption: true,
     },
   });
-  return profile;
+
+  if (!profile) return null;
+
+  let extendedEndDate: Date | null = null;
+  if (profile.startDate && profile.activeProgram && profile.totalLeaves > 0) {
+    extendedEndDate = calculateExtendedEndDate(
+      profile.startDate,
+      profile.durationOption || "1_MONTH",
+      profile.totalLeaves,
+      profile.activeProgram
+    );
+  }
+
+  return {
+    ...profile,
+    extendedEndDate,
+  };
 }
 
 export async function getStudentAttendances(studentId: string) {
