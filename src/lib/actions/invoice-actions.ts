@@ -273,19 +273,12 @@ export async function approvePayment(invoiceId: string) {
       else if (finalActiveProgram === "Regular") calculatedLeaveQuota = 3; // Fallback untuk Regular
 
       // 3. UPSERT USER DATABASE
-      await tx.user.upsert({
+      const savedUser = await tx.user.upsert({
         where: { email },
         update: {
           name: studentName,
           role: "STUDENT",
           branch: invoice.branch,
-          activeProgram: finalActiveProgram,
-          durationOption: finalDurationOption,
-          programBatch: finalBatch,
-          batchSchedule: batchSchedule,
-          startDate: calculatedStartDate,
-          endDate: calculatedEndDate,
-          leaveQuota: calculatedLeaveQuota,
         },
         create: {
           name: studentName,
@@ -294,7 +287,13 @@ export async function approvePayment(invoiceId: string) {
           phoneNumber: sanitizePhoneNumber(whatsapp),
           role: "STUDENT",
           branch: invoice.branch,
-          activeProgram: finalActiveProgram,
+        },
+      });
+
+      await tx.enrollment.create({
+        data: {
+          userId: savedUser.id,
+          programType: finalActiveProgram,
           durationOption: finalDurationOption,
           programBatch: finalBatch,
           batchSchedule: batchSchedule,
@@ -302,7 +301,7 @@ export async function approvePayment(invoiceId: string) {
           endDate: calculatedEndDate,
           leaveQuota: calculatedLeaveQuota,
           leaveUsed: 0,
-        } as any,
+        }
       });
 
       // 4. Mark the related Lead as CLOSED_WON

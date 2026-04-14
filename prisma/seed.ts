@@ -40,7 +40,12 @@ async function main() {
       email: 'student@test.com',
       passwordHash: hashedPassword,
       role: Role.STUDENT,
-      activeProgram: 'Regular',
+      enrollments: {
+        create: {
+          programType: 'Regular',
+          startDate: new Date(),
+        }
+      }
     },
   })
 
@@ -57,8 +62,13 @@ async function main() {
         email: `student${i}@test.com`,
         passwordHash: hashedPassword,
         role: Role.STUDENT,
-        activeProgram: program,
         phoneNumber: phone,
+        enrollments: {
+          create: {
+            programType: program,
+            startDate: new Date(),
+          }
+        }
       },
     })
   }

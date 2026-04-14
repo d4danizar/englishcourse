@@ -29,9 +29,13 @@ export async function runDailyAutoAbsence() {
       const eligibleStudents = await prisma.user.findMany({
         where: {
           role: "STUDENT",
-          activeProgram: session.programType,
-          programBatch: { contains: session.timeSlot, mode: "insensitive" }, 
-          endDate: { gte: todayStart }, // Masa aktif masih berlaku
+          enrollments: {
+            some: {
+              programType: session.programType,
+              programBatch: { contains: session.timeSlot, mode: "insensitive" }, 
+              endDate: { gte: todayStart }, // Masa aktif masih berlaku
+            }
+          }
         },
         select: { id: true }
       });

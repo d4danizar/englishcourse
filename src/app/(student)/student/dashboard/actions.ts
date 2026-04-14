@@ -9,32 +9,53 @@ export async function getStudentProfile(studentId: string) {
     select: {
       id: true,
       name: true,
-      activeProgram: true,
-      programBatch: true,
-      batchSchedule: true,
-      startDate: true,
-      endDate: true,
-      leaveQuota: true,
-      leaveUsed: true,
-      totalLeaves: true,
-      durationOption: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          programBatch: true,
+          batchSchedule: true,
+          startDate: true,
+          endDate: true,
+          leaveQuota: true,
+          leaveUsed: true,
+          totalLeaves: true,
+          durationOption: true,
+        }
+      }
     },
   });
 
   if (!profile) return null;
 
+  const enrollment = profile.enrollments[0] || {} as any;
+  const mappedProfile = {
+    id: profile.id,
+    name: profile.name,
+    activeProgram: enrollment.programType || null,
+    programBatch: enrollment.programBatch || null,
+    batchSchedule: enrollment.batchSchedule || null,
+    startDate: enrollment.startDate || null,
+    endDate: enrollment.endDate || null,
+    leaveQuota: enrollment.leaveQuota || 0,
+    leaveUsed: enrollment.leaveUsed || 0,
+    totalLeaves: enrollment.totalLeaves || 0,
+    durationOption: enrollment.durationOption || null,
+  };
+
   let extendedEndDate: Date | null = null;
-  if (profile.startDate && profile.activeProgram && profile.totalLeaves > 0) {
+  if (mappedProfile.startDate && mappedProfile.activeProgram && mappedProfile.totalLeaves > 0) {
     extendedEndDate = calculateExtendedEndDate(
-      profile.startDate,
-      profile.durationOption || "1_MONTH",
-      profile.totalLeaves,
-      profile.activeProgram
+      mappedProfile.startDate,
+      mappedProfile.durationOption || "1_MONTH",
+      mappedProfile.totalLeaves,
+      mappedProfile.activeProgram
     );
   }
 
   return {
-    ...profile,
+    ...mappedProfile,
     extendedEndDate,
   };
 }

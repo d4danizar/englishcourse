@@ -4,16 +4,30 @@ import { prisma } from "../../../../lib/prisma";
 
 export async function generateCertificateData(studentId: string) {
   // 1. Fetch Student Data
-  const student = await prisma.user.findUnique({
+  const studentRaw = await prisma.user.findUnique({
     where: { id: studentId },
     select: {
       id: true,
       name: true,
-      activeProgram: true,
-      startDate: true,
-      endDate: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
     },
   });
+
+  if (!studentRaw) {
+    throw new Error("Student not found");
+  }
+
+  const enrollment = studentRaw.enrollments[0] || {} as any;
+  const student = {
+    id: studentRaw.id,
+    name: studentRaw.name,
+    activeProgram: enrollment.programType || null,
+    startDate: enrollment.startDate || null,
+    endDate: enrollment.endDate || null,
+  };
 
   if (!student) {
     throw new Error("Student not found");

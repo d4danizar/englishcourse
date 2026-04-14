@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { addDays, addMonths, format } from "date-fns";
 import { 
   Users, 
@@ -11,13 +12,14 @@ import {
   GraduationCap, 
   BookOpen,
   MoreVertical,
+  RefreshCcw,
   X,
   Loader2,
   Pencil,
   Key,
   Trash2
 } from "lucide-react";
-import { createUser, editUser, resetPassword, deleteUser } from "./actions";
+import { createUser, editUser, resetPassword, deleteUser, renewStudent } from "./actions";
 import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
 import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
 
@@ -35,6 +37,7 @@ type UserType = {
   endDate: string | null;
   durationOption: string | null;
   batchSchedule: string | null;
+  totalLeaves?: number;
 };
 
 // Shared endDate calculation logic (used by both Add and Edit forms)
@@ -99,6 +102,15 @@ export function UsersClientView({
   const [editRole, setEditRole] = useState("");
   const [editBranch, setEditBranch] = useState("KARTASURA");
   const [editTotalLeaves, setEditTotalLeaves] = useState(0);
+
+  // === RENEW / REPEAT ORDER STATE ===
+  const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
+  const [renewingUser, setRenewingUser] = useState<UserType | null>(null);
+  const [renewProgram, setRenewProgram] = useState("");
+  const [renewStartDate, setRenewStartDate] = useState("");
+  const [renewDuration, setRenewDuration] = useState("");
+  const [renewAmount, setRenewAmount] = useState<number | "">("");
+  const [renewPaymentMethod, setRenewPaymentMethod] = useState("CASH");
 
   // Auto-calculate endDate for ADD form
   const calculatedEndDate = useMemo(() => {
@@ -641,6 +653,19 @@ export function UsersClientView({
                             icon: <Pencil />,
                             onClick: () => { setEditingUser(user); }
                           },
+                          ...(user.role === "STUDENT" ? [{
+                            label: "🔄 Repeat Order",
+                            icon: <RefreshCcw />,
+                            onClick: () => {
+                              setRenewingUser(user);
+                              setRenewProgram(user.activeProgram === "-" ? "" : user.activeProgram);
+                              setRenewStartDate("");
+                              setRenewDuration("");
+                              setRenewAmount("");
+                              setRenewPaymentMethod("CASH");
+                              setIsRenewModalOpen(true);
+                            }
+                          }] : []),
                           {
                             label: "Reset Password",
                             icon: <Key />,
@@ -849,6 +874,153 @@ export function UsersClientView({
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors disabled:opacity-50"
                 >
                   {isPending ? <><Loader2 className="w-4 h-4 animate-spin"/> Saving...</> : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= REPEAT ORDER MODAL ======================= */}
+      {isRenewModalOpen && renewingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <RefreshCcw className="w-5 h-5" /> Repeat Order
+                </h2>
+                <p className="text-emerald-100 text-xs mt-0.5">Daftarkan siklus belajar baru untuk <strong>{renewingUser.name}</strong></p>
+              </div>
+              <button onClick={() => setIsRenewModalOpen(false)} className="text-white/70 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body Form */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!renewProgram || !renewStartDate || !renewDuration || !renewAmount) {
+                  alert("Harap lengkapi semua field.");
+                  return;
+                }
+                startTransition(async () => {
+                  const result = await renewStudent(renewingUser.id, {
+                    programType: renewProgram,
+                    startDate: new Date(renewStartDate),
+                    duration: renewDuration,
+                    amount: Number(renewAmount),
+                    paymentMethod: renewPaymentMethod,
+                  });
+                  if (result.error) {
+                    alert("Error: " + result.error);
+                  } else {
+                    alert(`✅ Repeat Order berhasil! ${renewingUser.name} terdaftar di program ${renewProgram}.`);
+                    setIsRenewModalOpen(false);
+                    setRenewingUser(null);
+                    window.location.reload();
+                  }
+                });
+              }}
+              className="p-6 flex flex-col gap-4"
+            >
+              {/* Program */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Program Baru</label>
+                <select
+                  value={renewProgram}
+                  onChange={(e) => setRenewProgram(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-medium text-slate-700"
+                  required
+                >
+                  <option value="">Pilih program...</option>
+                  <option value="Regular">Regular (1 Bulan)</option>
+                  <option value="Fullday">Fullday</option>
+                  <option value="Asrama">Asrama</option>
+                  <option value="EFK">EFK (6 Bulan)</option>
+                  <option value="EFT">EFT (6 Bulan)</option>
+                  <option value="Private">Private</option>
+                  <option value="TOEFL">TOEFL</option>
+                </select>
+              </div>
+
+              {/* Start Date */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tanggal Mulai</label>
+                <input
+                  type="date"
+                  value={renewStartDate}
+                  onChange={(e) => setRenewStartDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-slate-900"
+                  required
+                />
+              </div>
+
+              {/* Duration */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Durasi</label>
+                <select
+                  value={renewDuration}
+                  onChange={(e) => setRenewDuration(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-medium text-slate-700"
+                  required
+                >
+                  <option value="">Pilih durasi...</option>
+                  <option value="1_WEEK">1 Minggu</option>
+                  <option value="2_WEEKS">2 Minggu</option>
+                  <option value="3_WEEKS">3 Minggu</option>
+                  <option value="1_MONTH">1 Bulan</option>
+                  <option value="2_MONTHS">2 Bulan</option>
+                  <option value="6_MONTHS">6 Bulan</option>
+                </select>
+              </div>
+
+              {/* Amount */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nominal Pembayaran (Rp)</label>
+                <input
+                  type="number"
+                  value={renewAmount}
+                  onChange={(e) => setRenewAmount(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="Contoh: 1500000"
+                  min={0}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-slate-900"
+                  required
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Metode Pembayaran</label>
+                <select
+                  value={renewPaymentMethod}
+                  onChange={(e) => setRenewPaymentMethod(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-medium text-slate-700"
+                >
+                  <option value="CASH">💵 Cash</option>
+                  <option value="TRANSFER">🏦 Transfer Bank</option>
+                  <option value="QRIS">📱 QRIS</option>
+                </select>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsRenewModalOpen(false)}
+                  disabled={isPending}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : "✅ Daftarkan & Bayar"}
                 </button>
               </div>
             </form>

@@ -34,7 +34,15 @@ export default async function TutorDashboardPage() {
       attendances: {
         include: {
           student: {
-            select: { id: true, name: true, activeProgram: true },
+            select: { 
+              id: true, 
+              name: true, 
+              enrollments: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { programType: true }
+              } 
+            },
           },
         },
       },
@@ -81,7 +89,7 @@ export default async function TutorDashboardPage() {
         mergedStudents.push({
           id: studentId,
           name: eligible?.name || fromAttendance?.student?.name || "Unknown",
-          activeProgram: eligible?.activeProgram || fromAttendance?.student?.activeProgram || null,
+          activeProgram: eligible?.activeProgram || fromAttendance?.student?.enrollments?.[0]?.programType || null,
           existingStatus: (attendance?.status as string) || null,
           existingPronunciation: attendance?.pronunciation ?? null,
           existingFluency: attendance?.fluency ?? null,

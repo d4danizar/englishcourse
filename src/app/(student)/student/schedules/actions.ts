@@ -3,16 +3,24 @@
 import { prisma } from "../../../../lib/prisma";
 
 export async function getStudentUpcomingSchedules(studentId: string) {
-  const student = await prisma.user.findUnique({
+  const studentRaw = await prisma.user.findUnique({
     where: { id: studentId },
     select: {
-      activeProgram: true,
-      programBatch: true,
-      batchSchedule: true,
-      startDate: true,
-      endDate: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
     },
   });
+
+  const enrollment = studentRaw?.enrollments[0] || {} as any;
+  const student = {
+    activeProgram: enrollment.programType || null,
+    programBatch: enrollment.programBatch || null,
+    batchSchedule: enrollment.batchSchedule || null,
+    startDate: enrollment.startDate || null,
+    endDate: enrollment.endDate || null,
+  };
 
   console.log("=== DEBUG REVERSE RADAR ===");
   console.log("0. Raw Student Object:", student);

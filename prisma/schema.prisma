@@ -89,23 +89,15 @@ model User {
   createdAt     DateTime @default(now())
 
   // Paket aktif siswa (hanya relevan untuk STUDENT)
-  // Contoh: "Regular", "Fullday", "Asrama", "EFK", "Private", "TOEFL"
-  activeProgram  String?
-  programStartDate  DateTime? // Tanggal masuk / Onboarding (Senin selanjutnya)
-  startDate      DateTime? // Tanggal mulai kursus (legacy, untuk backward comp)
-  endDate        DateTime? // Tanggal lulus/berakhirnya paket (auto-calculated)
-  durationOption String?   // Pilihan durasi: "1_WEEK", "2_WEEKS", "3_WEEKS", "1_MONTH", "2_MONTHS"
-  programBatch   String?   // Sesi/Jam default untuk Regular: "08:00 - 09:30", dll
-  batchSchedule  String?   // Jadwal batch EFK/EFT: "Senin-Rabu", "Selasa-Kamis", "Jumat-Sabtu"
+  // Dipindahkan ke model Enrollment untuk mendukung Multiple Purchases (Repeat Order)
   
   // Student Pool / Kelas Utama (Rombel)
   classGroupId   String?
   classGroup     ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
 
-  // Leave / Make-up Quota
-  leaveQuota     Int       @default(0)
-  leaveUsed      Int       @default(0)
-  totalLeaves    Int       @default(0) // Akumulasi total izin disetujui (dikonversi ke penambahan extendedEndDate)
+  // Sub-relasi Siklus Belajar
+  enrollments    Enrollment[]
+  payments       Payment[]
 
   // Relasi
   sessionsTaught Session[]      @relation("SessionTutor")  // Sesi yang diajar (untuk TUTOR)
@@ -332,4 +324,52 @@ model DailyHomework {
   updatedAt DateTime       @updatedAt
 
   @@unique([date, branch]) // 1 cabang hanya punya 1 homework per hari
+}
+
+// -------------------------------------------------------------
+// ENROLLMENT & PAYMENT MODELS (NEW THE GRAND REFACTOR)
+// -------------------------------------------------------------
+
+model Enrollment {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programType     String
+  durationOption  String?  // Pilihan durasi: "1_WEEK", "2_WEEKS", "3_WEEKS", "1_MONTH", "2_MONTHS"
+  programBatch    String?  // Sesi/Jam default untuk Regular
+  batchSchedule   String?  // Jadwal batch EFK/EFT
+  
+  // Waktu
+  programStartDate DateTime? 
+  startDate        DateTime
+  endDate          DateTime?
+  
+  // Izin & Absen khusus Enrollment ini
+  leaveQuota      Int      @default(0)
+  leaveUsed       Int      @default(0)
+  totalLeaves     Int      @default(0)
+  
+  status          String   @default("ACTIVE") // ACTIVE, GRADUATED, DROPOUT, ON_LEAVE
+  
+  payments        Payment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Payment {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  enrollmentId    String?
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  
+  amount          Float
+  paymentMethod   String      // CASH, TRANSFER, QURIS
+  status          String      @default("PAID") // PAID, PENDING, FAILED, REFUNDED
+  description     String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }

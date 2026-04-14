@@ -9,40 +9,38 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
   // Common where clause to only fetch active students
   const activeStudentWhere = {
     role: "STUDENT" as const,
-    OR: [
-      { endDate: { gte: new Date() } },
-      { endDate: null }
-    ]
+    enrollments: {
+      some: {
+        OR: [
+          { endDate: { gte: new Date() } },
+          { endDate: null }
+        ],
+        ...(group === "Conversation" ? {
+          programType: {
+            in: ["Regular", "Fullday", "Asrama", "English on Saturday"]
+          }
+        } : {
+          programType: group
+        })
+      }
+    }
   };
 
-  let activeProgramWhere: any = {};
-
-  if (group === "Conversation") {
-    // Conversation includes these programs
-    activeProgramWhere = {
-      activeProgram: {
-        in: ["Regular", "Fullday", "Asrama", "English on Saturday"]
-      }
-    };
-  } else {
-    // Exact match for EFK, EFT, Private
-    activeProgramWhere = {
-      activeProgram: group
-    };
-  }
-
   // Fetch students matching the group
-  const students = await prisma.user.findMany({
-    where: {
-      ...activeStudentWhere,
-      ...activeProgramWhere
-    },
+  const studentsRaw = await prisma.user.findMany({
+    where: activeStudentWhere,
     select: {
       id: true,
       name: true,
-      activeProgram: true,
-      programBatch: true,
-      batchSchedule: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          programBatch: true,
+          batchSchedule: true,
+        }
+      },
       StudentEvaluations: {
         where: { tutorId },
         orderBy: { createdAt: "desc" },
@@ -52,7 +50,12 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
     orderBy: { name: "asc" },
   });
 
-  return students;
+  return studentsRaw.map(s => ({
+    ...s,
+    activeProgram: s.enrollments?.[0]?.programType || null,
+    programBatch: s.enrollments?.[0]?.programBatch || null,
+    batchSchedule: s.enrollments?.[0]?.batchSchedule || null,
+  }));
 }
 
 export async function submitDescriptiveEvaluation(formData: FormData) {

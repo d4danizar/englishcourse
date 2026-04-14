@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { Role, BranchLocation } from "@prisma/client";
 import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
+import { calculateEndDate } from "@/lib/utils/date-helpers";
 
 export async function createUser(formData: FormData) {
   try {
@@ -18,6 +19,7 @@ export async function createUser(formData: FormData) {
     const endDateStr = formData.get("endDate") as string;
     const durationOption = formData.get("durationOption") as string;
     const batchSchedule = formData.get("batchSchedule") as string;
+    const programBatch = formData.get("programBatch") as string;
 
     if (!name || !email || !role) {
       return { error: "Name, email, and role are required." };
@@ -36,13 +38,21 @@ export async function createUser(formData: FormData) {
         role,
         branch,
         passwordHash,
-        activeProgram: isStudent && activeProgram ? activeProgram : null,
-        startDate: isStudent && startDateStr ? new Date(startDateStr) : null,
-        endDate: isStudent && endDateStr ? new Date(endDateStr) : null,
-        durationOption: isStudent && durationOption ? durationOption : null,
-        batchSchedule: isStudent && batchSchedule ? batchSchedule : null,
-        leaveQuota: isStudent ? calculateLeaveQuota(activeProgram, durationOption) : 0,
-        leaveUsed: 0,
+        ...(isStudent && activeProgram && startDateStr ? {
+          enrollments: {
+            create: {
+              programType: activeProgram,
+              durationOption: durationOption || null,
+              programBatch: programBatch || null,
+              batchSchedule: batchSchedule || null,
+              startDate: new Date(startDateStr),
+              endDate: endDateStr ? new Date(endDateStr) : null,
+              leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+              leaveUsed: 0,
+              totalLeaves: 0,
+            }
+          }
+        } : {})
       },
     });
 
@@ -90,16 +100,46 @@ export async function editUser(formData: FormData) {
         phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
         role,
         branch,
-        activeProgram: isStudent && activeProgram ? activeProgram : null,
-        programBatch: isStudent && programBatch ? programBatch : null,
-        startDate: isStudent && startDateStr ? new Date(startDateStr) : null,
-        endDate: isStudent && endDateStr ? new Date(endDateStr) : null,
-        durationOption: isStudent && durationOption ? durationOption : null,
-        batchSchedule: isStudent && batchSchedule ? batchSchedule : null,
-        leaveQuota: isStudent ? calculateLeaveQuota(activeProgram, durationOption) : 0,
-        totalLeaves: isStudent ? totalLeaves : 0,
       },
     });
+
+    if (isStudent && activeProgram && startDateStr) {
+      // Find latest enrollment to update
+      const latestEnrollment = await prisma.enrollment.findFirst({
+        where: { userId: id },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (latestEnrollment) {
+        await prisma.enrollment.update({
+          where: { id: latestEnrollment.id },
+          data: {
+            programType: activeProgram,
+            programBatch: programBatch || null,
+            startDate: new Date(startDateStr),
+            endDate: endDateStr ? new Date(endDateStr) : null,
+            durationOption: durationOption || null,
+            batchSchedule: batchSchedule || null,
+            leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+            totalLeaves: totalLeaves,
+          }
+        });
+      } else {
+        await prisma.enrollment.create({
+          data: {
+            userId: id,
+            programType: activeProgram,
+            programBatch: programBatch || null,
+            startDate: new Date(startDateStr),
+            endDate: endDateStr ? new Date(endDateStr) : null,
+            durationOption: durationOption || null,
+            batchSchedule: batchSchedule || null,
+            leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+            totalLeaves: totalLeaves,
+          }
+        });
+      }
+    }
 
     revalidatePath("/admin/users");
     return { success: true };
@@ -139,5 +179,57 @@ export async function deleteUser(userId: string) {
     return { success: true };
   } catch (error: any) {
     return { error: error.message || "Failed to delete user. Please check related records." };
+  }
+}
+
+export async function renewStudent(
+  userId: string,
+  data: {
+    programType: string;
+    startDate: Date;
+    duration: string;
+    amount: number;
+    paymentMethod: string;
+  }
+) {
+  try {
+    const calculatedEndDate = calculateEndDate(new Date(data.startDate), data.duration);
+    const calculatedLeaveQuota = calculateLeaveQuota(data.programType, data.duration);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Create New Enrollment
+      const newEnrollment = await tx.enrollment.create({
+        data: {
+          userId,
+          programType: data.programType,
+          startDate: new Date(data.startDate),
+          endDate: calculatedEndDate,
+          durationOption: data.duration, // Pass the duration option
+          totalLeaves: 0,
+          leaveQuota: calculatedLeaveQuota,
+          leaveUsed: 0,
+          status: "ACTIVE",
+        },
+      });
+
+      // 2. Create Payment Record tied to the new enrollment
+      await tx.payment.create({
+        data: {
+          userId,
+          enrollmentId: newEnrollment.id,
+          amount: data.amount,
+          paymentMethod: data.paymentMethod,
+          status: "PAID",
+          description: `Repeat Order - ${data.programType}`,
+        },
+      });
+    });
+
+    revalidatePath("/admin/users");
+    revalidatePath("/student/dashboard"); // Refresh if student is currently looking
+    return { success: true };
+  } catch (error: any) {
+    console.error("renewStudent error:", error);
+    return { error: error.message || "Failed to renew student." };
   }
 }

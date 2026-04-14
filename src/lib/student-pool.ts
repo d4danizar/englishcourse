@@ -70,34 +70,56 @@ export async function getEligibleStudentsForSession(session: {
   const branchFilter = await getBranchFilter();
 
   // Broad fetch: all active students with matching programs + valid date range
-  const candidateStudents = await prisma.user.findMany({
+  const candidateStudentsRaw = await prisma.user.findMany({
     where: {
       ...branchFilter,
       role: "STUDENT",
-      activeProgram: { in: eligiblePrograms },
-      OR: [
-        { startDate: null },
-        { startDate: { lte: sessionEndOfDay } },
-      ],
-      AND: [
-        {
+      enrollments: {
+        some: {
+          programType: { in: eligiblePrograms },
           OR: [
-            { endDate: null },
-            { endDate: { gte: sessionStartOfDay } },
+            { startDate: { lte: sessionEndOfDay } },
           ],
-        },
-      ],
+          AND: [
+            {
+              OR: [
+                { endDate: null },
+                { endDate: { gte: sessionStartOfDay } },
+              ],
+            },
+          ],
+        }
+      }
     },
     select: {
       id: true,
       name: true,
-      activeProgram: true,
-      programBatch: true,
-      batchSchedule: true,
-      endDate: true,
-      startDate: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          programBatch: true,
+          batchSchedule: true,
+          endDate: true,
+          startDate: true,
+        }
+      }
     },
     orderBy: { name: "asc" },
+  });
+
+  const candidateStudents = candidateStudentsRaw.map(user => {
+    const enrollment = user.enrollments[0] || {} as any;
+    return {
+      id: user.id,
+      name: user.name,
+      activeProgram: enrollment.programType || null,
+      programBatch: enrollment.programBatch || null,
+      batchSchedule: enrollment.batchSchedule || null,
+      startDate: enrollment.startDate || null,
+      endDate: enrollment.endDate || null,
+    };
   });
 
   // Precise filtering based on business rules
@@ -248,9 +270,24 @@ export async function getGlobalPoolForSession({
       }
     },
     take: 10,
-    select: { id: true, name: true, activeProgram: true, programBatch: true },
+    select: { 
+      id: true, 
+      name: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          programBatch: true
+        }
+      }
+    },
     orderBy: { name: "asc" },
   });
 
-  return pool.map((s) => ({ id: s.id, name: s.name, activeProgram: s.activeProgram }));
+  return pool.map((s) => ({ 
+    id: s.id, 
+    name: s.name, 
+    activeProgram: s.enrollments?.[0]?.programType || null 
+  }));
 }
