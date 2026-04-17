@@ -183,12 +183,17 @@ export async function renewStudent(
     await prisma.user.update({
       where: { id: userId },
       data: {
-        activeProgram: data.programType,
-        startDate: new Date(data.startDate),
-        endDate: calculatedEndDate,
-        durationOption: data.duration,
-        leaveQuota: calculatedLeaveQuota,
-        leaveUsed: 0,
+        enrollments: {
+          create: {
+            programType: data.programType,
+            startDate: new Date(data.startDate),
+            endDate: calculatedEndDate,
+            durationOption: data.duration,
+            leaveQuota: calculatedLeaveQuota,
+            leaveUsed: 0,
+            status: "ACTIVE"
+          }
+        }
       },
     });
 
