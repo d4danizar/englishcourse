@@ -8,13 +8,232 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// --- ENUMS ---
+model User {
+  id                 String                  @id @default(cuid())
+  name               String
+  email              String                  @unique
+  passwordHash       String
+  role               Role                    @default(STUDENT)
+  createdAt          DateTime                @default(now())
+  phoneNumber        String?
+  dashboardLayout    Json?
+  classGroupId       String?
+  branch             BranchLocation          @default(KARTASURA)
+  announcements      Announcement[]
+  attendances        Attendance[]
+  cashflows          Cashflow[]
+  StudentEvaluations DescriptiveEvaluation[] @relation("StudentEvaluations")
+  TutorEvaluations   DescriptiveEvaluation[] @relation("TutorEvaluations")
+  enrollments        Enrollment[]
+  leadsHandled       Lead[]                  @relation("UserLeads")
+  Payment            Payment[]
+  sessionsTaught     Session[]               @relation("SessionTutor")
+  targets            StaffTarget[]
+  classGroup         ClassGroup?             @relation(fields: [classGroupId], references: [id])
+  assignedSessions   Session[]               @relation("SessionAssignments")
+}
+
+model DescriptiveEvaluation {
+  id            String   @id @default(cuid())
+  fluency       String
+  pronunciation String
+  vocabulary    String
+  notes         String?
+  studentId     String
+  tutorId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  student       User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor         User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id               String         @id @default(cuid())
+  date             DateTime
+  timeSlot         String
+  isCompleted      Boolean        @default(false)
+  tutorId          String
+  programType      String
+  title            String
+  classGroupId     String?
+  branch           BranchLocation @default(KARTASURA)
+  topicOffset      Int            @default(0)
+  attendances      Attendance[]
+  classGroup       ClassGroup?    @relation(fields: [classGroupId], references: [id])
+  tutor            User           @relation("SessionTutor", fields: [tutorId], references: [id])
+  assignedStudents User[]         @relation("SessionAssignments")
+}
+
+model ClassGroup {
+  id        String         @id @default(cuid())
+  name      String
+  program   String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  branch    BranchLocation @default(KARTASURA)
+  sessions  Session[]
+  students  User[]
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  sessionId       String
+  studentId       String
+  status          AttendanceStatus @default(PRESENT)
+  pronunciation   Int?
+  fluency         Int?
+  vocabulary      Int?
+  tutorNotes      String?
+  rescheduleNotes String?
+  isGuest         Boolean          @default(false)
+  session         Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student         User             @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+}
+
+model Announcement {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  targetRole Role?
+  authorId   String
+  createdAt  DateTime @default(now())
+  author     User     @relation(fields: [authorId], references: [id])
+}
+
+model Lead {
+  id         String         @id @default(cuid())
+  name       String
+  whatsapp   String
+  status     LeadStatus     @default(NEW)
+  notes      String?
+  assigneeId String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  branch     BranchLocation @default(KARTASURA)
+  invoices   Invoice[]
+  assignee   User?          @relation("UserLeads", fields: [assigneeId], references: [id])
+}
+
+model StaffTarget {
+  id           String        @id @default(cuid())
+  userId       String
+  period       String
+  title        String
+  targetValue  Float
+  currentValue Float         @default(0)
+  unitName     String
+  trackingType TrackingType  @default(MANUAL)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  logs         ProgressLog[]
+  user         User          @relation(fields: [userId], references: [id])
+}
+
+model ProgressLog {
+  id         String      @id @default(cuid())
+  targetId   String
+  valueAdded Float
+  notes      String?
+  proofLink  String?
+  createdAt  DateTime    @default(now())
+  target     StaffTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id            String         @id @default(cuid())
+  invoiceNumber String         @unique
+  leadId        String
+  programName   String
+  amountDue     Float
+  status        InvoiceStatus  @default(PENDING)
+  paymentMethod String?
+  paymentProof  String?
+  studentData   Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  paidAmount    Int            @default(0)
+  totalAmount   Int            @default(0)
+  branch        BranchLocation @default(KARTASURA)
+  cashflows     Cashflow[]
+  lead          Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model Cashflow {
+  id           String              @id @default(cuid())
+  type         TransactionType
+  category     TransactionCategory
+  amount       Int
+  description  String
+  date         DateTime            @default(now())
+  invoiceId    String?
+  recordedById String?
+  branch       BranchLocation      @default(KARTASURA)
+  invoice      Invoice?            @relation(fields: [invoiceId], references: [id])
+  recordedBy   User?               @relation(fields: [recordedById], references: [id])
+}
+
+model GlobalHoliday {
+  id        String   @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+}
+
+model Enrollment {
+  id               String    @id @default(cuid())
+  userId           String
+  programType      String
+  durationOption   String?
+  programBatch     String?
+  batchSchedule    String?
+  programStartDate DateTime?
+  startDate        DateTime
+  endDate          DateTime?
+  leaveQuota       Int       @default(0)
+  leaveUsed        Int       @default(0)
+  totalLeaves      Int       @default(0)
+  status           String    @default("ACTIVE")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Payment          Payment[]
+}
+
+model DailyHomework {
+  id        String         @id
+  date      DateTime
+  branch    BranchLocation @default(KARTASURA)
+  content   String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime
+
+  @@unique([date, branch])
+}
+
+model Payment {
+  id            String      @id
+  userId        String
+  enrollmentId  String?
+  amount        Float
+  paymentMethod String
+  status        String      @default("PAID")
+  description   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime
+  Enrollment    Enrollment? @relation(fields: [enrollmentId], references: [id])
+  User          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 enum Role {
   SUPER_ADMIN
   MANAGER
   CS
   MARKETING
   CREATOR
+  HEAD_TUTOR
   TUTOR
   STUDENT
 }
@@ -29,23 +248,23 @@ enum LeadStatus {
 
 enum InvoiceStatus {
   PENDING
-  WAITING_CONFIRMATION
-  DP_PAID
   PAID
   CANCELLED
+  WAITING_CONFIRMATION
+  DP_PAID
 }
 
 enum TrackingType {
-  MANUAL          // Di-update oleh user via UI (Contoh: Creator upload video)
-  AUTO_LEAD       // Di-update otomatis oleh sistem saat ada lead baru
-  AUTO_REVENUE    // Di-update otomatis saat invoice lunas
-  AUTO_ATTENDANCE // Di-update otomatis saat kelas selesai
+  MANUAL
+  AUTO_LEAD
+  AUTO_REVENUE
+  AUTO_ATTENDANCE
 }
 
 enum AttendanceStatus {
   PRESENT
   ABSENT
-  EXCUSED // Izin
+  EXCUSED
   SICK
 }
 
@@ -68,269 +287,4 @@ enum BranchLocation {
   KARTASURA
   CABANG_2
   CABANG_3
-}
-
-// ============================================================
-// --- MODELS (Open Pool / Gym Membership Architecture) ---
-// ============================================================
-
-// TODO: Run 'npx prisma db push' after saving this schema
-
-// User: Admin, Tutor, atau Student
-model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  passwordHash  String
-  phoneNumber   String?
-  role          Role     @default(STUDENT)
-  branch        BranchLocation @default(KARTASURA)
-  createdAt     DateTime @default(now())
-
-  // Student Pool / Kelas Utama (Rombel)
-  classGroupId   String?
-  classGroup     ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
-
-  // Relasi
-  enrollments        Enrollment[]
-  sessionsTaught     Session[]      @relation("SessionTutor")  // Sesi yang diajar (untuk TUTOR)
-  attendances        Attendance[]                                // Kehadiran siswa (untuk STUDENT)
-  announcements      Announcement[]                              // Pengumuman (untuk ADMIN)
-  StudentEvaluations DescriptiveEvaluation[] @relation("StudentEvaluations")
-  TutorEvaluations   DescriptiveEvaluation[] @relation("TutorEvaluations")
-  assignedSessions   Session[] @relation("SessionAssignments")
-
-  // CRM & Dashboard Preferences
-  dashboardLayout    Json?
-  leadsHandled       Lead[]         @relation("UserLeads")
-
-  // KPI Engine
-  targets            StaffTarget[]
-
-  // Financial
-  cashflows          Cashflow[]
-}
-
-model DescriptiveEvaluation {
-  id            String   @id @default(cuid())
-  fluency       String   @db.Text
-  pronunciation String   @db.Text
-  vocabulary    String   @db.Text
-  notes         String?  @db.Text
-  studentId     String
-  tutorId       String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  student       User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor         User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
-}
-
-// Session: Entitas utama jadwal (seperti "kelas gym" yang dijadwalkan)
-// Setiap sesi adalah 1 pertemuan independen, tidak terikat ke "Kelas" tertentu.
-model Session {
-  id          String   @id @default(cuid())
-  title       String   // cth: "Conversation - Room A", "Grammar Intensif - Room B"
-  date        DateTime // Tanggal sesi berlangsung
-  timeSlot    String   // cth: "08:00 - 09:30"
-  programType String   // cth: "Conversation", "Grammar", "EFK", "Private", "TOEFL"
-  branch      BranchLocation @default(KARTASURA)
-  isCompleted Boolean  @default(false) // true = tutor sudah submit absen (trigger payroll)
-
-  // Relasi Rombel
-  classGroupId String?
-  classGroup   ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
-
-  // Tutor yang mengajar sesi ini
-  tutorId String
-  tutor   User   @relation("SessionTutor", fields: [tutorId], references: [id])
-
-  // Relasi
-  attendances Attendance[] // Siswa yang hadir di sesi ini
-  assignedStudents User[]  @relation("SessionAssignments")
-}
-
-// Model Rombongan Belajar (Rombel)
-model ClassGroup {
-  id          String   @id @default(cuid())
-  name        String   // misal: "Reguler - Sesi 1"
-  program     String   // misal: "Regular", "Fullday"
-  branch      BranchLocation @default(KARTASURA)
-  
-  // Relasi
-  students    User[]   // Siswa tetap di rombel ini
-  sessions    Session[] // Sesi kelas mingguan rombel ini
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// Attendance: Tiket masuk siswa + Rapor evaluasi per sesi
-// Ini adalah "join table" antara Student dan Session,
-// sekaligus menyimpan hasil evaluasi granular dari tutor.
-model Attendance {
-  id        String           @id @default(cuid())
-  sessionId String
-  studentId String
-  status    AttendanceStatus @default(PRESENT)
-  isGuest   Boolean          @default(false) // Tandai jika ini siswa sit-in
-
-  // Evaluasi Speaking (Opsional, diisi tutor saat submit attendance)
-  pronunciation Int?    // Skala 1-10
-  fluency       Int?    // Skala 1-10
-  vocabulary    Int?    // Skala 1-10
-  tutorNotes    String? @db.Text
-
-  // Catatan reschedule (khusus Private Class)
-  rescheduleNotes String? @db.Text
-
-  // Relasi
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student User    @relation(fields: [studentId], references: [id])
-
-  // 1 siswa tidak bisa punya 2 record attendance di sesi yang sama
-  @@unique([sessionId, studentId])
-}
-
-// Sistem Pengumuman (Admin broadcast ke Tutor/Student)
-model Announcement {
-  id         String   @id @default(cuid())
-  title      String
-  content    String   @db.Text
-  targetRole Role?    // null = untuk semua role
-  authorId   String
-  createdAt  DateTime @default(now())
-
-  author User @relation(fields: [authorId], references: [id])
-}
-
-// ============================================================
-// --- CRM & LEADS ---
-// ============================================================
-
-model Lead {
-  id          String       @id @default(cuid())
-  name        String
-  whatsapp    String
-  status      LeadStatus   @default(NEW)
-  notes       String?      @db.Text
-  branch      BranchLocation @default(KARTASURA)
-  
-  // Relasi ke CS/Admin yang menangani
-  assigneeId  String?
-  assignee    User?        @relation("UserLeads", fields: [assigneeId], references: [id])
-
-  invoices    Invoice[]
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-}
-
-// ── KPI / WIG Universal Target Engine ────────────────────────────────────────
-model StaffTarget {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id])
-
-  period       String       // Format: "MM-YYYY" (Contoh: "03-2026")
-  title        String       // Nama KPI (Contoh: "Upload Tiktok", "Target Omzet")
-  targetValue  Float        // Float untuk mendukung nominal uang besar
-  currentValue Float        @default(0)
-  unitName     String       // Satuan (Contoh: "Video", "Rupiah", "Leads")
-
-  trackingType TrackingType @default(MANUAL)
-  // proofLink dipindah ke ProgressLog untuk audit trail per-hari
-
-  logs         ProgressLog[]
-
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-}
-
-// ── Audit Trail: daily progress logs ─────────────────────────────────────────
-model ProgressLog {
-  id         String      @id @default(cuid())
-  targetId   String
-  target     StaffTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
-
-  valueAdded Float       // Angka penambahan hari ini
-  notes      String?     @db.Text  // Catatan pekerjaan hari ini
-  proofLink  String?     @db.Text  // Link bukti harian (GDrive/Tiktok)
-
-  createdAt  DateTime    @default(now())
-}
-
-// ── Invoice / Tagihan Siswa ───────────────────────────────────────────────────
-model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique // Format: INV-20260324-001
-
-  // Relasi ke Lead (prospek yang ditagih)
-  leadId        String
-  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  // Detail program & pembayaran
-  programName   String
-  amountDue     Float
-  totalAmount   Int           @default(0)
-  paidAmount    Int           @default(0)
-  status        InvoiceStatus @default(PENDING)
-  branch        BranchLocation @default(KARTASURA)
-
-  paymentMethod String?      // "MANUAL_TRANSFER" | "CASH_ON_SITE" | "GATEWAY"
-  paymentProof  String?      @db.Text // URL foto struk transfer
-
-  // Data form pendaftaran (alamat, asal sekolah, dll)
-  studentData   Json?
-
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  cashflows     Cashflow[]
-}
-
-// ── Financial / Cashflow ──────────────────────────────────────────────────────
-model Cashflow {
-  id           String              @id @default(cuid())
-  type         TransactionType
-  category     TransactionCategory
-  amount       Int
-  description  String
-  date         DateTime            @default(now())
-  
-  invoiceId    String?
-  invoice      Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-
-  recordedById String?
-  recordedBy   User?               @relation(fields: [recordedById], references: [id], onDelete: SetNull)
-}
-
-model GlobalHoliday {
-  id        String   @id @default(uuid())
-  name      String   // e.g. "Libur Idul Fitri"
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime @default(now())
-}
-
-// ============================================================
-// --- ENROLLMENT (Paket Belajar Siswa) ---
-// ============================================================
-model Enrollment {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  programType    String   // e.g., "Regular", "Fullday", "Asrama", "English on Saturday"
-  programBatch   String?  // e.g., "08:00 - 09:30"
-  batchSchedule  String?  // e.g., "Senin-Jumat"
-
-  startDate      DateTime
-  endDate        DateTime?
-  durationOption String?  // e.g., "1_MONTH"
-  totalLeaves    Int      @default(0)
-  status         String   @default("ACTIVE") // "ACTIVE", "EXPIRED"
-
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 }

@@ -70,19 +70,16 @@ export async function getEligibleStudentsForSession(session: {
   const candidateStudents = await prisma.user.findMany({
     where: {
       role: "STUDENT",
-      activeProgram: { in: eligiblePrograms },
-      OR: [
-        { startDate: null },
-        { startDate: { lte: sessionEndOfDay } },
-      ],
-      AND: [
-        {
+      enrollments: {
+        some: {
+          programType: { in: eligiblePrograms },
+          startDate: { lte: sessionEndOfDay }, // startDate sekarang wajib (not null) di schema
           OR: [
             { endDate: null },
-            { endDate: { gte: sessionStartOfDay } },
-          ],
-        },
-      ],
+            { endDate: { gte: sessionStartOfDay } }
+          ]
+        }
+      }
     },
     select: {
       id: true,
