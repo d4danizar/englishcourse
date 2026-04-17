@@ -278,13 +278,17 @@ export async function approvePayment(invoiceId: string) {
           name: studentName,
           role: "STUDENT",
           branch: invoice.branch,
-          activeProgram: finalActiveProgram,
-          durationOption: finalDurationOption,
-          programBatch: finalBatch,
-          batchSchedule: batchSchedule,
-          startDate: calculatedStartDate,
-          endDate: calculatedEndDate,
-          leaveQuota: calculatedLeaveQuota,
+          enrollments: {
+            create: {
+              programType: finalActiveProgram,
+              durationOption: finalDurationOption,
+              programBatch: finalBatch,
+              batchSchedule: batchSchedule,
+              startDate: calculatedStartDate,
+              endDate: calculatedEndDate,
+              leaveQuota: calculatedLeaveQuota,
+            }
+          }
         },
         create: {
           name: studentName,
@@ -293,15 +297,19 @@ export async function approvePayment(invoiceId: string) {
           phoneNumber: whatsapp,
           role: "STUDENT",
           branch: invoice.branch,
-          activeProgram: finalActiveProgram,
-          durationOption: finalDurationOption,
-          programBatch: finalBatch,
-          batchSchedule: batchSchedule,
-          startDate: calculatedStartDate,
-          endDate: calculatedEndDate,
-          leaveQuota: calculatedLeaveQuota,
-          leaveUsed: 0,
-        } as any,
+          enrollments: {
+            create: {
+              programType: finalActiveProgram,
+              durationOption: finalDurationOption,
+              programBatch: finalBatch,
+              batchSchedule: batchSchedule,
+              startDate: calculatedStartDate,
+              endDate: calculatedEndDate,
+              leaveQuota: calculatedLeaveQuota,
+              leaveUsed: 0,
+            }
+          }
+        }
       });
 
       // 4. Mark the related Lead as CLOSED_WON

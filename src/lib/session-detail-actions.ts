@@ -48,7 +48,13 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
       assignedStudents: { select: { id: true } },
       attendances: {
         include: {
-          student: { select: { id: true, name: true, activeProgram: true } },
+          student: { 
+            select: { 
+              id: true, 
+              name: true, 
+              enrollments: { orderBy: { createdAt: "desc" }, take: 1, select: { programType: true } }
+            } 
+          },
         },
         orderBy: { student: { name: "asc" } },
       },
@@ -93,7 +99,7 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
       id: a.id,
       studentId: a.student.id,
       studentName: a.student.name,
-      studentProgram: a.student.activeProgram,
+      studentProgram: a.student.enrollments?.[0]?.programType || null,
       status: a.status,
       pronunciation: a.pronunciation,
       fluency: a.fluency,

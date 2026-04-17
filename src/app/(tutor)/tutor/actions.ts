@@ -42,13 +42,21 @@ export async function submitAttendance(formData: FormData) {
           // Fetch data murid untuk cek kuota
           const student = await tx.user.findUnique({
             where: { id: studentId },
-            select: { leaveQuota: true, leaveUsed: true, endDate: true }
+            select: { 
+              enrollments: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { id: true, leaveQuota: true, leaveUsed: true, endDate: true }
+              }
+            }
           });
 
-          if (student && student.endDate) {
-            if (student.leaveUsed < student.leaveQuota) {
+          const currentEnrollment = student?.enrollments?.[0];
+
+          if (currentEnrollment && currentEnrollment.endDate) {
+            if (currentEnrollment.leaveUsed < currentEnrollment.leaveQuota) {
               // KUOTA MASIH ADA: Geser endDate +1 Hari
-              let newEndDate = new Date(student.endDate);
+              let newEndDate = new Date(currentEnrollment.endDate);
               newEndDate.setDate(newEndDate.getDate() + 1); // Tambah 1 hari
 
               if (newEndDate.getDay() === 0) {
@@ -56,10 +64,10 @@ export async function submitAttendance(formData: FormData) {
                 newEndDate.setDate(newEndDate.getDate() + 1);
               }
 
-              await tx.user.update({
-                where: { id: studentId },
+              await tx.enrollment.update({
+                where: { id: currentEnrollment.id },
                 data: {
-                  leaveUsed: student.leaveUsed + 1,
+                  leaveUsed: currentEnrollment.leaveUsed + 1,
                   endDate: newEndDate
                 }
               });
@@ -125,26 +133,41 @@ export async function searchStudentsForAttendance(
   try {
     const isSearching = query && query.trim() !== "";
 
-    const students = await prisma.user.findMany({
+    const rawStudents = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        endDate: { gte: new Date() }, // Masih aktif
         // LOGIKA BERCABANG
         ...(isSearching
           ? {
             // Pencarian spesifik nama lintas batch & program (sit-in guests super liar)
             name: { contains: query.trim(), mode: "insensitive" },
+            enrollments: { some: { endDate: { gte: new Date() } } } // Opsional: masih aktif
           }
           : {
             // Initial load list murid resmi TERBATAS program jadwalnya
-            activeProgram: programName,
-            programBatch: { contains: batch, mode: "insensitive" },
+            enrollments: {
+              some: {
+                endDate: { gte: new Date() }, // Masih aktif
+                programType: programName,
+                programBatch: { contains: batch, mode: "insensitive" },
+              }
+            }
           }),
       },
       take: query && query.trim() !== "" ? 10 : undefined,
-      select: { id: true, name: true, activeProgram: true },
+      select: { 
+        id: true, 
+        name: true, 
+        enrollments: { orderBy: { createdAt: "desc" }, take: 1, select: { programType: true } }
+      },
       orderBy: { name: "asc" },
     });
+
+    const students = rawStudents.map(student => ({
+      id: student.id,
+      name: student.name,
+      activeProgram: student.enrollments?.[0]?.programType || null
+    }));
 
     return students;
   } catch (error) {
