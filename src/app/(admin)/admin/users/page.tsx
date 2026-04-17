@@ -12,6 +12,12 @@ export default async function AdminUsersPage() {
   const rawUsers = await prisma.user.findMany({
     where: { ...branchFilter },
     orderBy: { createdAt: "desc" },
+    include: {
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      }
+    }
   });
 
   const users = rawUsers.map(user => ({
@@ -22,12 +28,12 @@ export default async function AdminUsersPage() {
     role: user.role,
     branch: user.branch,
     createdAt: user.createdAt.toISOString(),
-    activeProgram: user.activeProgram || "-",
-    programBatch: user.programBatch || null,
-    startDate: user.startDate ? user.startDate.toISOString() : null,
-    endDate: user.endDate ? user.endDate.toISOString() : null,
-    durationOption: user.durationOption || null,
-    batchSchedule: user.batchSchedule || null,
+    activeProgram: user.enrollments?.[0]?.programType || "-",
+    programBatch: user.enrollments?.[0]?.programBatch || null,
+    startDate: user.enrollments?.[0]?.startDate ? user.enrollments[0].startDate.toISOString() : null,
+    endDate: user.enrollments?.[0]?.endDate ? user.enrollments[0].endDate.toISOString() : null,
+    durationOption: user.enrollments?.[0]?.durationOption || null,
+    batchSchedule: user.enrollments?.[0]?.batchSchedule || null,
   }));
 
   return <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} />;

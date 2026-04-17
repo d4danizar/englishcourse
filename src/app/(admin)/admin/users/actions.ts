@@ -107,14 +107,20 @@ export async function editUser(formData: FormData) {
       await prisma.user.update({
         where: { id },
         data: {
-          activeProgram,
-          programBatch: programBatch || null,
-          startDate: new Date(startDateStr),
-          endDate: endDateStr ? new Date(endDateStr) : null,
-          durationOption: durationOption || null,
-          batchSchedule: batchSchedule || null,
-          leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
-          leaveUsed: totalLeaves || 0,
+          // Perbaikan: Properti program tidak lagi bersarang di tabel User.
+          // Kita menyimpan paket belajar di relasi Enrollment.
+          enrollments: {
+            create: {
+              programType: activeProgram,
+              programBatch: programBatch || null,
+              startDate: new Date(startDateStr),
+              endDate: endDateStr ? new Date(endDateStr) : null,
+              durationOption: durationOption || null,
+              batchSchedule: batchSchedule || null,
+              leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+              leaveUsed: totalLeaves || 0,
+            }
+          }
         }
       });
     }
