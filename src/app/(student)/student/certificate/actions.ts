@@ -4,20 +4,34 @@ import { prisma } from "../../../../lib/prisma";
 
 export async function generateCertificateData(studentId: string) {
   // 1. Fetch Student Data
-  const student = await prisma.user.findUnique({
+  const rawStudent = await prisma.user.findUnique({
     where: { id: studentId },
     select: {
       id: true,
       name: true,
-      activeProgram: true,
-      startDate: true,
-      endDate: true,
+      enrollments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          startDate: true,
+          endDate: true,
+        }
+      }
     },
   });
 
-  if (!student) {
+  if (!rawStudent) {
     throw new Error("Student not found");
   }
+
+  const student = {
+    id: rawStudent.id,
+    name: rawStudent.name,
+    activeProgram: rawStudent.enrollments?.[0]?.programType || null,
+    startDate: rawStudent.enrollments?.[0]?.startDate || null,
+    endDate: rawStudent.enrollments?.[0]?.endDate || null,
+  };
 
   // Determine eligibility (has the program ended?)
   // We check if endDate is in the past compared to today.
