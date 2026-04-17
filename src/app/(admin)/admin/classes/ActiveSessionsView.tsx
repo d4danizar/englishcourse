@@ -14,9 +14,7 @@ type SessionData = {
   programType: string;
   tutorId: string;
   isCompleted: boolean;
-  topicOffset: number;
   tutor: { name: string };
-  topicData: TodayTopic | null;
 };
 
 type TutorOption = { id: string; name: string };
@@ -292,12 +290,6 @@ export function ActiveSessionsView({
                                     </h4>
                                     <p className="text-[10px] font-medium text-slate-500 mt-0.5 border-t border-slate-100 pt-1.5 flex flex-col gap-1">
                                       <span>{s.tutor.name}</span>
-                                      {s.topicData && (
-                                        <span className="flex items-center gap-1 text-xs text-slate-500 truncate mt-0.5" title={s.topicData.topicTitle}>
-                                          <BookOpen className="w-3 h-3 shrink-0" />
-                                          <span className="truncate">{s.topicData.topicTitle}</span>
-                                        </span>
-                                      )}
                                     </p>
                                   </div>
                                 </div>

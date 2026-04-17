@@ -14,7 +14,7 @@ export default async function ScheduleManagementPage() {
 
   // 1. Fetch tutors for dropdowns (include HEAD_TUTOR as they also teach)
   const tutors = await prisma.user.findMany({
-    where: { role: { in: ["TUTOR", "HEAD_TUTOR"] }, ...branchFilter },
+    where: { role: "TUTOR", ...branchFilter },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -45,33 +45,11 @@ export default async function ScheduleManagementPage() {
     Asrama: "bg-purple-100 text-purple-700 border-purple-200",
   };
 
-  // Calculate meeting counts and topics
-  // Reverse to process chronologically (oldest first)
-  const sessionsAsc = [...sessions].reverse();
-  const classGroupMeetingCount = new Map<string, number>();
-  const classGroupMaxOffset = new Map<string, number>();
-
-  // Determine max offsets
-  sessionsAsc.forEach(s => {
-    const key = `${s.programType}|${s.timeSlot}`;
-    const maxOff = Math.max(classGroupMaxOffset.get(key) || 0, s.topicOffset);
-    classGroupMaxOffset.set(key, maxOff);
-  });
-
-  const sessionsWithData = sessionsAsc.map(session => {
-    const key = `${session.programType}|${session.timeSlot}`;
-    const currentCount = (classGroupMeetingCount.get(key) || 0) + 1;
-    classGroupMeetingCount.set(key, currentCount);
-    
-    // Calculate topic
-    const maxOffset = classGroupMaxOffset.get(key) || 0;
-    const topicData = getTodayTopic(session.timeSlot, currentCount, maxOffset, session.date);
-    
+  const sessionsWithData = sessions.map(session => {
     return {
-      ...session,
-      topicData
+      ...session
     };
-  }).reverse(); // Reverse back to descending
+  });
 
   const activeSessionsTable = (
     <ActiveSessionsView 

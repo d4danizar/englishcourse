@@ -19,8 +19,8 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   const isDP = invoice.status === "DP_PAID";
   const title = isDP ? "KUITANSI DOWN PAYMENT (DP)" : "KUITANSI LUNAS";
   const stampText = isDP ? "DP LUNAS" : "LUNAS";
-  const stampColor = isDP 
-    ? "text-orange-500 border-orange-500" 
+  const stampColor = isDP
+    ? "text-orange-500 border-orange-500"
     : "text-emerald-500 border-emerald-500";
 
   return (
@@ -37,7 +37,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; border-bottom: none; }
         }
       `}</style>
-      
+
       <div className="absolute top-12 right-12 z-10 pointer-events-none opacity-80 print:right-8">
         <div className={`border-4 rounded-xl border-solid px-6 py-2 text-3xl font-black tracking-widest transform -rotate-12 ${stampColor}`}>
           {stampText}
@@ -46,11 +46,11 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
 
       <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6 w-full">
         <div className="flex items-center gap-4">
-          <Image 
-            src={COMPANY_INFO.logoSmallUrl} 
-            alt="Logo" 
-            width={80} 
-            height={80} 
+          <Image
+            src={COMPANY_INFO.logoSmallUrl}
+            alt="Logo"
+            width={80}
+            height={80}
             className="object-contain"
             unoptimized
             priority
@@ -78,8 +78,8 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         <div className="flex-1">
           <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tanggal Bayar</h3>
           <p className="font-semibold text-sm text-slate-800 leading-none">
-            {new Date(invoice.updatedAt).toLocaleDateString("id-ID", { 
-              year: 'numeric', month: 'short', day: 'numeric' 
+            {new Date(invoice.updatedAt).toLocaleDateString("id-ID", {
+              year: 'numeric', month: 'short', day: 'numeric'
             })}
           </p>
         </div>
@@ -108,12 +108,12 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
             <span className="font-semibold">Total Tagihan:</span>
             <span className="font-bold">Rp {invoice.totalAmount.toLocaleString("id-ID")}</span>
           </div>
-          
+
           <div className="flex justify-between mb-2 items-center">
             <span className="font-bold text-slate-900 text-sm">Total Dibayar:</span>
             <span className="font-black text-slate-900 text-lg">Rp {invoice.paidAmount.toLocaleString("id-ID")}</span>
           </div>
-          
+
           {isDP && (
             <div className="flex justify-between mt-2 pt-2 border-t border-slate-200 text-orange-600 items-center bg-orange-50 p-2 rounded-lg">
               <span className="font-bold text-xs">Sisa Pelunasan:</span>

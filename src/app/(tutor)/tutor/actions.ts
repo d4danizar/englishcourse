@@ -39,34 +39,27 @@ export async function submitAttendance(formData: FormData) {
         const wasAlreadyIzin = existing && (existing.status === "EXCUSED" || existing.status === "SICK");
 
         if (isIzin && !wasAlreadyIzin) {
-          // Fetch data murid untuk cek kuota pada enrollment terbarunya
-          const studentEnrollmentRaw = await tx.user.findUnique({
+          // Fetch data murid untuk cek kuota
+          const student = await tx.user.findUnique({
             where: { id: studentId },
-            include: {
-              enrollments: {
-                orderBy: { createdAt: "desc" },
-                take: 1
-              }
-            }
+            select: { leaveQuota: true, leaveUsed: true, endDate: true }
           });
 
-          const enrollment = studentEnrollmentRaw?.enrollments[0];
-
-          if (enrollment && enrollment.endDate) {
-            if (enrollment.leaveUsed < enrollment.leaveQuota) {
+          if (student && student.endDate) {
+            if (student.leaveUsed < student.leaveQuota) {
               // KUOTA MASIH ADA: Geser endDate +1 Hari
-              let newEndDate = new Date(enrollment.endDate);
+              let newEndDate = new Date(student.endDate);
               newEndDate.setDate(newEndDate.getDate() + 1); // Tambah 1 hari
-              
+
               if (newEndDate.getDay() === 0) {
                 // Jika jatuh pada hari Minggu (0), geser 1 hari lagi ke Senin
                 newEndDate.setDate(newEndDate.getDate() + 1);
               }
 
-              await tx.enrollment.update({
-                where: { id: enrollment.id },
+              await tx.user.update({
+                where: { id: studentId },
                 data: {
-                  leaveUsed: enrollment.leaveUsed + 1,
+                  leaveUsed: student.leaveUsed + 1,
                   endDate: newEndDate
                 }
               });
@@ -131,46 +124,29 @@ export async function searchStudentsForAttendance(
 ) {
   try {
     const isSearching = query && query.trim() !== "";
-    
-    const studentsRaw = await prisma.user.findMany({
+
+    const students = await prisma.user.findMany({
       where: {
         role: "STUDENT",
-        enrollments: {
-          some: {
-            endDate: { gte: new Date() }, // Masih aktif
-            // LOGIKA BERCABANG (beralih ke enrollment)
-            ...(isSearching
-              ? {} // Kalau cari nama, filter program diabaikan
-              : {
-                  programType: programName,
-                  programBatch: { contains: batch, mode: "insensitive" },
-                }),
-          }
-        },
+        endDate: { gte: new Date() }, // Masih aktif
+        // LOGIKA BERCABANG
         ...(isSearching
           ? {
-              // Pencarian spesifik nama lintas batch & program
-              name: { contains: query.trim(), mode: "insensitive" },
-            }
-          : {}),
+            // Pencarian spesifik nama lintas batch & program (sit-in guests super liar)
+            name: { contains: query.trim(), mode: "insensitive" },
+          }
+          : {
+            // Initial load list murid resmi TERBATAS program jadwalnya
+            activeProgram: programName,
+            programBatch: { contains: batch, mode: "insensitive" },
+          }),
       },
       take: query && query.trim() !== "" ? 10 : undefined,
-      select: { 
-        id: true, 
-        name: true, 
-        enrollments: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { programType: true }
-        }
-      },
+      select: { id: true, name: true, activeProgram: true },
       orderBy: { name: "asc" },
     });
 
-    return studentsRaw.map(s => ({
-      ...s,
-      activeProgram: s.enrollments?.[0]?.programType || null
-    }));
+    return students;
   } catch (error) {
     console.error("searchStudentsForAttendance lookup error:", error);
     return [];

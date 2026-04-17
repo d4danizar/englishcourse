@@ -11,11 +11,6 @@ export async function createSession(formData: FormData) {
     const timeSlot = formData.get("timeSlot") as string;
     const programType = formData.get("programType") as string;
     const tutorId = formData.get("tutorId") as string;
-    const topicOffsetStr = formData.get("topicOffset") as string;
-    
-    // UI input represents the "Topic Number" (e.g., 1). Offset is input - 1.
-    const topicOffsetInput = parseInt(topicOffsetStr);
-    const topicOffset = isNaN(topicOffsetInput) ? 0 : Math.max(0, topicOffsetInput - 1);
 
     if (!title || !date || !timeSlot || !programType || !tutorId) {
       return { error: "All fields are required: Title, Date, Time Slot, Program Type, and Tutor." };
@@ -30,7 +25,6 @@ export async function createSession(formData: FormData) {
         timeSlot,
         programType,
         tutorId,
-        topicOffset,
         branch: branchFilter.branch,
       },
     });
@@ -64,7 +58,6 @@ export async function updateSession(formData: FormData) {
     const timeSlot = formData.get("timeSlot") as string;
     const programType = formData.get("programType") as string;
     const tutorId = formData.get("tutorId") as string;
-    const topicOffsetStr = formData.get("topicOffset") as string;
 
     if (!sessionId) return { error: "Session ID is required." };
 
@@ -74,13 +67,6 @@ export async function updateSession(formData: FormData) {
     if (timeSlot) data.timeSlot = timeSlot;
     if (programType) data.programType = programType;
     if (tutorId) data.tutorId = tutorId;
-    
-    if (topicOffsetStr) {
-      const parsedOffset = parseInt(topicOffsetStr);
-      if (!isNaN(parsedOffset)) {
-        data.topicOffset = Math.max(0, parsedOffset - 1);
-      }
-    }
 
     await prisma.session.update({
       where: { id: sessionId },

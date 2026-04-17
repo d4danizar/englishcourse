@@ -12,7 +12,6 @@ const standardNavItems = [
   { label: "Classes", href: "/admin/classes", emoji: "📚" },
   { label: "Users", href: "/admin/users", emoji: "👥" },
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
-  { label: "Homework", href: "/admin/homework", emoji: "📝" },
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
   { label: "Pengaturan", href: "/admin/settings", emoji: "⚙️" },
 ];
@@ -85,9 +84,8 @@ export function AdminSidebar({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] min-w-[260px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:overflow-y-auto md:translate-x-0 ${
-          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] min-w-[260px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:overflow-y-auto md:translate-x-0 ${isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+          }`}
       >
         {/* Brand */}
         <div className="flex justify-between items-center h-20 px-6 border-b border-white/10 bg-black/20 shrink-0">
@@ -159,9 +157,9 @@ export function AdminSidebar({
 
           {/* SaaS Footer Credit */}
           <div className="mt-4 pt-3 border-t border-slate-800 text-center">
-             <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-               Powered by <span className="font-bold text-slate-400">dspaceweb</span>
-             </p>
+            <p className="text-[10px] text-slate-500 font-medium tracking-wide">
+              Powered by <span className="font-bold text-slate-400">dspaceweb</span>
+            </p>
           </div>
         </div>
       </aside>

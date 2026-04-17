@@ -4,7 +4,6 @@ import { prisma } from "../../../../lib/prisma";
 import { redirect } from "next/navigation";
 import { TutorDashboardClient, type SessionTask, type EligibleStudent, type StudentSearchItem } from "./TutorDashboardClient";
 import { getEligibleStudentsForSession, getGlobalPoolForSession } from "../../../../lib/student-pool";
-import { getTodayTopic } from "../../../../lib/syllabus-helpers";
 
 export default async function TutorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -34,14 +33,14 @@ export default async function TutorDashboardPage() {
       attendances: {
         include: {
           student: {
-            select: { 
-              id: true, 
-              name: true, 
+            select: {
+              id: true,
+              name: true,
               enrollments: {
                 orderBy: { createdAt: "desc" },
                 take: 1,
                 select: { programType: true }
-              } 
+              }
             },
           },
         },
@@ -61,7 +60,7 @@ export default async function TutorDashboardPage() {
       });
 
       // Build a set of studentIds that already have attendance records
-      const existingAttendanceMap = new Map(
+      const existingAttendanceMap = new Map<string, any>(
         s.attendances.map((a) => [
           a.studentId,
           {
@@ -103,24 +102,6 @@ export default async function TutorDashboardPage() {
       const globalPoolStudents: StudentSearchItem[] = globalPoolRaw
         .map((gp) => ({ id: gp.id, name: gp.name, activeProgram: gp.activeProgram }));
 
-      // Count how many completed sessions of this programType+timeSlot exist
-      // up to today for meeting count (topic tracking), and find the highest offset
-      const historyAggregation = await prisma.session.aggregate({
-        where: {
-          programType: s.programType,
-          timeSlot: s.timeSlot,
-          branch: s.branch,
-          date: { lte: todayEnd },
-        },
-        _count: { id: true },
-        _max: { topicOffset: true },
-      });
-
-      const meetingCount = historyAggregation._count.id;
-      const topicOffset = historyAggregation._max.topicOffset || 0;
-
-      const todayTopic = getTodayTopic(s.timeSlot, meetingCount, topicOffset, s.date);
-
       return {
         id: s.id,
         timeSlot: s.timeSlot,
@@ -129,12 +110,7 @@ export default async function TutorDashboardPage() {
         programType: s.programType,
         students: mergedStudents,
         globalPoolStudents,
-        todayTopic: todayTopic ? {
-          moduleName: todayTopic.moduleName,
-          topicNumber: todayTopic.topicNumber,
-          topicTitle: todayTopic.topicTitle,
-          totalTopics: todayTopic.totalTopics,
-        } : null,
+        todayTopic: null,
       };
     })
   );

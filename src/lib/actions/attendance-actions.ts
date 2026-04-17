@@ -29,13 +29,9 @@ export async function runDailyAutoAbsence() {
       const eligibleStudents = await prisma.user.findMany({
         where: {
           role: "STUDENT",
-          enrollments: {
-            some: {
-              programType: session.programType,
-              programBatch: { contains: session.timeSlot, mode: "insensitive" }, 
-              endDate: { gte: todayStart }, // Masa aktif masih berlaku
-            }
-          }
+          activeProgram: session.programType,
+          programBatch: { contains: session.timeSlot, mode: "insensitive" },
+          endDate: { gte: todayStart }, // Masa aktif masih berlaku
         },
         select: { id: true }
       });
@@ -60,11 +56,11 @@ export async function runDailyAutoAbsence() {
           alpaCount++;
         }
       }
-      
+
       // Tandai sesi sebagai selesai secara sistem jika belum
       await prisma.session.update({
-         where: { id: session.id },
-         data: { isCompleted: true }
+        where: { id: session.id },
+        data: { isCompleted: true }
       });
     }
 

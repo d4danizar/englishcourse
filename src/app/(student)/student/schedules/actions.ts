@@ -3,24 +3,16 @@
 import { prisma } from "../../../../lib/prisma";
 
 export async function getStudentUpcomingSchedules(studentId: string) {
-  const studentRaw = await prisma.user.findUnique({
+  const student = await prisma.user.findUnique({
     where: { id: studentId },
     select: {
-      enrollments: {
-        orderBy: { createdAt: "desc" },
-        take: 1
-      }
+      activeProgram: true,
+      programBatch: true,
+      batchSchedule: true,
+      startDate: true,
+      endDate: true,
     },
   });
-
-  const enrollment = studentRaw?.enrollments[0] || {} as any;
-  const student = {
-    activeProgram: enrollment.programType || null,
-    programBatch: enrollment.programBatch || null,
-    batchSchedule: enrollment.batchSchedule || null,
-    startDate: enrollment.startDate || null,
-    endDate: enrollment.endDate || null,
-  };
 
   console.log("=== DEBUG REVERSE RADAR ===");
   console.log("0. Raw Student Object:", student);
@@ -99,7 +91,7 @@ export async function getStudentUpcomingSchedules(studentId: string) {
     // -- EFK / EFT
     if (sType === "efk" || sType === "eft") {
       if (prog !== sType) return false;
-      
+
       const batchSchedule = (student.batchSchedule || "").trim().toLowerCase();
       if (sessionDay === 1 || sessionDay === 3) {
         return batchSchedule === "senin-rabu";

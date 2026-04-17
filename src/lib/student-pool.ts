@@ -1,6 +1,5 @@
 import { prisma } from "./prisma";
 import { startOfDay, endOfDay } from "date-fns";
-import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 // Map session programType → eligible student activeProgram values (strict radar)
 function getEligiblePrograms(programType: string): string[] {
@@ -67,29 +66,23 @@ export async function getEligibleStudentsForSession(session: {
   const sessionStartOfDay = startOfDay(session.date);
   const sessionEndOfDay = endOfDay(session.date);
 
-  const branchFilter = await getBranchFilter();
-
   // Broad fetch: all active students with matching programs + valid date range
-  const candidateStudentsRaw = await prisma.user.findMany({
+  const candidateStudents = await prisma.user.findMany({
     where: {
-      ...branchFilter,
       role: "STUDENT",
-      enrollments: {
-        some: {
-          programType: { in: eligiblePrograms },
+      activeProgram: { in: eligiblePrograms },
+      OR: [
+        { startDate: null },
+        { startDate: { lte: sessionEndOfDay } },
+      ],
+      AND: [
+        {
           OR: [
-            { startDate: { lte: sessionEndOfDay } },
+            { endDate: null },
+            { endDate: { gte: sessionStartOfDay } },
           ],
-          AND: [
-            {
-              OR: [
-                { endDate: null },
-                { endDate: { gte: sessionStartOfDay } },
-              ],
-            },
-          ],
-        }
-      }
+        },
+      ],
     },
     select: {
       id: true,
@@ -109,38 +102,26 @@ export async function getEligibleStudentsForSession(session: {
     orderBy: { name: "asc" },
   });
 
-  const candidateStudents = candidateStudentsRaw.map(user => {
-    const enrollment = user.enrollments[0] || {} as any;
-    return {
-      id: user.id,
-      name: user.name,
-      activeProgram: enrollment.programType || null,
-      programBatch: enrollment.programBatch || null,
-      batchSchedule: enrollment.batchSchedule || null,
-      startDate: enrollment.startDate || null,
-      endDate: enrollment.endDate || null,
-    };
-  });
-
   // Precise filtering based on business rules
   const sessionDay = session.date.getDay(); // 0=Sun, 1=Mon .. 6=Sat
 
   return candidateStudents.filter((student) => {
-    if (!student.activeProgram) return false;
+    const latestEnrollment = student.enrollments?.[0];
+    if (!latestEnrollment || !latestEnrollment.programType) return false;
 
-    const prog = student.activeProgram.trim().toLowerCase();
+    const prog = latestEnrollment.programType.trim().toLowerCase();
 
     // --- MULAI DEBUGGER ---
-    if (student.activeProgram === "Regular") {
+    if (latestEnrollment.programType === "Regular") {
       console.log("=== CEK MURID REGULAR ===");
       console.log("Nama:", student.name);
-      console.log("Student Batch Asli:", `"${student.programBatch}"`);
+      console.log("Student Batch Asli:", `"${latestEnrollment.programBatch}"`);
       console.log("Session Time Asli:", `"${session.timeSlot}"`);
       console.log("Session ProgramType:", `"${session.programType}"`);
 
       // Cek apakah masa aktifnya nyangkut
       console.log("Session Date:", session.date);
-      console.log("Student End Date:", student.endDate);
+      console.log("Student End Date:", latestEnrollment.endDate);
       console.log("=========================");
     }
     // --- AKHIR DEBUGGER ---
@@ -150,8 +131,8 @@ export async function getEligibleStudentsForSession(session: {
     // --- CONVERSATION RULES ---
     if (sessionProgType === "conversation") {
       if (prog === "regular") {
-        if (!student.programBatch) return false;
-        const normBatch = student.programBatch.trim().toLowerCase();
+        if (!latestEnrollment.programBatch) return false;
+        const normBatch = latestEnrollment.programBatch.trim().toLowerCase();
         const normTime = session.timeSlot.trim().toLowerCase();
         return normTime.includes(normBatch) || normBatch.includes(normTime);
       }
@@ -168,7 +149,7 @@ export async function getEligibleStudentsForSession(session: {
     if (sessionProgType === "efk" || sessionProgType === "eft") {
       if (prog !== sessionProgType) return false;
 
-      const batchSchedule = (student.batchSchedule || "").trim().toLowerCase();
+      const batchSchedule = (latestEnrollment.batchSchedule || "").trim().toLowerCase();
       if (sessionDay === 1 || sessionDay === 3) {
         return batchSchedule === "senin-rabu";
       }
@@ -188,7 +169,7 @@ export async function getEligibleStudentsForSession(session: {
 
     // --- PRIVATE / TOEFL / HYBRID POOL ---
     const isAssignedPool = sessionProgType === "private" || sessionProgType === "toefl" || sessionProgType === "toefl prep";
-    
+
     if (isAssignedPool) {
       if (!session.assignedStudents) return false;
       const isAssigned = session.assignedStudents.some(as => as.id === student.id);
@@ -197,7 +178,7 @@ export async function getEligibleStudentsForSession(session: {
 
     // --- OTHER ---
     return prog === sessionProgType;
-  }).map((s) => ({ id: s.id, name: s.name, activeProgram: s.activeProgram }));
+  }).map((s) => ({ id: s.id, name: s.name, activeProgram: s.enrollments?.[0]?.programType || null }));
 }
 
 /**
@@ -252,11 +233,8 @@ export async function getGlobalPoolForSession({
   // 3. Execute Query
   console.log("🕵️ RADAR SEARCH PARAMS:", { programName: programType, batch: timeSlot, query: "" });
 
-  const branchFilter = await getBranchFilter();
-
   const pool = await prisma.user.findMany({
     where: {
-      ...branchFilter,
       role: "STUDENT",
       // MATIKAN (comment) sementara filter program dan batch di bawah ini!
       // activeProgram: programType, 
@@ -270,24 +248,17 @@ export async function getGlobalPoolForSession({
       }
     },
     take: 10,
-    select: { 
-      id: true, 
+    select: {
+      id: true,
       name: true,
       enrollments: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: {
-          programType: true,
-          programBatch: true
-        }
+        select: { programType: true, programBatch: true }
       }
     },
     orderBy: { name: "asc" },
   });
 
-  return pool.map((s) => ({ 
-    id: s.id, 
-    name: s.name, 
-    activeProgram: s.enrollments?.[0]?.programType || null 
-  }));
+  return pool.map((s) => ({ id: s.id, name: s.name, activeProgram: s.enrollments?.[0]?.programType || null }));
 }

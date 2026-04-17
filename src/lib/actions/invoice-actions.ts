@@ -8,7 +8,6 @@ import bcrypt from "bcryptjs";
 import { calculateInvoiceAmount } from "../utils/pricing";
 import { nextMonday, addWeeks, addMonths } from "date-fns";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
-import { sanitizePhoneNumber } from "@/lib/formatters";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "CS"];
 
@@ -110,9 +109,9 @@ export async function approvePayment(invoiceId: string) {
       return { error: "Tidak memiliki hak akses." };
     }
 
-    const invoice = await prisma.invoice.findUnique({ 
+    const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
-      include: { lead: true } 
+      include: { lead: true }
     });
     if (!invoice) return { error: "Invoice tidak ditemukan." };
 
@@ -203,7 +202,7 @@ export async function approvePayment(invoiceId: string) {
       if (match) {
         finalBatch = match[0].replace(/\s*[-—–]\s*/, ' - ');
       }
-      
+
       if (!finalBatch) {
         if (finalActiveProgram === "Regular") {
           finalBatch = dataPayload.session || "Unspecified";
@@ -244,9 +243,9 @@ export async function approvePayment(invoiceId: string) {
 
         let resultDate = new Date(startDate);
         let daysAdded = 0;
-        
+
         // Kurangi 1 karena hari mulai dihitung sebagai pertemuan pertama
-        const targetDays = totalMeetings > 0 ? totalMeetings - 1 : 0; 
+        const targetDays = totalMeetings > 0 ? totalMeetings - 1 : 0;
 
         while (daysAdded < targetDays) {
           resultDate.setDate(resultDate.getDate() + 1);
@@ -263,7 +262,7 @@ export async function approvePayment(invoiceId: string) {
 
       // E. Kalkulasi Jatah Izin (Leave Quota)
       let calculatedLeaveQuota = 0;
-      
+
       if (finalDurationOption === "1_WEEK") calculatedLeaveQuota = 1;
       else if (finalDurationOption === "2_WEEKS") calculatedLeaveQuota = 2;
       else if (finalDurationOption === "3_WEEKS") calculatedLeaveQuota = 3;
@@ -273,27 +272,28 @@ export async function approvePayment(invoiceId: string) {
       else if (finalActiveProgram === "Regular") calculatedLeaveQuota = 3; // Fallback untuk Regular
 
       // 3. UPSERT USER DATABASE
-      const savedUser = await tx.user.upsert({
+      await tx.user.upsert({
         where: { email },
         update: {
           name: studentName,
           role: "STUDENT",
           branch: invoice.branch,
+          activeProgram: finalActiveProgram,
+          durationOption: finalDurationOption,
+          programBatch: finalBatch,
+          batchSchedule: batchSchedule,
+          startDate: calculatedStartDate,
+          endDate: calculatedEndDate,
+          leaveQuota: calculatedLeaveQuota,
         },
         create: {
           name: studentName,
           email,
           passwordHash,
-          phoneNumber: sanitizePhoneNumber(whatsapp),
+          phoneNumber: whatsapp,
           role: "STUDENT",
           branch: invoice.branch,
-        },
-      });
-
-      await tx.enrollment.create({
-        data: {
-          userId: savedUser.id,
-          programType: finalActiveProgram,
+          activeProgram: finalActiveProgram,
           durationOption: finalDurationOption,
           programBatch: finalBatch,
           batchSchedule: batchSchedule,
@@ -301,7 +301,7 @@ export async function approvePayment(invoiceId: string) {
           endDate: calculatedEndDate,
           leaveQuota: calculatedLeaveQuota,
           leaveUsed: 0,
-        }
+        } as any,
       });
 
       // 4. Mark the related Lead as CLOSED_WON
@@ -347,9 +347,9 @@ export async function settlePaymentOnSite(invoiceId: string) {
       return { error: "Tidak memiliki hak akses." };
     }
 
-    const invoice = await prisma.invoice.findUnique({ 
+    const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
-      include: { lead: true } 
+      include: { lead: true }
     });
     if (!invoice) return { error: "Invoice tidak ditemukan." };
 

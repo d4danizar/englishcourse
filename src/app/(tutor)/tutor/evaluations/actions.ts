@@ -6,29 +6,25 @@ import { revalidatePath } from "next/cache";
 export type EvaluationGroup = "Conversation" | "EFK" | "EFT" | "Private";
 
 export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: string) {
-  // Common where clause to only fetch active students
-  const activeStudentWhere = {
-    role: "STUDENT" as const,
-    enrollments: {
-      some: {
-        OR: [
-          { endDate: { gte: new Date() } },
-          { endDate: null }
-        ],
-        ...(group === "Conversation" ? {
-          programType: {
-            in: ["Regular", "Fullday", "Asrama", "English on Saturday"]
-          }
-        } : {
-          programType: group
-        })
-      }
-    }
-  };
+  const programInFilter = group === "Conversation" 
+    ? ["Regular", "Fullday", "Asrama", "English on Saturday"]
+    : [group];
 
-  // Fetch students matching the group
-  const studentsRaw = await prisma.user.findMany({
-    where: activeStudentWhere,
+  const students = await prisma.user.findMany({
+    where: {
+      role: "STUDENT",
+      enrollments: {
+        some: {
+          OR: [
+            { endDate: { gte: new Date() } },
+            { endDate: null }
+          ],
+          programType: {
+            in: programInFilter
+          }
+        }
+      }
+    },
     select: {
       id: true,
       name: true,
@@ -39,22 +35,23 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
           programType: true,
           programBatch: true,
           batchSchedule: true,
+          endDate: true,
         }
       },
       StudentEvaluations: {
         where: { tutorId },
         orderBy: { createdAt: "desc" },
-        take: 1, // Get latest evaluation by this tutor
+        take: 1,
       }
     },
     orderBy: { name: "asc" },
   });
 
-  return studentsRaw.map(s => ({
-    ...s,
-    activeProgram: s.enrollments?.[0]?.programType || null,
-    programBatch: s.enrollments?.[0]?.programBatch || null,
-    batchSchedule: s.enrollments?.[0]?.batchSchedule || null,
+  return students.map(student => ({
+    ...student,
+    activeProgram: student.enrollments?.[0]?.programType || "No Program",
+    programBatch: student.enrollments?.[0]?.programBatch || null,
+    batchSchedule: student.enrollments?.[0]?.batchSchedule || null,
   }));
 }
 

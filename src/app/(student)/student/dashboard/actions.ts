@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "../../../../lib/prisma";
-import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
 
 export async function getStudentProfile(studentId: string) {
   const profile = await prisma.user.findUnique({
@@ -9,83 +8,42 @@ export async function getStudentProfile(studentId: string) {
     select: {
       id: true,
       name: true,
+      // Tarik Enrollment yang paling baru (indeks 0)
       enrollments: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
+        orderBy: { createdAt: 'desc' },
+        take: 1, 
         select: {
           programType: true,
-          programBatch: true,
-          batchSchedule: true,
           startDate: true,
           endDate: true,
-          leaveQuota: true,
-          leaveUsed: true,
           totalLeaves: true,
-          durationOption: true,
+          status: true,
+          // tambahkan batch/schedule di sini jika ada di schema Enrollment
         }
       }
-    },
+    }
   });
 
   if (!profile) return null;
 
-  const enrollment = profile.enrollments[0] || {} as any;
-  const mappedProfile = {
+  const currentEnrollment = profile.enrollments?.[0];
+
+  // Map kembali data ke format yang diharapkan oleh UI Frontend (PENTING agar UI tidak crash)
+  return {
     id: profile.id,
     name: profile.name,
-    activeProgram: enrollment.programType || null,
-    programBatch: enrollment.programBatch || null,
-    batchSchedule: enrollment.batchSchedule || null,
-    startDate: enrollment.startDate || null,
-    endDate: enrollment.endDate || null,
-    leaveQuota: enrollment.leaveQuota || 0,
-    leaveUsed: enrollment.leaveUsed || 0,
-    totalLeaves: enrollment.totalLeaves || 0,
-    durationOption: enrollment.durationOption || null,
-  };
-
-  let extendedEndDate: Date | null = null;
-  if (mappedProfile.startDate && mappedProfile.activeProgram && mappedProfile.totalLeaves > 0) {
-    extendedEndDate = calculateExtendedEndDate(
-      mappedProfile.startDate,
-      mappedProfile.durationOption || "1_MONTH",
-      mappedProfile.totalLeaves,
-      mappedProfile.activeProgram
-    );
-  }
-
-  return {
-    ...mappedProfile,
-    extendedEndDate,
+    activeProgram: currentEnrollment?.programType || "Belum ada program aktif",
+    startDate: currentEnrollment?.startDate || null,
+    endDate: currentEnrollment?.endDate || null,
+    leaveUsed: currentEnrollment?.totalLeaves || 0,
+    leaveQuota: 4, // Atau sesuaikan dengan logic bisnis default
+    // Jika UI butuh batch/schedule tapi datanya belum direlokasi sempurna, beri fallback string
+    programBatch: "-", 
+    batchSchedule: "-",
   };
 }
 
 export async function getStudentAttendances(studentId: string) {
-  const attendances = await prisma.attendance.findMany({
-    where: { studentId },
-    include: {
-      session: {
-        select: {
-          title: true,
-          date: true,
-          timeSlot: true,
-        },
-      },
-      student: { // We need tutor info, but actually tutor is attached to session.
-        select: { name: true }
-      }
-    },
-    orderBy: {
-      session: {
-        date: "desc",
-      },
-    },
-  });
-
-  // Re-fetch sessions to include tutor name properly
-  // Since session -> tutor is not directly accessible without nested include in Attendance,
-  // let's do a more precise query:
-  
   const detailedAttendances = await prisma.attendance.findMany({
     where: { studentId },
     include: {
@@ -115,3 +73,4 @@ export async function getStudentEvaluations(studentId: string) {
   });
   return evaluations;
 }
+

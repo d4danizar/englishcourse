@@ -104,41 +104,19 @@ export async function editUser(formData: FormData) {
     });
 
     if (isStudent && activeProgram && startDateStr) {
-      // Find latest enrollment to update
-      const latestEnrollment = await prisma.enrollment.findFirst({
-        where: { userId: id },
-        orderBy: { createdAt: "desc" },
+      await prisma.user.update({
+        where: { id },
+        data: {
+          activeProgram,
+          programBatch: programBatch || null,
+          startDate: new Date(startDateStr),
+          endDate: endDateStr ? new Date(endDateStr) : null,
+          durationOption: durationOption || null,
+          batchSchedule: batchSchedule || null,
+          leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+          leaveUsed: totalLeaves || 0,
+        }
       });
-
-      if (latestEnrollment) {
-        await prisma.enrollment.update({
-          where: { id: latestEnrollment.id },
-          data: {
-            programType: activeProgram,
-            programBatch: programBatch || null,
-            startDate: new Date(startDateStr),
-            endDate: endDateStr ? new Date(endDateStr) : null,
-            durationOption: durationOption || null,
-            batchSchedule: batchSchedule || null,
-            leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
-            totalLeaves: totalLeaves,
-          }
-        });
-      } else {
-        await prisma.enrollment.create({
-          data: {
-            userId: id,
-            programType: activeProgram,
-            programBatch: programBatch || null,
-            startDate: new Date(startDateStr),
-            endDate: endDateStr ? new Date(endDateStr) : null,
-            durationOption: durationOption || null,
-            batchSchedule: batchSchedule || null,
-            leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
-            totalLeaves: totalLeaves,
-          }
-        });
-      }
     }
 
     revalidatePath("/admin/users");
@@ -196,33 +174,16 @@ export async function renewStudent(
     const calculatedEndDate = calculateEndDate(new Date(data.startDate), data.duration);
     const calculatedLeaveQuota = calculateLeaveQuota(data.programType, data.duration);
 
-    await prisma.$transaction(async (tx) => {
-      // 1. Create New Enrollment
-      const newEnrollment = await tx.enrollment.create({
-        data: {
-          userId,
-          programType: data.programType,
-          startDate: new Date(data.startDate),
-          endDate: calculatedEndDate,
-          durationOption: data.duration, // Pass the duration option
-          totalLeaves: 0,
-          leaveQuota: calculatedLeaveQuota,
-          leaveUsed: 0,
-          status: "ACTIVE",
-        },
-      });
-
-      // 2. Create Payment Record tied to the new enrollment
-      await tx.payment.create({
-        data: {
-          userId,
-          enrollmentId: newEnrollment.id,
-          amount: data.amount,
-          paymentMethod: data.paymentMethod,
-          status: "PAID",
-          description: `Repeat Order - ${data.programType}`,
-        },
-      });
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        activeProgram: data.programType,
+        startDate: new Date(data.startDate),
+        endDate: calculatedEndDate,
+        durationOption: data.duration,
+        leaveQuota: calculatedLeaveQuota,
+        leaveUsed: 0,
+      },
     });
 
     revalidatePath("/admin/users");
