@@ -40,7 +40,6 @@ async function main() {
       email: 'student@test.com',
       passwordHash: hashedPassword,
       role: Role.STUDENT,
-      activeProgram: 'Regular',
     },
   })
 
@@ -57,7 +56,6 @@ async function main() {
         email: `student${i}@test.com`,
         passwordHash: hashedPassword,
         role: Role.STUDENT,
-        activeProgram: program,
         phoneNumber: phone,
       },
     })
