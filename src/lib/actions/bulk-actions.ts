@@ -16,8 +16,9 @@ const ImportRowSchema = z.object({
   WhatsApp: z.union([z.string(), z.number()]),
   Program: z.string().min(1, "Program is required"),
   Session: z.union([z.string(), z.number()]).optional(), // Kolom opsional: "Sesi 1", "08:00 - 09:30", dll
-  JoinedDate: z.any().optional(), // Nilai tanggal dari Excel/CSV
-  Duration: z.string().optional(), // Tambahan untuk deteksi endDate (misal: "1 week", "1 month")
+  "Start Date": z.any().optional(), // Tambahkan header wajib sesuai instruksi UI
+  JoinedDate: z.any().optional(), // Fallback legacy CSV
+  Duration: z.union([z.string(), z.number()]), // Kolom Wajib
 });
 
 export async function processBulkImport(rawData: any[]) {
@@ -53,16 +54,17 @@ export async function processBulkImport(rawData: any[]) {
       const passwordHash = await bcrypt.hash(cleanPhone, 10);
 
       // Sinkronisasi Tanggal
-      // Jika file hanya memiliki satu kolom tanggal (misal: JoinedDate), konversi dengan benar.
-      // Jika tidak ada fallback ke now.
+      // Coba gunakan "Start Date" terlebih dahulu, jika gagal mundur ke "JoinedDate"
+      const dateField = student["Start Date"] || student.JoinedDate;
       let parsedDate = new Date();
-      if (student.JoinedDate) {
-        if (typeof student.JoinedDate === "number") {
+
+      if (dateField) {
+        if (typeof dateField === "number") {
           // Konversi dari format Excel Serial Date ke JS Date.
-          parsedDate = new Date(Math.round((student.JoinedDate - 25569) * 86400 * 1000));
+          parsedDate = new Date(Math.round((dateField - 25569) * 86400 * 1000));
         } else {
           // Format standar string Date
-          parsedDate = new Date(student.JoinedDate);
+          parsedDate = new Date(dateField);
         }
         
         // Cek fallback jika invalid string
@@ -71,36 +73,73 @@ export async function processBulkImport(rawData: any[]) {
         }
       }
 
-      // Hitung endDate jika ada kolom Duration
-      const endDateVal = student.Duration 
-        ? calculateEndDate(parsedDate, student.Duration)
-        : null;
+      // Format Duration untuk perhitungan endDate & Database Mapping
+      let mappedDuration = "1_MONTH"; // fallback standar
+      if (student.Duration) {
+        let cleanStr = String(student.Duration).trim().toUpperCase();
+        if (cleanStr.includes('1 WEEK')) mappedDuration = '1_WEEK';
+        else if (cleanStr.includes('2 WEEK')) mappedDuration = '2_WEEKS';
+        else if (cleanStr.includes('3 WEEK')) mappedDuration = '3_WEEKS';
+        else if (cleanStr.includes('1 MONTH')) mappedDuration = '1_MONTH';
+        else if (cleanStr.includes('2 MONTH')) mappedDuration = '2_MONTHS';
+        else if (cleanStr.includes('3 MONTH')) mappedDuration = '3_MONTHS';
+        else if (cleanStr.includes('6 MONTH')) mappedDuration = '6_MONTHS';
+        else mappedDuration = cleanStr.replace(/\s+/g, '_');
+      }
 
+      // Hitung endDate berbekal duration Enum yang spesifik
+      const endDateVal = calculateEndDate(parsedDate, mappedDuration);
+
+      // Kembalikan DUA objek: Data Profil User dan Data Paket Belajar (Enrollment)
       return {
-        name: student.Name,
-        email: student.Email,
-        phoneNumber: cleanPhone,
-        role: "STUDENT" as const,
-        activeProgram: student.Program,
-        programBatch: student.Session ? String(student.Session) : null,
-        branch: branchFilter.branch,
-        passwordHash,
-        leaveQuota: calculateLeaveQuota(student.Program, null),
-        leaveUsed: 0,
-        // Pastikan startDate dan joined/createdAt persis identik 
-        startDate: parsedDate,
-        programStartDate: parsedDate, 
-        createdAt: parsedDate,
-        // Hitungan Akhir
-        endDate: endDateVal,
+        userProfile: {
+          name: student.Name,
+          email: student.Email,
+          phoneNumber: cleanPhone,
+          role: "STUDENT" as const,
+          branch: branchFilter.branch,
+          passwordHash,
+          createdAt: parsedDate,
+        },
+        enrollmentData: {
+          programType: student.Program,
+          programBatch: student.Session ? String(student.Session) : null,
+          startDate: parsedDate,
+          endDate: endDateVal,
+          durationOption: mappedDuration,
+          leaveQuota: calculateLeaveQuota(student.Program, null),
+          leaveUsed: 0,
+          status: "ACTIVE"
+        }
       };
     }));
 
-    // --- Batch create all students (skipDuplicates for safety) ---
-    const result = await prisma.user.createMany({
-      data: dbPayload,
-      skipDuplicates: true,
-    });
+    // --- Eksekusi Database yang Kuat & Bebas Duplikat ---
+    // Karena kita memakai struktur Relasional, gunakan upsert/create berturut-turut untuk setiap user
+    // agar Enrollments bisa terkait persis dengan ID murid masing-masing.
+    let importedCount = 0;
+
+    for (const payload of dbPayload) {
+      // Upsert User agar email duplikat tidak crash, ia hanya akan memperbarui info dasar
+      const savedUser = await prisma.user.upsert({
+        where: { email: payload.userProfile.email },
+        update: {
+          name: payload.userProfile.name,
+          phoneNumber: payload.userProfile.phoneNumber, // update WA yang terbaru jika berubah
+        },
+        create: payload.userProfile
+      });
+
+      // Lalu buatkan set tiket masuk kelas (Enrollments) yang baru untuk user ini
+      await prisma.enrollment.create({
+        data: {
+          userId: savedUser.id,
+          ...payload.enrollmentData
+        }
+      });
+
+      importedCount++;
+    }
 
     // --- Post-create: Auto-assign "English on Saturday" students to ClassGroup ---
     const saturdayStudents = validData.filter(
@@ -144,7 +183,7 @@ export async function processBulkImport(rawData: any[]) {
 
     revalidatePath("/admin/users");
 
-    return { success: true, count: result.count };
+    return { success: true, count: importedCount };
   } catch (error: any) {
     console.error("[processBulkImport] Error:", error);
     return { success: false, error: "Gagal memproses file. Silakan coba lagi nanti." };

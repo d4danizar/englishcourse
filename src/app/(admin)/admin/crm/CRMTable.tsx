@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Lead, LeadStatus } from "@prisma/client";
 import { updateLeadStatus, deleteLead, createLead, updateLeadInfo } from "./actions";
-import { Plus, Trash2, Phone, MessageSquare, Filter, Pencil } from "lucide-react";
+import { Plus, Trash2, Phone, MessageSquare, Filter, Pencil, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -36,6 +36,16 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredLeads = initialLeads.filter((lead) => {
+    if (!searchTerm) return true;
+    const lowerSearch = searchTerm.toLowerCase();
+    return (
+      lead.name.toLowerCase().includes(lowerSearch) ||
+      lead.whatsapp.includes(lowerSearch)
+    );
+  });
 
   // Form State
   const [name, setName] = useState("");
@@ -113,6 +123,20 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center bg-slate-50/30">
+        <div className="relative w-full max-w-md">
+          <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Cari Nomor HP atau Nama..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow text-slate-700 font-medium"
+          />
+        </div>
+      </div>
+
       {/* Filter Bar */}
       <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-nowrap overflow-x-auto gap-2 items-center">
         <Filter className="w-4 h-4 text-slate-400 mx-2 shrink-0" />
@@ -146,19 +170,19 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {initialLeads.length === 0 ? (
+            {filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                   Tidak ada data lead ditemukan.
                 </td>
               </tr>
             ) : (
-              initialLeads.map((lead) => (
+              filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-4 px-6 whitespace-nowrap">
                     {format(new Date(lead.createdAt), "dd MMM yyyy, HH:mm", { locale: idLocale })}
                   </td>
-                  <td className="py-4 px-6 font-medium text-slate-800 whitespace-nowrap">
+                  <td className="py-4 px-6 font-medium text-slate-800 max-w-[200px] sm:max-w-[300px] truncate" title={lead.name}>
                     {lead.name}
                   </td>
                   <td className="py-4 px-6 font-medium whitespace-nowrap">

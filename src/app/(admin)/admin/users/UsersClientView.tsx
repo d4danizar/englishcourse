@@ -22,6 +22,10 @@ import {
 import { createUser, editUser, resetPassword, deleteUser, renewStudent } from "./actions";
 import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
 import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
+import { calculateEndDate as calculateEndDateServer } from "@/lib/offday-utils";
+import { CollapsibleBulkImport } from "./CollapsibleBulkImport";
+
+type OffDayProp = { startDate: string; endDate: string };
 
 type UserType = {
   id: string;
@@ -74,9 +78,11 @@ function calculateEndDate(program: string, startDate: string, duration: string):
 export function UsersClientView({ 
   initialUsers,
   activeBranch = "KARTASURA",
+  offDays = [],
 }: { 
   initialUsers: UserType[];
   activeBranch?: string;
+  offDays?: OffDayProp[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<string>("ALL");
@@ -117,10 +123,21 @@ export function UsersClientView({
     return calculateEndDate(formProgram, formStartDate, formDuration);
   }, [formProgram, formStartDate, formDuration]);
 
-  // Auto-calculate endDate for EDIT form
+  // Auto-calculate endDate for EDIT form (uses server-grade calculation with OffDays + izin)
   const editCalculatedEndDate = useMemo(() => {
-    return calculateEndDate(editProgram, editStartDate, editDuration);
-  }, [editProgram, editStartDate, editDuration]);
+    if (!editStartDate || !editProgram) return null;
+    const parsedOffDays = offDays.map(od => ({
+      startDate: new Date(od.startDate),
+      endDate: new Date(od.endDate),
+    }));
+    return calculateEndDateServer(
+      new Date(editStartDate),
+      editDuration || null,
+      parsedOffDays,
+      editProgram,
+      editTotalLeaves
+    );
+  }, [editProgram, editStartDate, editDuration, editTotalLeaves, offDays]);
 
   // When editingUser changes, populate edit form state
   useEffect(() => {
@@ -143,9 +160,8 @@ export function UsersClientView({
 
     // Append calculated student fields
     if (editRole === "STUDENT") {
-      if (editCalculatedEndDate) {
-        formData.set("endDate", editCalculatedEndDate.toISOString());
-      }
+      // endDate dihitung oleh server (calculateEndDate di offday-utils)
+      // Jangan kirim endDate dari client agar server selalu recalculate
       if (editDuration) formData.set("durationOption", editDuration);
       if (editBatch) formData.set("batchSchedule", editBatch);
       if (editProgramBatch) formData.set("programBatch", editProgramBatch);
@@ -450,14 +466,33 @@ export function UsersClientView({
         </div>
       )}
 
-      {/* Estimated End Date Preview */}
-      {endDate && (
+      {/* Estimated End Date Preview — Live Calculation */}
+      {mode === "edit" && endDate && (
+        <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <GraduationCap className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Estimasi Tanggal Lulus (Live)</p>
+            <p className="text-sm font-bold text-blue-900 mt-0.5">
+              {format(endDate, "EEEE, dd MMMM yyyy")}
+            </p>
+            {totalLeaves && totalLeaves > 0 ? (
+              <p className="text-[10px] text-blue-500 mt-0.5">Sudah termasuk kompensasi {totalLeaves} hari izin + tanggal merah</p>
+            ) : (
+              <p className="text-[10px] text-blue-500 mt-0.5">Sudah memperhitungkan tanggal merah</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {mode === "add" && endDate && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
           <div className="p-2 bg-emerald-100 rounded-lg">
             <GraduationCap className="w-4 h-4 text-emerald-600" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Original End Date (Static)</p>
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Estimated End Date</p>
             <p className="text-sm font-bold text-emerald-900 mt-0.5">
               {format(endDate, "EEEE, dd MMMM yyyy")}
             </p>
@@ -507,6 +542,8 @@ export function UsersClientView({
           </button>
         </div>
       </div>
+
+      <CollapsibleBulkImport />
 
       {/* Main Content Area */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col w-full text-left overflow-x-auto">
@@ -617,23 +654,12 @@ export function UsersClientView({
 
                             if (!user.endDate) return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold w-fit">Active</span>;
 
-                            const origEnd = new Date(user.endDate);
-                            origEnd.setHours(0, 0, 0, 0);
+                            // endDate dari server sudah mencakup kalkulasi OffDay + Izin
+                            const effectiveEnd = new Date(user.endDate);
+                            effectiveEnd.setHours(0, 0, 0, 0);
 
-                            let extEnd = origEnd;
-                            if (user.totalLeaves && user.totalLeaves > 0 && user.activeProgram && user.startDate) {
-                              extEnd = calculateExtendedEndDate(
-                                new Date(user.startDate),
-                                user.durationOption || "1_MONTH",
-                                user.totalLeaves,
-                                user.activeProgram
-                              );
-                            }
-                            
-                            if (today > extEnd) {
+                            if (today > effectiveEnd) {
                               return <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-[10px] font-bold w-fit uppercase border border-red-200">Expired</span>;
-                            } else if (today > origEnd && today <= extEnd) {
-                              return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-[10px] font-bold w-fit uppercase border border-amber-200">Active (Extended)</span>;
                             } else {
                               return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold w-fit uppercase border border-emerald-200">Active</span>;
                             }

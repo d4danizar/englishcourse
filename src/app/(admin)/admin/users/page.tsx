@@ -20,6 +20,15 @@ export default async function AdminUsersPage() {
     }
   });
 
+  const offDays = await prisma.offDay.findMany({
+    orderBy: { startDate: "asc" },
+  });
+
+  const serializedOffDays = offDays.map(od => ({
+    startDate: od.startDate.toISOString(),
+    endDate: od.endDate.toISOString(),
+  }));
+
   const users = rawUsers.map(user => ({
     id: user.id,
     name: user.name,
@@ -34,7 +43,8 @@ export default async function AdminUsersPage() {
     endDate: user.enrollments?.[0]?.endDate ? user.enrollments[0].endDate.toISOString() : null,
     durationOption: user.enrollments?.[0]?.durationOption || null,
     batchSchedule: user.enrollments?.[0]?.batchSchedule || null,
+    totalLeaves: user.enrollments?.[0]?.leaveUsed ?? 0,
   }));
 
-  return <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} />;
+  return <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} offDays={serializedOffDays} />;
 }

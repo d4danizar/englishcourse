@@ -288,3 +288,10 @@ enum BranchLocation {
   CABANG_2
   CABANG_3
 }
+
+model OffDay {
+  id          String   @id @default(cuid())
+  description String
+  startDate   DateTime
+  endDate     DateTime
+}

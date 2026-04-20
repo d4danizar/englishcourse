@@ -362,6 +362,11 @@ export function CheckoutForm({
             <input type="date" {...register("startDate")} className={inputCls} />
           </FieldWrap>
         </div>
+
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          <p className="font-semibold">ℹ️ Informasi Biaya</p>
+          <p className="mt-1">Semua program dikenakan <strong>Biaya Pendaftaran Rp100.000</strong> (sudah termasuk dalam total tagihan invoice).</p>
+        </div>
       </section>
 
       {/* ── 3. Bukti Transfer ──────────────────────────────────────────── */}

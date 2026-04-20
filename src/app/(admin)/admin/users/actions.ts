@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { Role, BranchLocation } from "@prisma/client";
 import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
-import { calculateEndDate } from "@/lib/utils/date-helpers";
+import { calculateEndDate } from "@/lib/offday-utils";
 
 export async function createUser(formData: FormData) {
   try {
@@ -84,7 +84,11 @@ export async function editUser(formData: FormData) {
     const durationOption = formData.get("durationOption") as string;
     const batchSchedule = formData.get("batchSchedule") as string;
     const totalLeavesStr = formData.get("totalLeaves") as string;
-    const totalLeaves = totalLeavesStr ? parseInt(totalLeavesStr, 10) : 0;
+    const totalLeaves = Number(totalLeavesStr) || 0;
+
+    console.log("=== 📋 FORM DATA DITERIMA ===");
+    console.log("userId:", id, "| role:", role, "| totalLeavesStr:", JSON.stringify(totalLeavesStr), "| totalLeaves (Number):", totalLeaves, "| typeof:", typeof totalLeaves);
+    console.log("activeProgram:", activeProgram, "| startDateStr:", startDateStr, "| durationOption:", durationOption);
 
     if (!id || !name || !email || !role) {
       return { error: "ID, Name, email, and role are required." };
@@ -103,29 +107,92 @@ export async function editUser(formData: FormData) {
       },
     });
 
-    if (isStudent && activeProgram && startDateStr) {
-      await prisma.user.update({
-        where: { id },
-        data: {
-          // Perbaikan: Properti program tidak lagi bersarang di tabel User.
-          // Kita menyimpan paket belajar di relasi Enrollment.
-          enrollments: {
-            create: {
-              programType: activeProgram,
-              programBatch: programBatch || null,
-              startDate: new Date(startDateStr),
-              endDate: endDateStr ? new Date(endDateStr) : null,
-              durationOption: durationOption || null,
-              batchSchedule: batchSchedule || null,
-              leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
-              leaveUsed: totalLeaves || 0,
-            }
-          }
-        }
+    if (isStudent) {
+      // Ambil enrollment aktif milik user (jika ada) saat ini yang perlu diupdate endDatenya
+      const activeEnrollment = await prisma.enrollment.findFirst({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' }
       });
+
+      console.log("=== 🔍 ENROLLMENT LOOKUP ===");
+      console.log("Enrollment found:", activeEnrollment ? "YES (id: " + activeEnrollment.id + ")" : "NO");
+      if (activeEnrollment) {
+        console.log("  DB startDate:", activeEnrollment.startDate);
+        console.log("  DB endDate (LAMA):", activeEnrollment.endDate);
+        console.log("  DB durationOption:", activeEnrollment.durationOption);
+        console.log("  DB programType:", activeEnrollment.programType);
+        console.log("  DB leaveUsed:", activeEnrollment.leaveUsed);
+      }
+
+      if (activeEnrollment) {
+        // Ambil data untuk kalkulasi (utamakan form input, jika kosong pakai database)
+        const progType = activeProgram || activeEnrollment.programType;
+        const durOpt = durationOption || activeEnrollment.durationOption;
+        const startD = startDateStr ? new Date(startDateStr) : activeEnrollment.startDate;
+
+        // Fetch data Hari Libur Nasional
+        const offDays = await prisma.offDay.findMany();
+
+        console.log("=== 🔍 X-RAY KALKULASI MULAI ===");
+        console.log("1. StartDate Dipakai:", startD, "| Source:", startDateStr ? "FORM" : "DB");
+        console.log("2. Duration Dipakai:", durOpt, "| Source:", durationOption ? "FORM" : "DB");
+        console.log("3. OffDays Ditemukan:", offDays.length, "record(s)");
+        offDays.forEach((od, i) => console.log(`   OffDay[${i}]: ${od.startDate} → ${od.endDate} (${od.description})`));
+        console.log("4. ProgramType Dipakai:", progType, "| Source:", activeProgram ? "FORM" : "DB");
+        console.log("5. Izin (totalLeaves):", totalLeaves, "| typeof:", typeof totalLeaves);
+
+        // Hitung ulang End Date yang baru dengan jumlah izin secara absolut
+        const calculatedEndDateStr = calculateEndDate(startD, durOpt, offDays, progType, totalLeaves);
+
+        console.log("6. ✨ HASIL newEndDate:", calculatedEndDateStr);
+        console.log("   vs. endDate LAMA:", activeEnrollment.endDate);
+        console.log("================================");
+
+        try {
+          await prisma.enrollment.update({
+            where: { id: activeEnrollment.id },
+            data: {
+              programType: activeProgram || undefined,
+              programBatch: programBatch || undefined,
+              startDate: startDateStr ? new Date(startDateStr) : undefined,
+              endDate: calculatedEndDateStr,
+              durationOption: durationOption || undefined,
+              batchSchedule: batchSchedule || undefined,
+              leaveQuota: calculateLeaveQuota(progType, durOpt),
+              leaveUsed: totalLeaves,
+            }
+          });
+          console.log("✅ PRISMA ENROLLMENT UPDATE SUKSES — endDate:", calculatedEndDateStr);
+        } catch (prismaError) {
+          console.error("❌ PRISMA ENROLLMENT UPDATE GAGAL:", prismaError);
+          throw prismaError;
+        }
+      } else if (activeProgram && startDateStr) {
+        // Fallback jika belum pernah ada enrollment dan kita mengisi via Edit
+        const offDays = await prisma.offDay.findMany();
+        const startD = new Date(startDateStr);
+        const calculatedEndDateStr = calculateEndDate(startD, durationOption, offDays, activeProgram, totalLeaves);
+
+        await prisma.enrollment.create({
+          data: {
+            userId: id,
+            programType: activeProgram,
+            programBatch: programBatch || null,
+            startDate: startD,
+            endDate: calculatedEndDateStr,
+            durationOption: durationOption || null,
+            batchSchedule: batchSchedule || null,
+            leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+            leaveUsed: totalLeaves || 0,
+            status: "ACTIVE"
+          }
+        });
+      }
     }
 
     revalidatePath("/admin/users");
+    revalidatePath("/admin/crm");
+    revalidatePath("/admin/classes");
     return { success: true };
   } catch (error: any) {
     if (error.code === "P2002") {
@@ -177,7 +244,8 @@ export async function renewStudent(
   }
 ) {
   try {
-    const calculatedEndDate = calculateEndDate(new Date(data.startDate), data.duration);
+    const offDays = await prisma.offDay.findMany();
+    const calculatedEndDate = calculateEndDate(new Date(data.startDate), data.duration, offDays, data.programType, 0);
     const calculatedLeaveQuota = calculateLeaveQuota(data.programType, data.duration);
 
     await prisma.user.update({

@@ -126,7 +126,9 @@ export default async function PaymentPage({
           </div>
           <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-700">
             <p className="font-semibold mb-1">Transfer ke:</p>
-            <p>🏦 BCA — <strong>1234567890</strong> a/n Kampung Inggris</p>
+            <p>🏦 No. Rekening: <strong>3930719144</strong></p>
+            <p>👤 Atas Nama: <strong>Nofi Mujayati</strong></p>
+            <p className="mt-2 text-xs text-indigo-500">* Biaya Pendaftaran Rp100.000 sudah termasuk dalam total tagihan.</p>
           </div>
         </div>
 

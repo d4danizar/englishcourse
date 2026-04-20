@@ -14,6 +14,7 @@ const standardNavItems = [
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
   { label: "Pengaturan", href: "/admin/settings", emoji: "⚙️" },
+  { label: "Off Days", href: "/admin/settings/off-days", emoji: "🗓️" },
 ];
 
 // Role-gated helpers

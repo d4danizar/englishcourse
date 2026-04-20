@@ -71,9 +71,10 @@ export function BulkImportForm() {
           <p className="text-xs text-zinc-600 mb-6 max-w-sm leading-relaxed">
             Format yang didukung: .xlsx atau .xls.
             <br />
-            Header wajib (Case-Sensitive): <b className="text-zinc-800">Name</b>, <b className="text-zinc-800">Email</b>, <b className="text-zinc-800">WhatsApp</b>, <b className="text-zinc-800">Program</b>.
+            Header wajib (Case-Sensitive): <b className="text-zinc-800">Name</b>, <b className="text-zinc-800">Email</b>, <b className="text-zinc-800">WhatsApp</b>, <b className="text-zinc-800">Program</b>, <b className="text-zinc-800">Start Date</b>, <b className="text-zinc-800">Duration</b>.
             <br />
-            Header opsional: <b className="text-zinc-800">Session</b> <span className="text-zinc-400">(untuk murid Regular)</span>.
+            <span className="text-[10px] text-zinc-500 italic block mt-0.5 mb-1.5">Isian Duration: "1 Week", "2 Weeks", "3 Weeks", "1 Month", "2 Months", "6 Months".</span>
+            Header opsional: <b className="text-zinc-800">Session</b> <span className="text-zinc-400">(Sesi regular)</span>.
           </p>
           <label className="cursor-pointer bg-white hover:bg-zinc-100 border border-dashed border-zinc-300 text-zinc-700 font-semibold py-3 px-8 rounded-xl flex items-center gap-2 transition-colors">
             <UploadCloud className="w-5 h-5 text-indigo-600" />
