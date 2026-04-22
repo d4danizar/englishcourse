@@ -144,11 +144,9 @@ export async function searchStudentsForAttendance(
             enrollments: { some: { endDate: { gte: new Date() } } } // Opsional: masih aktif
           }
           : {
-            // Initial load list murid resmi TERBATAS program jadwalnya
             enrollments: {
               some: {
                 endDate: { gte: new Date() }, // Masih aktif
-                programType: programName,
                 programBatch: { contains: batch, mode: "insensitive" },
               }
             }

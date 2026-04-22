@@ -1,68 +1,58 @@
 import { getDurationBaseDays } from "./utils/academic-calendar";
 
 export function calculateEndDate(
-  startDate: Date,
-  durationStr: string | null,
-  offDays: { startDate: Date; endDate: Date }[],
+  startDate: Date | string,
+  durationOption: string | null,
+  offDays: any[] = [],
   programType?: string | null,
-  excusedAbsences: number = 0
+  leaveUsed: number = 0
 ): Date {
-  // 1. Dapatkan durasi dasar (misal 2_MONTHS -> 40 hari)
-  const baseDays = getDurationBaseDays(durationStr); 
-  
-  // 2. Clone tanggal agar tidak merusak data asli
-  const resultDate = new Date(startDate);
-  // Kunci di jam 12 siang untuk menghindari anomali zona waktu yang melompat hari
-  resultDate.setHours(12, 0, 0, 0);
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0); // Normalisasi ke tengah malam
 
-  // 3. Hitung target hari kerja yang harus dicapai
-  const targetDaysCount = (baseDays > 0 ? baseDays - 1 : 0) + excusedAbsences;
-  
-  let daysAdded = 0;
-  
-  // Deteksi program (Sangat krusial karena di log tercatat 'Fullday')
-  const program = programType?.toUpperCase() || "REGULAR";
-  // Asumsi: Regular & Fullday libur Sabtu-Minggu. 
-  const isRegularOrFullday = program === "REGULAR" || program === "FULLDAY";
-
-  // Fungsi helper: Mengambil angka murni kalender tanpa peduli jam/UTC
-  const getPureDate = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  // 1. Map Duration to Exact Calendar Days
+  const durationMap: Record<string, number> = {
+    '1_WEEK': 7,
+    '2_WEEKS': 14,
+    '3_WEEKS': 21,
+    '1_MONTH': 30,
+    '2_MONTHS': 60,
+    '6_MONTHS': 180,
   };
+  
+  // Fallback if not found (default to 30)
+  const baseDays = durationMap[(durationOption || "").toUpperCase()] || 30; 
 
-  // 4. Perulangan pencarian hari
-  while (daysAdded < targetDaysCount) {
-    // Maju 1 hari
-    resultDate.setDate(resultDate.getDate() + 1);
-    
-    const currentDayOfWeek = resultDate.getDay(); // 0 = Minggu, 6 = Sabtu
-    const currentPureTime = getPureDate(resultDate);
+  // 2. Set the target days to loop (Base Duration + Leaves)
+  // We subtract 1 because the startDate itself counts as Day 1.
+  let targetDays = (baseDays + leaveUsed) - 1; 
+  if (targetDays < 0) targetDays = 0;
 
-    // Cek apakah hari ini adalah Tanggal Merah
-    const isOffDay = offDays.some((offDay) => {
-      const startPureTime = getPureDate(new Date(offDay.startDate));
-      const endPureTime = getPureDate(new Date(offDay.endDate));
-      return currentPureTime >= startPureTime && currentPureTime <= endPureTime;
+  let currentDate = new Date(start);
+  let daysCounted = 0;
+
+  // 3. Loop Day by Day
+  while (daysCounted < targetDays) {
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    // Normalisasi currentDate untuk komparasi akurat
+    const checkDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime();
+
+    // Cek apakah hari ini masuk dalam rentang tanggal merah (OffDays)
+    const isOffDay = offDays.some(holiday => {
+      const hStart = new Date(holiday.startDate).setHours(0,0,0,0);
+      const hEnd = holiday.endDate ? new Date(holiday.endDate).setHours(0,0,0,0) : hStart;
+      return checkDate >= hStart && checkDate <= hEnd;
     });
 
-    // JIKA INI TANGGAL MERAH -> Langsung lompati, JANGAN tambah daysAdded
+    // Jika hari ini tanggal merah, JANGAN hitung (masa belajar diperpanjang)
     if (isOffDay) {
       continue; 
     }
 
-    // JIKA BUKAN TANGGAL MERAH -> Baru kita cek apakah ini hari kerja
-    if (isRegularOrFullday) {
-      if (currentDayOfWeek !== 0 && currentDayOfWeek !== 6) {
-        daysAdded++; // Tambah hari aktif (Senin-Jumat)
-      }
-    } else {
-      if (currentDayOfWeek !== 0) {
-        daysAdded++; // Tambah hari aktif (Senin-Sabtu)
-      }
-    }
+    // Hari normal (termasuk Minggu), hitungan berjalan
+    daysCounted++;
   }
 
-  // 5. Set jam berakhir (disesuaikan dengan kebutuhan DB, misal 17:00)
-  resultDate.setHours(17, 0, 0, 0); 
-  return resultDate;
+  return currentDate;
 }

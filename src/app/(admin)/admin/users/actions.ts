@@ -8,6 +8,10 @@ import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
 import { calculateEndDate } from "@/lib/offday-utils";
 
 export async function createUser(formData: FormData) {
+  console.log("=== 🚨 ADD USER PAYLOAD RADAR 🚨 ===");
+  console.log("Raw Data Received:", formData instanceof FormData ? Object.fromEntries(formData.entries()) : formData); 
+  console.log("=====================================");
+
   try {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
@@ -30,44 +34,61 @@ export async function createUser(formData: FormData) {
 
     const isStudent = role === "STUDENT";
 
-    await prisma.user.create({
-      data: {
-        name,
-        email,
-        phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
-        role,
-        branch,
-        passwordHash,
-        ...(isStudent && activeProgram && startDateStr ? {
-          enrollments: {
-            create: {
-              programType: activeProgram,
-              durationOption: durationOption || null,
-              programBatch: programBatch || null,
-              batchSchedule: batchSchedule || null,
-              startDate: new Date(startDateStr),
-              endDate: endDateStr ? new Date(endDateStr) : null,
-              leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
-              leaveUsed: 0,
-              totalLeaves: 0,
+    try {
+      await prisma.user.create({
+        data: {
+          name,
+          email,
+          phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
+          role,
+          branch,
+          passwordHash,
+          ...(isStudent && activeProgram && startDateStr ? {
+            enrollments: {
+              create: {
+                programType: activeProgram,
+                durationOption: durationOption || null,
+                programBatch: programBatch || null,
+                batchSchedule: batchSchedule || null,
+                startDate: new Date(startDateStr),
+                endDate: endDateStr ? new Date(endDateStr) : null,
+                leaveQuota: calculateLeaveQuota(activeProgram, durationOption),
+                leaveUsed: 0,
+                totalLeaves: 0,
+              }
             }
-          }
-        } : {})
-      },
-    });
+          } : {})
+        },
+      });
+      console.log("✅ USER SUCCESSFULLY CREATED IN DB");
+    } catch (prismaError: any) {
+      console.error("❌❌ PRISMA CREATE FAILED ❌❌");
+      console.error(prismaError);
+      
+      // Checking native constraint to give precise error
+      if (prismaError.code === "P2002") {
+        throw new Error("Email already exists in the system.");
+      }
+      
+      throw new Error(prismaError.message || "Gagal menyimpan user baru ke database. Cek terminal!");
+    }
 
     // Refresh the table UI automatically
     revalidatePath("/admin/users");
     return { success: true };
+    return { success: true };
   } catch (error: any) {
     if (error.code === "P2002") {
-      return { error: "Email already exists in the system." };
+      throw new Error("Email already exists in the system.");
     }
-    return { error: error.message || "Failed to create user." };
+    throw new Error(error.message || "Failed to create user.");
   }
 }
 
 export async function editUser(formData: FormData) {
+  console.log("=== 🚀 SERVER ACTION: EDIT USER TRIGGERED ===");
+  console.log("FormData Entries:", Array.from(formData.entries()));
+
   try {
     const id = formData.get("id") as string;
     const name = formData.get("name") as string;
@@ -130,23 +151,23 @@ export async function editUser(formData: FormData) {
         const durOpt = durationOption || activeEnrollment.durationOption;
         const startD = startDateStr ? new Date(startDateStr) : activeEnrollment.startDate;
 
-        // Fetch data Hari Libur Nasional
-        const offDays = await prisma.offDay.findMany();
+        // Ambil tanggal matang langsung dari Client (yang sudah beres masalah timezone WIB-nya)
+        const clientEndDateRaw = formData.get("clientCalculatedEndDate") as string;
+        if (!clientEndDateRaw) {
+          throw new Error("Tanggal estimasi dari client tidak ditemukan!");
+        }
+        const calculatedEndDateStr = new Date(clientEndDateRaw);
 
-        console.log("=== 🔍 X-RAY KALKULASI MULAI ===");
-        console.log("1. StartDate Dipakai:", startD, "| Source:", startDateStr ? "FORM" : "DB");
-        console.log("2. Duration Dipakai:", durOpt, "| Source:", durationOption ? "FORM" : "DB");
-        console.log("3. OffDays Ditemukan:", offDays.length, "record(s)");
-        offDays.forEach((od, i) => console.log(`   OffDay[${i}]: ${od.startDate} → ${od.endDate} (${od.description})`));
-        console.log("4. ProgramType Dipakai:", progType, "| Source:", activeProgram ? "FORM" : "DB");
-        console.log("5. Izin (totalLeaves):", totalLeaves, "| typeof:", typeof totalLeaves);
-
-        // Hitung ulang End Date yang baru dengan jumlah izin secara absolut
-        const calculatedEndDateStr = calculateEndDate(startD, durOpt, offDays, progType, totalLeaves);
-
-        console.log("6. ✨ HASIL newEndDate:", calculatedEndDateStr);
+        console.log("6. ✨ HASIL newEndDate (DARI CLIENT):", calculatedEndDateStr);
         console.log("   vs. endDate LAMA:", activeEnrollment.endDate);
         console.log("================================");
+        
+        console.log("=== 🚀 MENCOBA UPDATE DATABASE ===");
+        console.log("Data diterima:", { 
+          leaveUsed: totalLeaves, 
+          leaveQuota: calculateLeaveQuota(progType, durOpt), 
+          clientEndDate: clientEndDateRaw 
+        });
 
         try {
           await prisma.enrollment.update({
@@ -160,18 +181,23 @@ export async function editUser(formData: FormData) {
               batchSchedule: batchSchedule || undefined,
               leaveQuota: calculateLeaveQuota(progType, durOpt),
               leaveUsed: totalLeaves,
+              totalLeaves: totalLeaves,
             }
           });
-          console.log("✅ PRISMA ENROLLMENT UPDATE SUKSES — endDate:", calculatedEndDateStr);
-        } catch (prismaError) {
-          console.error("❌ PRISMA ENROLLMENT UPDATE GAGAL:", prismaError);
-          throw prismaError;
+          console.log("✅ UPDATE BERHASIL:", { leaveQuota: calculateLeaveQuota(progType, durOpt), leaveUsed: totalLeaves, endDate: calculatedEndDateStr });
+        } catch (error) {
+          console.error("❌❌ PRISMA GAGAL UPDATE ❌❌");
+          console.error(error);
+          throw new Error("Gagal menyimpan ke database! Cek terminal server.");
         }
       } else if (activeProgram && startDateStr) {
         // Fallback jika belum pernah ada enrollment dan kita mengisi via Edit
-        const offDays = await prisma.offDay.findMany();
         const startD = new Date(startDateStr);
-        const calculatedEndDateStr = calculateEndDate(startD, durationOption, offDays, activeProgram, totalLeaves);
+        const clientEndDateRaw = formData.get("clientCalculatedEndDate") as string;
+        if (!clientEndDateRaw) {
+          throw new Error("Tanggal estimasi dari client tidak ditemukan (Fallback mode)!");
+        }
+        const calculatedEndDateStr = new Date(clientEndDateRaw);
 
         await prisma.enrollment.create({
           data: {
@@ -193,6 +219,7 @@ export async function editUser(formData: FormData) {
     revalidatePath("/admin/users");
     revalidatePath("/admin/crm");
     revalidatePath("/admin/classes");
+    revalidatePath("/student/dashboard");
     return { success: true };
   } catch (error: any) {
     if (error.code === "P2002") {

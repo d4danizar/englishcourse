@@ -64,10 +64,12 @@ export function StudentDashboardClient({
   profile,
   attendances,
   evaluations,
+  homeworks,
 }: {
   profile: ProfileContent;
   attendances: AttendanceWithSession[];
   evaluations: DescriptiveEvaluation[];
+  homeworks: { today: string | null; tomorrow: string | null };
 }) {
   const [activeTab, setActiveTab] = useState<"overview" | "attendance" | "evaluations" | "settings">("overview");
 
@@ -81,6 +83,17 @@ export function StudentDashboardClient({
     end.setHours(0, 0, 0, 0);
     daysLeft = differenceInBusinessDays(end, today);
   }
+
+  const rawEndDate = profile.endDate;
+
+  const masaAktifDate = rawEndDate 
+    ? new Date(rawEndDate).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })
+    : 'Belum ditentukan';
 
   // Attendance Stats
   const totalPresent = attendances.filter(a => a.status === "PRESENT").length;
@@ -129,6 +142,7 @@ export function StudentDashboardClient({
                 src={COMPANY_INFO.logoSmallUrl}
                 alt="Avatar"
                 fill
+                priority
                 unoptimized
                 style={{ objectFit: "contain", padding: "10px" }}
               />
@@ -171,11 +185,9 @@ export function StudentDashboardClient({
                 </span>
               </div>
             )}
-            {profile.endDate && (
-              <p className="text-[10px] font-bold text-slate-400 mt-2 tracking-wide">
-                s.d. {format(new Date(profile.endDate), "dd MMM yyyy")}
-              </p>
-            )}
+            <p className="text-[10px] font-bold text-slate-400 mt-2 tracking-wide">
+              s.d. {masaAktifDate}
+            </p>
           </div>
         </div>
       </div>
@@ -204,6 +216,39 @@ export function StudentDashboardClient({
           </Link>
         </div>
       )}
+
+      {/* Homework / PR Section */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm relative z-20 transition-shadow hover:shadow-md">
+        <div className="flex items-center gap-3 text-slate-800 font-semibold mb-4">
+          <div className="p-2 bg-amber-50 rounded-lg shrink-0">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+          </div>
+          <span className="text-base sm:text-lg font-bold">Homework / PR</span>
+        </div>
+
+        {!homeworks.today && !homeworks.tomorrow ? (
+          <div className="text-center py-6">
+            <p className="text-3xl mb-2">🎉</p>
+            <p className="text-sm font-semibold text-slate-500">Tidak ada PR hari ini!</p>
+            <p className="text-xs text-slate-400 mt-1">Nikmati waktu luangmu untuk review materi.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {homeworks.today && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-5">
+                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1.5 sm:mb-2">📋 Hari Ini</p>
+                <p className="text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{homeworks.today}</p>
+              </div>
+            )}
+            {homeworks.tomorrow && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-5">
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5 sm:mb-2">📝 Besok</p>
+                <p className="text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{homeworks.tomorrow}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* 2. Tabs Navigation */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200 max-w-fit relative z-20 mt-4">
@@ -266,6 +311,7 @@ export function StudentDashboardClient({
                 </p>
               </div>
             </div>
+            {/* End Quick Stats */}
           </div>
         )}
 

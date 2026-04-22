@@ -17,6 +17,8 @@ export async function getStudentProfile(studentId: string) {
           startDate: true,
           endDate: true,
           totalLeaves: true,
+          leaveQuota: true,
+          leaveUsed: true,
           status: true,
           // tambahkan batch/schedule di sini jika ada di schema Enrollment
         }
@@ -28,6 +30,10 @@ export async function getStudentProfile(studentId: string) {
 
   const currentEnrollment = profile.enrollments?.[0];
 
+  console.log("=== 🔍 X-RAY DASHBOARD MURID ===");
+  console.log("Data Enrollment:", currentEnrollment);
+  console.log("================================");
+
   // Map kembali data ke format yang diharapkan oleh UI Frontend (PENTING agar UI tidak crash)
   return {
     id: profile.id,
@@ -35,8 +41,8 @@ export async function getStudentProfile(studentId: string) {
     activeProgram: currentEnrollment?.programType || "Belum ada program aktif",
     startDate: currentEnrollment?.startDate || null,
     endDate: currentEnrollment?.endDate || null,
-    leaveUsed: currentEnrollment?.totalLeaves || 0,
-    leaveQuota: 4, // Atau sesuaikan dengan logic bisnis default
+    leaveUsed: currentEnrollment?.leaveUsed || 0,
+    leaveQuota: currentEnrollment?.totalLeaves || currentEnrollment?.leaveQuota || 0,
     // Jika UI butuh batch/schedule tapi datanya belum direlokasi sempurna, beri fallback string
     programBatch: "-", 
     batchSchedule: "-",

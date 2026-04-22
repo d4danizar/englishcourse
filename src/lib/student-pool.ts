@@ -228,23 +228,16 @@ export async function getGlobalPoolForSession({
   }
 
   // 3. Execute Query
-  console.log("🕵️ RADAR SEARCH PARAMS:", { programName: programType, batch: timeSlot, query: "" });
+  console.log("=== 🚀 GOD MODE SEARCH TRIGGERED ===");
+  console.log("Search Query: ALL (Loaded into Client Memory for Taken Class)");
+  console.log("Session details:", { programType, timeSlot });
 
+  // GOD MODE: Bypass all broken bulk-import data (missing quotas, null endDates)
+  // Fetch ALL students and let the UI filter by name.
   const pool = await prisma.user.findMany({
     where: {
       role: "STUDENT",
-      // MATIKAN (comment) sementara filter program dan batch di bawah ini!
-      // activeProgram: programType, 
-      // programBatch: { contains: timeSlot, mode: "insensitive" },
-      // endDate: { gte: new Date() }
-
-      // Dummy search text untuk debugging
-      name: {
-        contains: "", // Longgarkan secara maksimum
-        mode: "insensitive"
-      }
     },
-    take: 10,
     select: {
       id: true,
       name: true,

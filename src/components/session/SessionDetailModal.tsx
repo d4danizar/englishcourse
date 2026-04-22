@@ -297,8 +297,8 @@ export function SessionDetailModal({
                           </select>
                         </div>
 
-                        {/* Evaluation sliders */}
-                        {data.isEvalDay && status === "PRESENT" && (
+                        {/* Evaluation sliders — only on Friday/Saturday */}
+                        {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && status === "PRESENT" && (
                           <div className="grid grid-cols-3 gap-3 pt-1">
                             {([
                               ["Pronunciation", editPronunciations, setEditPronunciations],
@@ -371,8 +371,8 @@ export function SessionDetailModal({
                           </span>
                         </div>
 
-                        {/* Evaluations (if any) */}
-                        {(a.pronunciation || a.fluency || a.vocabulary) && (
+                        {/* Evaluations — only visible for Friday/Saturday sessions */}
+                        {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && (a.pronunciation || a.fluency || a.vocabulary) && (
                           <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-3">
                             {[
                               { label: "Pronunciation", val: a.pronunciation },

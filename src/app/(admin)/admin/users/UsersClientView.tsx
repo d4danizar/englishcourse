@@ -884,6 +884,10 @@ export function UsersClientView({
                   editProgramBatch, setEditProgramBatch, editCalculatedEndDate,
                   editTotalLeaves, setEditTotalLeaves
                 )}
+                {/* Hidden field so server doesn't recalculate endDate and cause UTC inconsistencies */}
+                {editRole === "STUDENT" && editCalculatedEndDate && (
+                  <input type="hidden" name="clientCalculatedEndDate" value={editCalculatedEndDate.toISOString()} />
+                )}
               </div>
               <div className="p-5 border-t border-slate-100 gap-3 flex justify-end bg-slate-50/50">
                 <button 

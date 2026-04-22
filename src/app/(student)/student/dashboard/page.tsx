@@ -2,9 +2,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { redirect } from "next/navigation";
 import { getStudentProfile, getStudentAttendances, getStudentEvaluations } from "./actions";
+import { getDashboardHomeworks } from "@/lib/actions/homework-actions";
 import { StudentDashboardClient } from "./StudentDashboardClient";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
+
+export const dynamic = 'force-dynamic';
 
 export default async function StudentDashboardPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -20,6 +23,14 @@ export default async function StudentDashboardPage() {
     getStudentAttendances(studentId),
     getStudentEvaluations(studentId),
   ]);
+
+  // Fetch homework for student's branch (needs profile first)
+  const studentBranch = (sessionUser.user as any).branch || "KARTASURA";
+  const homeworks = await getDashboardHomeworks(studentBranch);
+
+  console.log("=== 🔍 BANNER X-RAY ===");
+  console.log("endDate murni dari Prisma (via tindakan DB):", profile?.endDate);
+  console.log("=======================");
 
   if (!profile) {
     return (
@@ -62,6 +73,7 @@ export default async function StudentDashboardPage() {
           profile={profile}
           attendances={attendances}
           evaluations={evaluations}
+          homeworks={homeworks}
         />
 
       </div>
