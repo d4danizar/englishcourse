@@ -19,6 +19,12 @@ model User {
   dashboardLayout    Json?
   classGroupId       String?
   branch             BranchLocation          @default(KARTASURA)
+  gender             String?
+  birthPlace         String?
+  birthDate          DateTime?
+  occupation         String?
+  discoverySource    String?
+  address            String?
   announcements      Announcement[]
   attendances        Attendance[]
   cashflows          Cashflow[]

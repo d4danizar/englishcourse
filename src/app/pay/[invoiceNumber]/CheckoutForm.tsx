@@ -55,6 +55,7 @@ const formSchema = z
       ["Instagram", "TikTok", "Google Maps", "Website", "Teman/Keluarga"],
       { message: "Silakan pilih dari mana Anda mengetahui kami." }
     ),
+    address: z.string().min(5, "Alamat lengkap wajib diisi."),
   })
   .superRefine((data, ctx) => {
     if (
@@ -212,6 +213,7 @@ export function CheckoutForm({
       birthDate: values.birthDate,
       occupation: values.occupation,
       discoverySource: values.discoverySource,
+      address: values.address,
     };
 
     const res = await submitPaymentProof(invoiceId, studentData as any, proofUrl);
@@ -322,6 +324,18 @@ export function CheckoutForm({
               ))}
             </select>
           </FieldWrap>
+
+          <div className="sm:col-span-2">
+            <FieldWrap label="Alamat Lengkap / Tempat Tinggal" required error={errors.address?.message}>
+              <textarea 
+                id="address" 
+                {...register("address")} 
+                rows={3} 
+                className={inputCls} 
+                placeholder="Masukkan alamat domisili lengkap..."
+              />
+            </FieldWrap>
+          </div>
         </div>
       </section>
 

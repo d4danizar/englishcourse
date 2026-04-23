@@ -278,6 +278,12 @@ export async function approvePayment(invoiceId: string) {
           name: studentName,
           role: "STUDENT",
           branch: invoice.branch,
+          ...(dataPayload.gender && { gender: dataPayload.gender }),
+          ...(dataPayload.birthPlace && { birthPlace: dataPayload.birthPlace }),
+          ...(dataPayload.birthDate && { birthDate: new Date(dataPayload.birthDate) }),
+          ...(dataPayload.occupation && { occupation: dataPayload.occupation }),
+          ...(dataPayload.discoverySource && { discoverySource: dataPayload.discoverySource }),
+          ...(dataPayload.address && { address: dataPayload.address }),
           enrollments: {
             create: {
               programType: finalActiveProgram,
@@ -297,6 +303,12 @@ export async function approvePayment(invoiceId: string) {
           phoneNumber: whatsapp,
           role: "STUDENT",
           branch: invoice.branch,
+          gender: dataPayload.gender || null,
+          birthPlace: dataPayload.birthPlace || null,
+          birthDate: dataPayload.birthDate ? new Date(dataPayload.birthDate) : null,
+          occupation: dataPayload.occupation || null,
+          discoverySource: dataPayload.discoverySource || null,
+          address: dataPayload.address || null,
           enrollments: {
             create: {
               programType: finalActiveProgram,
