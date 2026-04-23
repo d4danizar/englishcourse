@@ -130,7 +130,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         </div>
         <div className="text-center">
           <p className="text-slate-500 text-xs mb-6">Penerima,</p>
-          <p className="font-bold text-slate-800 border-b border-slate-800 pb-1 px-4 inline-block text-xs">Finance Dept</p>
+          <p className="font-bold text-slate-800 border-b border-slate-800 pb-1 px-4 inline-block text-xs">Admin/CS Dept</p>
         </div>
       </div>
 
