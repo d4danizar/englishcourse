@@ -50,7 +50,7 @@ export async function processBulkImport(rawData: any[]) {
       } else if (!firstErrorMsg) {
         // Simpan error pertama untuk keperluan debugging
         const issue = parsed.error.issues[0];
-        firstErrorMsg = `Field '${issue.path[0]}' -> ${issue.message}`;
+        firstErrorMsg = `Field '${String(issue.path[0] || "Unknown")}' -> ${issue.message}`;
         console.error("Zod Validation Error pada baris:", row, parsed.error.issues);
       }
     }
