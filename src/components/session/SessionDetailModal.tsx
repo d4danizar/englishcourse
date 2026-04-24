@@ -142,7 +142,7 @@ export function SessionDetailModal({
   };
 
   // Score dot renderer
-  const ScoreDots = ({ value, max = 10 }: { value: number | null; max?: number }) => (
+  const ScoreDots = ({ value, max = 5 }: { value: number | null; max?: number }) => (
     <div className="flex gap-0.5">
       {Array.from({ length: max }).map((_, i) => (
         <div
@@ -299,23 +299,23 @@ export function SessionDetailModal({
 
                         {/* Evaluation sliders — only on Friday/Saturday */}
                         {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && status === "PRESENT" && (
-                          <div className="grid grid-cols-3 gap-3 pt-1">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4 pt-1">
                             {([
                               ["Pronunciation", editPronunciations, setEditPronunciations],
                               ["Fluency", editFluencies, setEditFluencies],
                               ["Vocabulary", editVocabularies, setEditVocabularies],
                             ] as const).map(([label, stateObj, setter]) => (
-                              <div key={label} className="flex flex-col gap-1">
+                              <div key={label} className="flex flex-col gap-1 sm:flex-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
                                 <input
                                   type="range"
                                   min={1}
-                                  max={10}
-                                  value={(stateObj as Record<string, number>)[student.id] ?? 7}
+                                  max={5}
+                                  value={(stateObj as Record<string, number>)[student.id] ?? 4}
                                   onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) }))}
                                   className="w-full accent-indigo-600"
                                 />
-                                <p className="text-center text-xs font-bold text-indigo-600">{(stateObj as Record<string, number>)[student.id] ?? 7}/10</p>
+                                <p className="text-center text-xs font-bold text-indigo-600">{(stateObj as Record<string, number>)[student.id] ?? 4}/5</p>
                               </div>
                             ))}
                           </div>
@@ -373,17 +373,17 @@ export function SessionDetailModal({
 
                         {/* Evaluations — only visible for Friday/Saturday sessions */}
                         {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && (a.pronunciation || a.fluency || a.vocabulary) && (
-                          <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-3 gap-3">
+                          <div className="mt-3 pt-3 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
                             {[
                               { label: "Pronunciation", val: a.pronunciation },
                               { label: "Fluency", val: a.fluency },
                               { label: "Vocabulary", val: a.vocabulary },
                             ].map((ev) => (
-                              <div key={ev.label} className="flex flex-col gap-1">
+                              <div key={ev.label} className="flex flex-col gap-1 sm:flex-1">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{ev.label}</p>
                                 <div className="flex items-center gap-1.5">
                                   <ScoreDots value={ev.val} />
-                                  <span className="text-xs font-bold text-slate-600">{ev.val || "—"}/10</span>
+                                  <span className="text-xs font-bold text-slate-600">{ev.val || "—"}/5</span>
                                 </div>
                               </div>
                             ))}
