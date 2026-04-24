@@ -18,7 +18,15 @@ const ImportRowSchema = z.object({
   Session: z.union([z.string(), z.number()]).optional(), // Kolom opsional: "Sesi 1", "08:00 - 09:30", dll
   "Start Date": z.any().optional(), // Tambahkan header wajib sesuai instruksi UI
   JoinedDate: z.any().optional(), // Fallback legacy CSV
-  Duration: z.union([z.string(), z.number()]), // Kolom Wajib
+  Duration: z.union([z.string(), z.number()]).optional(), // Kolom opsional (fallback ke 1 Bulan)
+  
+  // Optional Biodata Fields (to prevent crashes if missing)
+  gender: z.string().optional(),
+  birthPlace: z.string().optional(),
+  birthDate: z.any().optional(),
+  occupation: z.string().optional(),
+  discoverySource: z.string().optional(),
+  address: z.string().optional(),
 });
 
 export async function processBulkImport(rawData: any[]) {
@@ -32,19 +40,25 @@ export async function processBulkImport(rawData: any[]) {
     const branchFilter = await getBranchFilter();
 
     const validData = [];
+    let firstErrorMsg = "";
 
     // Validasi per baris menggunakan Zod, mengabaikan yang tak sesuai schema
     for (const row of rawData) {
       const parsed = ImportRowSchema.safeParse(row);
       if (parsed.success) {
         validData.push(parsed.data);
+      } else if (!firstErrorMsg) {
+        // Simpan error pertama untuk keperluan debugging
+        const issue = parsed.error.issues[0];
+        firstErrorMsg = `Field '${issue.path[0]}' -> ${issue.message}`;
+        console.error("Zod Validation Error pada baris:", row, parsed.error.issues);
       }
     }
 
     if (validData.length === 0) {
       return {
         success: false,
-        error: "Tidak ada data yang valid ditemukan. Cek ejaan judul kolom (Name, Email, WhatsApp, Program, Session[opsional])."
+        error: `Validasi Ditolak. (Alasan: ${firstErrorMsg}). Pastikan header: Name, Email, WhatsApp, Program, Duration.`
       };
     }
 
@@ -90,6 +104,22 @@ export async function processBulkImport(rawData: any[]) {
       // Hitung endDate berbekal duration Enum yang spesifik
       const endDateVal = calculateEndDate(parsedDate, mappedDuration);
 
+      // --- ABSOLUTE BOTTOM OVERRIDE FOR END DATE ---
+      const cleanProgram = String(student.Program || "").toUpperCase().trim();
+      const baseStartDate = parsedDate ? new Date(parsedDate) : new Date();
+
+      // Start with whatever end date the old logic calculated
+      let finalEndDate = endDateVal;
+
+      // OVERRIDE FOR EFT & EFK ONLY
+      if (cleanProgram === 'EFT' || cleanProgram === 'EFK') {
+        const explicitSixMonths = new Date(baseStartDate.getTime());
+        explicitSixMonths.setMonth(explicitSixMonths.getMonth() + 6);
+        finalEndDate = explicitSixMonths;
+        mappedDuration = "6_MONTHS"; // Ensure DB enum syncs too
+      }
+      // ---------------------------------------------
+
       // Kembalikan DUA objek: Data Profil User dan Data Paket Belajar (Enrollment)
       return {
         userProfile: {
@@ -104,8 +134,8 @@ export async function processBulkImport(rawData: any[]) {
         enrollmentData: {
           programType: student.Program,
           programBatch: student.Session ? String(student.Session) : null,
-          startDate: parsedDate,
-          endDate: endDateVal,
+          startDate: baseStartDate,
+          endDate: finalEndDate, // <-- STRICTLY THIS VARIABLE
           durationOption: mappedDuration,
           leaveQuota: calculateLeaveQuota(student.Program, null),
           leaveUsed: 0,
@@ -118,27 +148,35 @@ export async function processBulkImport(rawData: any[]) {
     // Karena kita memakai struktur Relasional, gunakan upsert/create berturut-turut untuk setiap user
     // agar Enrollments bisa terkait persis dengan ID murid masing-masing.
     let importedCount = 0;
+    let failedCount = 0;
+    let lastError = "";
 
     for (const payload of dbPayload) {
-      // Upsert User agar email duplikat tidak crash, ia hanya akan memperbarui info dasar
-      const savedUser = await prisma.user.upsert({
-        where: { email: payload.userProfile.email },
-        update: {
-          name: payload.userProfile.name,
-          phoneNumber: payload.userProfile.phoneNumber, // update WA yang terbaru jika berubah
-        },
-        create: payload.userProfile
-      });
+      try {
+        // Upsert User agar email duplikat tidak crash, ia hanya akan memperbarui info dasar
+        const savedUser = await prisma.user.upsert({
+          where: { email: payload.userProfile.email },
+          update: {
+            name: payload.userProfile.name,
+            phoneNumber: payload.userProfile.phoneNumber, // update WA yang terbaru jika berubah
+          },
+          create: payload.userProfile
+        });
 
-      // Lalu buatkan set tiket masuk kelas (Enrollments) yang baru untuk user ini
-      await prisma.enrollment.create({
-        data: {
-          userId: savedUser.id,
-          ...payload.enrollmentData
-        }
-      });
+        // Lalu buatkan set tiket masuk kelas (Enrollments) yang baru untuk user ini
+        await prisma.enrollment.create({
+          data: {
+            userId: savedUser.id,
+            ...payload.enrollmentData
+          }
+        });
 
-      importedCount++;
+        importedCount++;
+      } catch (err: any) {
+        console.error(`[processBulkImport] Error inserting ${payload.userProfile.email}:`, err);
+        failedCount++;
+        lastError = err.message || String(err);
+      }
     }
 
     // --- Post-create: Auto-assign "English on Saturday" students to ClassGroup ---
@@ -183,9 +221,13 @@ export async function processBulkImport(rawData: any[]) {
 
     revalidatePath("/admin/users");
 
+    if (importedCount === 0 && failedCount > 0) {
+      return { success: false, error: `Prisma Error: ${lastError}` };
+    }
+
     return { success: true, count: importedCount };
   } catch (error: any) {
-    console.error("[processBulkImport] Error:", error);
-    return { success: false, error: "Gagal memproses file. Silakan coba lagi nanti." };
+    console.error("[processBulkImport] Critical Error:", error);
+    return { success: false, error: `Gagal memproses file: ${error.message || String(error)}` };
   }
 }

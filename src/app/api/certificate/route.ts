@@ -127,7 +127,7 @@ export async function GET() {
     drawCenter(`${fluencyScore.score} / ${fluencyScore.grade}`, colScoreCenterX, 325, scoreSize, font);
 
     // Total Score (using newly mapped 1-9 scale)
-    drawCenter(`${rawTotal}/${totalGrade}`, colScoreCenterX, 287, scoreSize, font, rgb(1, 1, 1));
+    drawCenter(`${rawTotal} / ${totalGrade}`, colScoreCenterX, 287, scoreSize, font, rgb(1, 1, 1));
 
     // =====================================================================
     // 5. PRINT DATE

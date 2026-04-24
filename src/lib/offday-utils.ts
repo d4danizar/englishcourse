@@ -21,7 +21,13 @@ export function calculateEndDate(
   };
   
   // Fallback if not found (default to 30)
-  const baseDays = durationMap[(durationOption || "").toUpperCase()] || 30; 
+  let baseDays = durationMap[(durationOption || "").toUpperCase()] || 30; 
+
+  // OVERRIDE for EFT and EFK natively across the app
+  const cleanProgram = String(programType || "").toUpperCase().trim();
+  if (cleanProgram.includes('EFT') || cleanProgram.includes('EFK')) {
+    baseDays = 180; // Exactly 6 months equivalent
+  }
 
   // 2. Set the target days to loop (Base Duration + Leaves)
   // We subtract 1 because the startDate itself counts as Day 1.

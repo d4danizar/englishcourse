@@ -30,9 +30,18 @@ export function BulkImportForm() {
         const ws = wb.Sheets[wsname];
 
         // Konversi Data Worksheet menjadi Array JSON
-        const jsonData = xlsx.utils.sheet_to_json(ws);
+        const jsonData = xlsx.utils.sheet_to_json(ws) as any[];
 
-        const sanitizedData = JSON.parse(JSON.stringify(jsonData));
+        const sanitizedData = jsonData
+          .filter(row => Object.keys(row).length > 0) // Remove empty rows
+          .map(row => {
+            const cleanRow: any = {};
+            for (const key in row) {
+              const cleanKey = key.trim(); 
+              cleanRow[cleanKey] = typeof row[key] === 'string' ? row[key].trim() : row[key];
+            }
+            return cleanRow;
+          });
 
         setStatus("UPLOADING");
         setMessage("Sedang sinkronisasi multi-cabang & mengirim ke server...");
