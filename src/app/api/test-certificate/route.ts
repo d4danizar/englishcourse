@@ -154,7 +154,7 @@ export async function GET() {
 
     // X dan Y tetap menggunakan koordinat asli yang sudah presisi
     page.drawText(printDate, {
-      x: 285, y: 232, size: 12, font, color: rgb(0, 0, 0),
+      x: 286, y: 232.3, size: 12, font, color: rgb(0, 0, 0),
     });
 
     // =====================================================================

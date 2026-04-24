@@ -208,12 +208,14 @@ export function StudentDashboardClient({
               </p>
             </div>
           </div>
-          <Link
-            href="/student/certificate"
+          <a
+            href="/api/certificate"
+            target="_blank"
+            rel="noopener noreferrer"
             className="w-full sm:w-auto text-center px-6 py-3 bg-white text-emerald-700 hover:bg-emerald-50 font-bold rounded-xl shadow-md transition-all whitespace-nowrap"
           >
             Unduh E-Certificate
-          </Link>
+          </a>
         </div>
       )}
 

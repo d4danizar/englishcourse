@@ -106,10 +106,10 @@ export async function generateCertificateData(studentId: string) {
     overallScore = (avgFluency + avgPronunciation + avgVocab) / 3;
 
     // Tentukan Predikat (A-E)
-    if (overallScore >= 9.0) predicate = "A";
-    else if (overallScore >= 8.0) predicate = "B";
-    else if (overallScore >= 7.0) predicate = "C";
-    else if (overallScore >= 6.0) predicate = "D";
+    if (overallScore >= 5.0) predicate = "A";
+    else if (overallScore >= 4.0) predicate = "B";
+    else if (overallScore >= 3.0) predicate = "C";
+    else if (overallScore >= 2.0) predicate = "D";
     else predicate = "E";
   }
 
