@@ -29,6 +29,41 @@ export function calculateEndDate(
     baseDays = 180; // Exactly 6 months equivalent
   }
 
+  // === SMART CALENDAR FOR ENGLISH ON SATURDAY ===
+  // 8 Saturday sessions, skipping holidays. Early return.
+  if (cleanProgram.includes('ENGLISH ON SATURDAY') || cleanProgram.includes('SATURDAY')) {
+    const TOTAL_SESSIONS = 8 + (leaveUsed || 0); // Base 8 sessions + missed sessions (izin)
+    let sessionCount = 1; // Start date = Session 1
+    let calculatedDate = new Date(start);
+
+    while (sessionCount < TOTAL_SESSIONS) {
+      // Jump to the next Saturday (7 days)
+      calculatedDate.setDate(calculatedDate.getDate() + 7);
+
+      // Normalize for comparison
+      const checkDate = new Date(
+        calculatedDate.getFullYear(),
+        calculatedDate.getMonth(),
+        calculatedDate.getDate()
+      ).getTime();
+
+      // Check against the same offDays array used by the rest of the system
+      const isOffDay = offDays.some(holiday => {
+        const hStart = new Date(holiday.startDate).setHours(0, 0, 0, 0);
+        const hEnd = holiday.endDate ? new Date(holiday.endDate).setHours(0, 0, 0, 0) : hStart;
+        return checkDate >= hStart && checkDate <= hEnd;
+      });
+
+      // Only count the session if it's NOT a holiday
+      if (!isOffDay) {
+        sessionCount++;
+      }
+    }
+
+    return calculatedDate;
+  }
+  // === END ENGLISH ON SATURDAY ===
+
   // 2. Set the target days to loop (Base Duration + Leaves)
   // We subtract 1 because the startDate itself counts as Day 1.
   let targetDays = (baseDays + leaveUsed) - 1; 
