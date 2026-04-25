@@ -57,6 +57,7 @@ export default async function TutorDashboardPage() {
         timeSlot: s.timeSlot,
         programType: s.programType,
         assignedStudents: s.assignedStudents,
+        branch: s.branch,
       });
 
       // Build a set of studentIds that already have attendance records

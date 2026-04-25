@@ -18,7 +18,13 @@ export default async function AdminPayrollPage() {
   // 2. Query: Get all tutors with their completed sessions this month
   // Open Pool model: Sessions are directly linked to tutors via `sessionsTaught`
   const rawTutors = await prisma.user.findMany({
-    where: { role: "TUTOR", ...branchFilter },
+    where: { 
+      role: "TUTOR", 
+      OR: [
+        { ...branchFilter },
+        { secondaryBranch: branchFilter.branch }
+      ]
+    },
     include: {
       sessionsTaught: {
         where: {

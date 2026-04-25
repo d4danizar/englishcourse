@@ -2,6 +2,8 @@
 
 import { prisma } from "../../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function submitAttendance(formData: FormData) {
   try {
@@ -133,9 +135,18 @@ export async function searchStudentsForAttendance(
   try {
     const isSearching = query && query.trim() !== "";
 
+    // Get tutor's branch for strict student isolation
+    const session = await getServerSession(authOptions);
+    const tutorUser = session?.user?.id ? await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { branch: true }
+    }) : null;
+    const branchFilter = tutorUser?.branch ? { branch: tutorUser.branch as any } : {};
+
     const rawStudents = await prisma.user.findMany({
       where: {
         role: "STUDENT",
+        ...branchFilter,
         // LOGIKA BERCABANG
         ...(isSearching
           ? {

@@ -10,9 +10,17 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
     ? ["Regular", "Fullday", "Asrama", "English on Saturday"]
     : [group];
 
+  // Get tutor's branch for strict isolation
+  const tutor = await prisma.user.findUnique({
+    where: { id: tutorId },
+    select: { branch: true }
+  });
+  const tutorBranch = tutor?.branch;
+
   const students = await prisma.user.findMany({
     where: {
       role: "STUDENT",
+      ...(tutorBranch ? { branch: tutorBranch } : {}),
       enrollments: {
         some: {
           OR: [

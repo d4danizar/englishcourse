@@ -25,6 +25,7 @@ model User {
   occupation         String?
   discoverySource    String?
   address            String?
+  secondaryBranch    BranchLocation?
   announcements      Announcement[]
   attendances        Attendance[]
   cashflows          Cashflow[]

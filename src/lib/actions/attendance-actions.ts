@@ -29,6 +29,7 @@ export async function runDailyAutoAbsence() {
       const eligibleStudents = await prisma.user.findMany({
         where: {
           role: "STUDENT",
+          branch: session.branch,
           enrollments: {
             some: {
               programType: session.programType,

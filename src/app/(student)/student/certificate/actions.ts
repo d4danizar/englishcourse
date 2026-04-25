@@ -9,6 +9,7 @@ export async function generateCertificateData(studentId: string) {
     select: {
       id: true,
       name: true,
+      branch: true,
       enrollments: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -28,6 +29,7 @@ export async function generateCertificateData(studentId: string) {
   const student = {
     id: rawStudent.id,
     name: rawStudent.name,
+    branch: rawStudent.branch,
     activeProgram: rawStudent.enrollments?.[0]?.programType || null,
     startDate: rawStudent.enrollments?.[0]?.startDate || null,
     endDate: rawStudent.enrollments?.[0]?.endDate || null,
@@ -62,31 +64,44 @@ export async function generateCertificateData(studentId: string) {
     }
   });
 
+  // === 🔬 DIAGNOSTIC RADAR (remove after debugging) ===
+  console.log("=== 🔬 ACTIONS.TS ATTENDANCE RADAR ===", {
+    studentId: student.id,
+    totalAttendances: attendances.length,
+    startDate: student.startDate,
+    endDate: student.endDate,
+    sampleAttendance: attendances[0] ? {
+      fluency: attendances[0].fluency,
+      pronunciation: attendances[0].pronunciation,
+      vocabulary: attendances[0].vocabulary,
+      sessionDate: attendances[0].session?.date,
+    } : "NO RECORDS",
+  });
+
   let sumFluency = 0;
   let sumPronunciation = 0;
   let sumVocabulary = 0;
   let validEvaluationCount = 0;
 
   attendances.forEach((att) => {
-    const sessionTime = new Date(att.session.date).getTime();
-    const startTime = student.startDate ? new Date(student.startDate).getTime() : 0;
-    const endTime = student.endDate
-      ? new Date(student.endDate).setHours(23, 59, 59, 999)
-      : Infinity;
-
-    const isWithinActivePeriod = sessionTime >= startTime && sessionTime <= endTime;
-
     const hasScores = (att.fluency && att.fluency > 0) ||
       (att.pronunciation && att.pronunciation > 0) ||
       (att.vocabulary && att.vocabulary > 0);
 
-    if (hasScores && isWithinActivePeriod) {
-      // Jumlahkan semua nilai per kategori
+    if (hasScores) {
       sumFluency += att.fluency || 0;
       sumPronunciation += att.pronunciation || 0;
       sumVocabulary += att.vocabulary || 0;
       validEvaluationCount++;
     }
+  });
+
+  // === 🔬 POST-LOOP RADAR ===
+  console.log("=== 🔬 POST-LOOP RESULT ===", {
+    validEvaluationCount,
+    sumFluency,
+    sumPronunciation,
+    sumVocabulary,
   });
 
   // Siapkan variabel nilai akhir
@@ -116,7 +131,9 @@ export async function generateCertificateData(studentId: string) {
   // Return data dengan format baru
   return {
     student: {
+      id: student.id,
       name: student.name,
+      branch: student.branch,
       activeProgram: student.activeProgram,
       startDate: student.startDate,
       endDate: student.endDate,

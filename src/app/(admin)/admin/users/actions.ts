@@ -18,6 +18,8 @@ export async function createUser(formData: FormData) {
     const phoneNumber = formData.get("phoneNumber") as string;
     const role = formData.get("role") as Role;
     const branch = (formData.get("branch") as BranchLocation) || "KARTASURA";
+    const rawSecondaryBranch = formData.get("secondaryBranch") as string;
+    const secondaryBranch = rawSecondaryBranch && rawSecondaryBranch.trim() !== "" ? rawSecondaryBranch : null;
     const activeProgram = formData.get("activeProgram") as string;
     const startDateStr = formData.get("startDate") as string;
     const endDateStr = formData.get("endDate") as string;
@@ -42,6 +44,7 @@ export async function createUser(formData: FormData) {
           phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
           role,
           branch,
+          secondaryBranch: secondaryBranch ? (secondaryBranch as BranchLocation) : null,
           passwordHash,
           ...(isStudent && activeProgram && startDateStr ? {
             enrollments: {
@@ -96,6 +99,8 @@ export async function editUser(formData: FormData) {
     const phoneNumber = formData.get("phoneNumber") as string;
     const role = formData.get("role") as Role;
     const branch = (formData.get("branch") as BranchLocation) || "KARTASURA";
+    const rawSecondaryBranch = formData.get("secondaryBranch") as string;
+    const secondaryBranch = rawSecondaryBranch && rawSecondaryBranch.trim() !== "" ? rawSecondaryBranch : null;
 
     // Student-specific fields
     const activeProgram = formData.get("activeProgram") as string;
@@ -125,6 +130,7 @@ export async function editUser(formData: FormData) {
         phoneNumber: phoneNumber ? sanitizePhoneNumber(phoneNumber) : null,
         role,
         branch,
+        secondaryBranch: secondaryBranch ? (secondaryBranch as BranchLocation) : null,
       },
     });
 

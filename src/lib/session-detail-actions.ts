@@ -74,12 +74,14 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
     timeSlot: session.timeSlot,
     programType: session.programType,
     assignedStudents: session.assignedStudents,
+    branch: session.branch,
   });
 
   // Get global pool for manual add (broad)
   const globalPoolStudents = await getGlobalPoolForSession({
     programType: session.programType,
-    timeSlot: session.timeSlot
+    timeSlot: session.timeSlot,
+    branch: session.branch,
   });
 
   // Build attendance IDs set for exclusion from global pool

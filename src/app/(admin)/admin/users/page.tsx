@@ -36,6 +36,7 @@ export default async function AdminUsersPage() {
     phoneNumber: user.phoneNumber,
     role: user.role,
     branch: user.branch,
+    secondaryBranch: user.secondaryBranch || null,
     createdAt: user.createdAt.toISOString(),
     activeProgram: user.enrollments?.[0]?.programType || "-",
     programBatch: user.enrollments?.[0]?.programBatch || null,

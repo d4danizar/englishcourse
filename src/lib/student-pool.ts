@@ -60,6 +60,7 @@ export async function getEligibleStudentsForSession(session: {
   timeSlot: string;
   programType: string;
   assignedStudents?: { id: string }[];
+  branch?: string;
 }): Promise<EligibleStudentResult[]> {
   const eligiblePrograms = getEligiblePrograms(session.programType);
 
@@ -70,6 +71,7 @@ export async function getEligibleStudentsForSession(session: {
   const candidateStudents = await prisma.user.findMany({
     where: {
       role: "STUDENT",
+      ...(session.branch ? { branch: session.branch as any } : {}),
       enrollments: {
         some: {
           programType: { in: eligiblePrograms },
@@ -185,9 +187,11 @@ export async function getEligibleStudentsForSession(session: {
 export async function getGlobalPoolForSession({
   programType,
   timeSlot,
+  branch,
 }: {
   programType: string;
   timeSlot: string;
+  branch?: string;
 }): Promise<EligibleStudentResult[]> {
   const normType = programType.trim().toUpperCase();
 
@@ -237,6 +241,7 @@ export async function getGlobalPoolForSession({
   const pool = await prisma.user.findMany({
     where: {
       role: "STUDENT",
+      ...(branch ? { branch: branch as any } : {}),
     },
     select: {
       id: true,

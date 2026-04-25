@@ -7,6 +7,34 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { generateCertificateData } from "@/app/(student)/student/certificate/actions";
 
+const BRANCH_CODES: Record<string, string> = {
+  'Kartasura': '01',
+  'Serengan': '02',
+  'Nusukan': '03',
+};
+
+const PROGRAM_CODES: Record<string, string> = {
+  'Conversation Regular Class': '01',
+  'Conversation Fullday Class': '02',
+  'English Camp Programme': '03',
+  'English Camp': '03',
+  'Camp': '03',
+  'Asrama': '03',
+  'English On Saturday': '04',
+  'TOEFL Preparation': '11',
+  'English Private Class': '12',
+  'English For Kids': '21',
+  'EFK': '21',
+  'English For Teens': '22',
+  'EFT': '22',
+  'Gapyear Program 6 bulan': '31',
+  'English Camp 1 Tahun': '32',
+  'English Holiday': '41',
+  'English Workshop': '42',
+  'English Fun Day': '99',
+  'TOEFL Test': '88'
+};
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -41,8 +69,31 @@ export async function GET() {
       }
     }
 
-    // TODO: Update format from staff
-    const certificateNumber = `CERT-${student.name.substring(0, 3).toUpperCase()}-${new Date().getFullYear()}`;
+    // =====================================================================
+    // 2. DYNAMIC CERTIFICATE NUMBER GENERATOR
+    // =====================================================================
+    const certDate = new Date(student.endDate || new Date());
+    const dd = String(certDate.getDate()).padStart(2, '0');
+    const mm = String(certDate.getMonth() + 1).padStart(2, '0');
+    const yy = String(certDate.getFullYear()).slice(-2);
+
+    const rawBranch = student.branch || "KARTASURA";
+    const rawProgram = student.activeProgram || "";
+
+    // Normalize branch from enum (e.g. KARTASURA -> Kartasura)
+    const formattedBranch = rawBranch.charAt(0).toUpperCase() + rawBranch.slice(1).toLowerCase();
+    const branchCode = BRANCH_CODES[formattedBranch] || '00';
+
+    let programCode = '00';
+    for (const [key, code] of Object.entries(PROGRAM_CODES)) {
+      if (rawProgram.toLowerCase().includes(key.toLowerCase())) {
+        programCode = code;
+        break;
+      }
+    }
+
+    const sequence = String(student.id.replace(/\D/g, '').slice(-4)).padStart(4, '0');
+    const certificateNumber = `${dd}${mm}${yy}${branchCode}${programCode}${sequence}`;
 
     // =====================================================================
     // 2. LOAD PDF TEMPLATE
@@ -91,9 +142,9 @@ export async function GET() {
     // ID REGISTRASI
     page.drawText(certificateNumber, {
       x: 268,
-      y: 552,
-      size: 14,
-      font: normalFont,
+      y: 551,
+      size: 12,
+      font: font,
       color: rgb(0, 0, 0),
     });
 
@@ -111,9 +162,23 @@ export async function GET() {
     const colScoreCenterX = 270;
     const scoreSize = 15;
 
-    const pronScore = convertScore(scores.pronunciation);
-    const vocabScore = convertScore(scores.vocabulary);
-    const fluencyScore = convertScore(scores.fluency);
+    // === SCORE RADAR (remove after debugging) ===
+    console.log("=== 🎯 CERT SCORE RADAR ===", {
+      rawPronunciation: scores.pronunciation,
+      rawVocabulary: scores.vocabulary,
+      rawFluency: scores.fluency,
+      rawOverall: scores.overall,
+      rawPredicate: scores.predicate,
+      typeCheck: typeof scores.pronunciation,
+    });
+
+    const safePronunciation = Number(scores.pronunciation) || 0;
+    const safeVocabulary = Number(scores.vocabulary) || 0;
+    const safeFluency = Number(scores.fluency) || 0;
+
+    const pronScore = convertScore(safePronunciation);
+    const vocabScore = convertScore(safeVocabulary);
+    const fluencyScore = convertScore(safeFluency);
 
     const rawTotal = Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3);
     let totalGrade = 'E';

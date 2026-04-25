@@ -14,7 +14,13 @@ export default async function ScheduleManagementPage() {
 
   // 1. Fetch tutors for dropdowns (include HEAD_TUTOR as they also teach)
   const tutors = await prisma.user.findMany({
-    where: { role: { in: ["TUTOR", "HEAD_TUTOR"] }, ...branchFilter },
+    where: { 
+      role: { in: ["TUTOR", "HEAD_TUTOR"] }, 
+      OR: [
+        { ...branchFilter },
+        { secondaryBranch: branchFilter.branch }
+      ]
+    },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });

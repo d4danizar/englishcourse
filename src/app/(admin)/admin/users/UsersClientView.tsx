@@ -34,6 +34,7 @@ type UserType = {
   phoneNumber: string | null;
   role: string;
   branch: string;
+  secondaryBranch: string | null;
   createdAt: string;
   activeProgram: string;
   programBatch: string | null;
@@ -93,6 +94,7 @@ export function UsersClientView({
   // === ADD FORM STATE ===
   const [newUserRole, setNewUserRole] = useState<string>("STUDENT");
   const [newUserBranch, setNewUserBranch] = useState<string>(activeBranch);
+  const [newSecondaryBranch, setNewSecondaryBranch] = useState<string>("");
   const [formProgram, setFormProgram] = useState("");
   const [formStartDate, setFormStartDate] = useState("");
   const [formDuration, setFormDuration] = useState("");
@@ -107,6 +109,7 @@ export function UsersClientView({
   const [editProgramBatch, setEditProgramBatch] = useState("");
   const [editRole, setEditRole] = useState("");
   const [editBranch, setEditBranch] = useState("KARTASURA");
+  const [editSecondaryBranch, setEditSecondaryBranch] = useState("");
   const [editTotalLeaves, setEditTotalLeaves] = useState(0);
 
   // === RENEW / REPEAT ORDER STATE ===
@@ -144,6 +147,7 @@ export function UsersClientView({
     if (editingUser) {
       setEditRole(editingUser.role);
       setEditBranch(editingUser.branch || "KARTASURA");
+      setEditSecondaryBranch(editingUser.secondaryBranch || "");
       setEditProgram(editingUser.activeProgram === "-" ? "" : editingUser.activeProgram);
       setEditStartDate(editingUser.startDate ? editingUser.startDate.split("T")[0] : "");
       setEditDuration(editingUser.durationOption || "");
@@ -203,6 +207,7 @@ export function UsersClientView({
   const resetAddForm = () => {
     setNewUserRole("STUDENT");
     setNewUserBranch(activeBranch);
+    setNewSecondaryBranch("");
     setFormProgram("");
     setFormStartDate("");
     setFormDuration("");
@@ -783,6 +788,23 @@ export function UsersClientView({
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
+                {/* Secondary Branch (Paspor Ganda) - Only for Tutors */}
+                {(newUserRole === "TUTOR" || newUserRole === "HEAD_TUTOR") && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cabang Kedua (Opsional)</label>
+                  <select 
+                    name="secondaryBranch" 
+                    value={newSecondaryBranch}
+                    onChange={(e) => setNewSecondaryBranch(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
+                  >
+                    <option value="">Tidak Ada</option>
+                    <option value="KARTASURA">Kartasura</option>
+                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_3">Cabang 3</option>
+                  </select>
+                </div>
+                )}
                 
                 {/* Student-only fields */}
                 {newUserRole === "STUDENT" && renderStudentFields(
@@ -876,6 +898,23 @@ export function UsersClientView({
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
+                {/* Secondary Branch (Paspor Ganda) - Only for Tutors */}
+                {(editRole === "TUTOR" || editRole === "HEAD_TUTOR") && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cabang Kedua (Opsional)</label>
+                  <select 
+                    name="secondaryBranch" 
+                    value={editSecondaryBranch}
+                    onChange={(e) => setEditSecondaryBranch(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
+                  >
+                    <option value="">Tidak Ada</option>
+                    <option value="KARTASURA">Kartasura</option>
+                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_3">Cabang 3</option>
+                  </select>
+                </div>
+                )}
 
                 {/* Student-only fields — pre-filled from existing data */}
                 {editRole === "STUDENT" && renderStudentFields(
