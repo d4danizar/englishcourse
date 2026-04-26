@@ -340,7 +340,7 @@ export async function approvePayment(invoiceId: string) {
 
     const loginUrl = process.env.NEXT_PUBLIC_APP_URL
       ? `${process.env.NEXT_PUBLIC_APP_URL}/login`
-      : "https://kampunginggris.vercel.app/login";
+      : "https://portal.kampunginggrissolo.com/login";
 
     return {
       success: true,
