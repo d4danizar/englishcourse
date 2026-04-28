@@ -102,8 +102,8 @@ export function StudentDashboardClient({
 
   // Render Score Helper
   const renderScore = (score: number) => {
-    const { maxScore } = getProgramGradingScale(student.activeProgram);
-    const grade = calculatePredicate(score, student.activeProgram);
+    const { maxScore } = getProgramGradingScale(profile.activeProgram);
+    const grade = calculatePredicate(score, profile.activeProgram);
     return (
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-bold text-slate-800">Score: {score} / {maxScore}</span>
