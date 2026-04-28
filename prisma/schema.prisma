@@ -46,6 +46,7 @@ model DescriptiveEvaluation {
   pronunciation String
   vocabulary    String
   notes         String?
+  finalScore    Int?
   studentId     String
   tutorId       String
   createdAt     DateTime @default(now())

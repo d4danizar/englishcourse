@@ -17,6 +17,7 @@ import {
   Award,
   Settings
 } from "lucide-react";
+import { getProgramGradingScale, calculatePredicate } from "@/lib/grading";
 import Link from "next/link";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
@@ -99,18 +100,14 @@ export function StudentDashboardClient({
   const totalPresent = attendances.filter(a => a.status === "PRESENT").length;
   const totalSessions = attendances.length;
 
-  // Render Stars Helper
-  const renderStars = (score: number) => {
+  // Render Score Helper
+  const renderScore = (score: number) => {
+    const { maxScore } = getProgramGradingScale(student.activeProgram);
+    const grade = calculatePredicate(score, student.activeProgram);
     return (
-      <div className="flex gap-1" title={`${score}/10`}>
-        {[...Array(10)].map((_, idx) => (
-          <Star
-            key={idx}
-            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all ${idx < score ? "text-amber-400 fill-amber-400" : "text-slate-100 fill-slate-100"
-              }`}
-          />
-        ))}
-        <span className="text-xs font-bold text-amber-600 ml-1">{score}/10</span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-bold text-slate-800">Score: {score} / {maxScore}</span>
+        <span className="text-xs font-semibold text-indigo-600">Grade: {grade}</span>
       </div>
     );
   };
@@ -386,7 +383,7 @@ export function StudentDashboardClient({
                               ].map((score, idx) => score.val !== null ? (
                                 <div key={idx} className="flex flex-col gap-1">
                                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{score.label}</span>
-                                  {renderStars(score.val)}
+                                  {renderScore(score.val)}
                                 </div>
                               ) : null)}
                             </div>

@@ -176,16 +176,36 @@ export async function GET() {
     const safeVocabulary = Number(scores.vocabulary) || 0;
     const safeFluency = Number(scores.fluency) || 0;
 
-    const pronScore = convertScore(safePronunciation);
-    const vocabScore = convertScore(safeVocabulary);
-    const fluencyScore = convertScore(safeFluency);
+    const prog = (student.activeProgram || "").toUpperCase();
+    const isExamScale = prog.includes("EFK") || prog.includes("EFT");
 
-    const rawTotal = Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3);
-    let totalGrade = 'E';
-    if (rawTotal >= 8) totalGrade = 'A';
-    else if (rawTotal >= 6) totalGrade = 'B';
-    else if (rawTotal >= 4) totalGrade = 'C';
-    else if (rawTotal > 0) totalGrade = 'D';
+    let pronScore, vocabScore, fluencyScore, rawTotal, totalGrade;
+
+    if (isExamScale) {
+      const getExamGrade = (score: number) => {
+        if (score >= 90) return 'A';
+        if (score >= 80) return 'B';
+        if (score >= 70) return 'C';
+        if (score >= 60) return 'D';
+        return 'E';
+      };
+      
+      pronScore = { score: Math.round(safePronunciation), grade: getExamGrade(safePronunciation) };
+      vocabScore = { score: Math.round(safeVocabulary), grade: getExamGrade(safeVocabulary) };
+      fluencyScore = { score: Math.round(safeFluency), grade: getExamGrade(safeFluency) };
+      rawTotal = Math.round(scores.overall || 0);
+      totalGrade = scores.predicate || 'E';
+    } else {
+      pronScore = convertScore(safePronunciation);
+      vocabScore = convertScore(safeVocabulary);
+      fluencyScore = convertScore(safeFluency);
+      rawTotal = Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3);
+      totalGrade = 'E';
+      if (rawTotal >= 8) totalGrade = 'A';
+      else if (rawTotal >= 6) totalGrade = 'B';
+      else if (rawTotal >= 4) totalGrade = 'C';
+      else if (rawTotal > 0) totalGrade = 'D';
+    }
 
     drawCenter(`${pronScore.score} / ${pronScore.grade}`, colScoreCenterX, 400, scoreSize, font);
     drawCenter(`${vocabScore.score} / ${vocabScore.grade}`, colScoreCenterX, 362, scoreSize, font);

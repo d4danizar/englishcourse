@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { submitAttendance, searchStudentsForAttendance } from "../actions";
 import { SessionDetailModal } from "../../../../components/session/SessionDetailModal";
+import { getProgramGradingScale } from "@/lib/grading";
 
 // --- Types ---
 export type EligibleStudent = {
@@ -492,24 +493,46 @@ export function TutorDashboardClient({
                       {isEvalDay && eval_.status === "PRESENT" && (
                         <div className="flex flex-col gap-3 pt-2 border-t border-slate-200">
                           <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
-                            📝 Evaluation (1-5)
+                            📝 Evaluation
                           </span>
-                          {(["pronunciation", "fluency", "vocabulary"] as const).map((metric) => (
-                            <div key={metric} className="flex flex-col gap-1">
-                              <div className="flex justify-between text-xs font-medium">
-                                <span className="text-slate-600 capitalize">{metric}</span>
-                                <span className="text-indigo-600 font-bold">{eval_[metric]}</span>
+                          {(["pronunciation", "fluency", "vocabulary"] as const).map((metric) => {
+                            const { isExamScale, maxScore } = getProgramGradingScale(student.activeProgram);
+                            const currentValue = eval_[metric] ?? (isExamScale ? 80 : 4);
+
+                            return (
+                              <div key={metric} className="flex flex-col gap-1">
+                                <div className="flex justify-between text-xs font-medium mb-1">
+                                  <span className="text-slate-600 capitalize">{metric}</span>
+                                  {isExamScale ? null : <span className="text-indigo-600 font-bold">{currentValue}</span>}
+                                </div>
+                                {isExamScale ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={maxScore}
+                                      value={currentValue}
+                                      onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value) || 0)}
+                                      className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
+                                    />
+                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="range"
+                                      min="1"
+                                      max={maxScore}
+                                      value={currentValue}
+                                      onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value))}
+                                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                    />
+                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                  </div>
+                                )}
                               </div>
-                              <input
-                                type="range"
-                                min="1"
-                                max="5"
-                                value={eval_[metric]}
-                                onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value))}
-                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                              />
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

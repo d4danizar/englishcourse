@@ -17,6 +17,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { getSessionDetail, updateAttendance, type SessionDetailData } from "../../lib/session-detail-actions";
+import { getProgramGradingScale } from "@/lib/grading";
 import { format } from "date-fns";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -304,20 +305,41 @@ export function SessionDetailModal({
                               ["Pronunciation", editPronunciations, setEditPronunciations],
                               ["Fluency", editFluencies, setEditFluencies],
                               ["Vocabulary", editVocabularies, setEditVocabularies],
-                            ] as const).map(([label, stateObj, setter]) => (
-                              <div key={label} className="flex flex-col gap-1 sm:flex-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
-                                <input
-                                  type="range"
-                                  min={1}
-                                  max={5}
-                                  value={(stateObj as Record<string, number>)[student.id] ?? 4}
-                                  onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) }))}
-                                  className="w-full accent-indigo-600"
-                                />
-                                <p className="text-center text-xs font-bold text-indigo-600">{(stateObj as Record<string, number>)[student.id] ?? 4}/5</p>
-                              </div>
-                            ))}
+                            ] as const).map(([label, stateObj, setter]) => {
+                              const { isExamScale, maxScore } = getProgramGradingScale(data.programType);
+                              const currentValue = (stateObj as Record<string, number>)[student.id] ?? (isExamScale ? 80 : 4);
+                              
+                              return (
+                                <div key={label} className="flex flex-col gap-1 sm:flex-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
+                                  {isExamScale ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={maxScore}
+                                        value={currentValue}
+                                        onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) || 0 }))}
+                                        className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
+                                      />
+                                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="range"
+                                        min={1}
+                                        max={maxScore}
+                                        value={currentValue}
+                                        onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) }))}
+                                        className="w-full accent-indigo-600"
+                                      />
+                                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

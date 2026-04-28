@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "../../../../lib/prisma";
+import { calculatePredicate } from "../../../../lib/grading";
 
 export async function generateCertificateData(studentId: string) {
   // 1. Fetch Student Data
@@ -121,11 +122,7 @@ export async function generateCertificateData(studentId: string) {
     overallScore = (avgFluency + avgPronunciation + avgVocab) / 3;
 
     // Tentukan Predikat (A-E)
-    if (overallScore >= 5.0) predicate = "A";
-    else if (overallScore >= 4.0) predicate = "B";
-    else if (overallScore >= 3.0) predicate = "C";
-    else if (overallScore >= 2.0) predicate = "D";
-    else predicate = "E";
+    predicate = calculatePredicate(overallScore, student.activeProgram);
   }
 
   // Return data dengan format baru

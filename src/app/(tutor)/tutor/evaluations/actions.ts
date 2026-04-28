@@ -71,6 +71,8 @@ export async function submitDescriptiveEvaluation(formData: FormData) {
     const pronunciation = formData.get("pronunciation") as string;
     const vocabulary = formData.get("vocabulary") as string;
     const notes = formData.get("notes") as string;
+    const finalScoreStr = formData.get("finalScore") as string;
+    const finalScore = finalScoreStr ? parseInt(finalScoreStr) : null;
 
     if (!tutorId || !studentId || !fluency || !pronunciation || !vocabulary) {
       return { error: "Semua indikator penilaian wajid diisi." };
@@ -84,6 +86,7 @@ export async function submitDescriptiveEvaluation(formData: FormData) {
         pronunciation,
         vocabulary,
         notes: notes || null,
+        finalScore,
       }
     });
 

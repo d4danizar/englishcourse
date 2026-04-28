@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { Loader2, Users, FileText, CheckCircle, Search, Star } from "lucide-react";
 import { getStudentsForEvaluation, submitDescriptiveEvaluation, type EvaluationGroup } from "./actions";
+import { getProgramGradingScale } from "@/lib/grading";
 
 const GROUPS: { label: string; value: EvaluationGroup }[] = [
   { label: "Conversation (Reg, FD, Asrama, EoS)", value: "Conversation" },
@@ -28,6 +29,7 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
     pronunciation: "",
     vocabulary: "",
     notes: "",
+    finalScore: "",
   });
 
   const fetchStudents = async (group: EvaluationGroup) => {
@@ -58,6 +60,7 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
       pronunciation: "",
       vocabulary: "",
       notes: "",
+      finalScore: "",
     });
     setIsModalOpen(true);
   };
@@ -78,6 +81,7 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
     form.append("pronunciation", formData.pronunciation);
     form.append("vocabulary", formData.vocabulary);
     form.append("notes", formData.notes);
+    form.append("finalScore", formData.finalScore);
 
     startTransition(async () => {
       const res = await submitDescriptiveEvaluation(form);
@@ -242,6 +246,30 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
                   className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 hover:bg-white transition-colors"
                 />
               </div>
+
+              {(() => {
+                const { maxScore, isExamScale } = getProgramGradingScale(selectedStudent?.activeProgram);
+                return isExamScale ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center justify-between">
+                      <span>Final Exam Score</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={maxScore}
+                        required
+                        value={formData.finalScore}
+                        onChange={(e) => setFormData({ ...formData, finalScore: e.target.value })}
+                        placeholder={`Enter score (Max: ${maxScore})`}
+                        className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 hover:bg-white transition-colors"
+                      />
+                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center justify-between">
