@@ -73,6 +73,12 @@ export async function submitDescriptiveEvaluation(formData: FormData) {
     const notes = formData.get("notes") as string;
     const finalScoreStr = formData.get("finalScore") as string;
     const finalScore = finalScoreStr ? parseInt(finalScoreStr) : null;
+    const listeningScoreStr = formData.get("listeningScore") as string;
+    const listeningScore = listeningScoreStr ? parseInt(listeningScoreStr) : null;
+    const readingScoreStr = formData.get("readingScore") as string;
+    const readingScore = readingScoreStr ? parseInt(readingScoreStr) : null;
+    const writingScoreStr = formData.get("writingScore") as string;
+    const writingScore = writingScoreStr ? parseInt(writingScoreStr) : null;
 
     if (!tutorId || !studentId || !fluency || !pronunciation || !vocabulary) {
       return { error: "Semua indikator penilaian wajid diisi." };
@@ -87,6 +93,9 @@ export async function submitDescriptiveEvaluation(formData: FormData) {
         vocabulary,
         notes: notes || null,
         finalScore,
+        listeningScore,
+        readingScore,
+        writingScore,
       }
     });
 

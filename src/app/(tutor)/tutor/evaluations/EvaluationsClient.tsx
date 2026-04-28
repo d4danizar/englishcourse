@@ -30,6 +30,9 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
     vocabulary: "",
     notes: "",
     finalScore: "",
+    listeningScore: "",
+    readingScore: "",
+    writingScore: "",
   });
 
   const fetchStudents = async (group: EvaluationGroup) => {
@@ -61,6 +64,9 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
       vocabulary: "",
       notes: "",
       finalScore: "",
+      listeningScore: "",
+      readingScore: "",
+      writingScore: "",
     });
     setIsModalOpen(true);
   };
@@ -82,6 +88,9 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
     form.append("vocabulary", formData.vocabulary);
     form.append("notes", formData.notes);
     form.append("finalScore", formData.finalScore);
+    form.append("listeningScore", formData.listeningScore);
+    form.append("readingScore", formData.readingScore);
+    form.append("writingScore", formData.writingScore);
 
     startTransition(async () => {
       const res = await submitDescriptiveEvaluation(form);
@@ -250,22 +259,73 @@ export function EvaluationsClient({ tutorId }: { tutorId: string }) {
               {(() => {
                 const { maxScore, isExamScale } = getProgramGradingScale(selectedStudent?.activeProgram);
                 return isExamScale ? (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-widest flex items-center justify-between">
-                      <span>Final Exam Score</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max={maxScore}
-                        required
-                        value={formData.finalScore}
-                        onChange={(e) => setFormData({ ...formData, finalScore: e.target.value })}
-                        placeholder={`Enter score (Max: ${maxScore})`}
-                        className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 hover:bg-white transition-colors"
-                      />
-                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                  <div className="flex flex-col gap-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                    <h4 className="text-xs font-bold text-indigo-800 uppercase tracking-widest border-b border-indigo-100 pb-2">Exam Scores</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+                      {/* Listening */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Listening</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={maxScore}
+                            value={formData.listeningScore}
+                            onChange={(e) => setFormData({ ...formData, listeningScore: e.target.value })}
+                            placeholder={`Max: ${maxScore}`}
+                            className="w-full text-sm p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reading */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Reading</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={maxScore}
+                            value={formData.readingScore}
+                            onChange={(e) => setFormData({ ...formData, readingScore: e.target.value })}
+                            placeholder={`Max: ${maxScore}`}
+                            className="w-full text-sm p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Writing */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Writing</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={maxScore}
+                            value={formData.writingScore}
+                            onChange={(e) => setFormData({ ...formData, writingScore: e.target.value })}
+                            placeholder={`Max: ${maxScore}`}
+                            className="w-full text-sm p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Final Exam */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-700">Final Score</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max={maxScore}
+                            required
+                            value={formData.finalScore}
+                            onChange={(e) => setFormData({ ...formData, finalScore: e.target.value })}
+                            placeholder={`Max: ${maxScore}`}
+                            className="w-full text-sm p-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : null;

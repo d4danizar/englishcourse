@@ -57,6 +57,10 @@ type DescriptiveEvaluation = {
   pronunciation: string;
   vocabulary: string;
   notes: string | null;
+  finalScore: number | null;
+  listeningScore: number | null;
+  readingScore: number | null;
+  writingScore: number | null;
   createdAt: Date;
   tutor: { name: string };
 };
@@ -455,6 +459,39 @@ export function StudentDashboardClient({
                           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400" /> Vocabulary</span>
                           <p className="text-sm text-slate-700 font-medium leading-relaxed pl-3 border-l-2 border-cyan-100">{ev.vocabulary}</p>
                         </div>
+
+                        {(() => {
+                          const isExamScale = profile.activeProgram?.toUpperCase().includes('EFK') || profile.activeProgram?.toUpperCase().includes('EFT');
+                          if (!isExamScale) return null;
+                          return (
+                            <div className="mt-2 grid grid-cols-2 gap-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                              {ev.listeningScore !== null && (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Listening</span>
+                                  <span className="text-sm font-bold text-slate-800">{ev.listeningScore} <span className="text-xs text-slate-400 font-medium">/ 100</span></span>
+                                </div>
+                              )}
+                              {ev.readingScore !== null && (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Reading</span>
+                                  <span className="text-sm font-bold text-slate-800">{ev.readingScore} <span className="text-xs text-slate-400 font-medium">/ 100</span></span>
+                                </div>
+                              )}
+                              {ev.writingScore !== null && (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Writing</span>
+                                  <span className="text-sm font-bold text-slate-800">{ev.writingScore} <span className="text-xs text-slate-400 font-medium">/ 100</span></span>
+                                </div>
+                              )}
+                              {ev.finalScore !== null && (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Final Score</span>
+                                  <span className="text-sm font-bold text-slate-800">{ev.finalScore} <span className="text-xs text-slate-400 font-medium">/ 100</span></span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {ev.notes && (
                           <div className="mt-2 text-sm text-slate-600 italic font-medium bg-slate-50 p-4 rounded-xl border border-slate-100">
