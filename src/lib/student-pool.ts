@@ -74,7 +74,9 @@ export async function getEligibleStudentsForSession(session: {
       ...(session.branch ? { branch: session.branch as any } : {}),
       enrollments: {
         some: {
-          programType: { in: eligiblePrograms },
+          ...(session.programType.toUpperCase().includes('EFK') || session.programType.toUpperCase().includes('EFT')
+            ? { programType: { contains: session.programType.toUpperCase().includes('EFK') ? 'EFK' : 'EFT', mode: 'insensitive' } }
+            : { programType: { in: eligiblePrograms } }),
           startDate: { lte: sessionEndOfDay }, // startDate sekarang wajib (not null) di schema
           OR: [
             { endDate: null },
@@ -146,7 +148,7 @@ export async function getEligibleStudentsForSession(session: {
 
     // --- EFK / EFT RULES (day-matching) ---
     if (sessionProgType === "efk" || sessionProgType === "eft") {
-      if (prog !== sessionProgType) return false;
+      if (!prog.includes(sessionProgType)) return false;
 
       const batchSchedule = (latestEnrollment.batchSchedule || "").trim().toLowerCase();
       if (sessionDay === 1 || sessionDay === 3) {
@@ -227,8 +229,12 @@ export async function getGlobalPoolForSession({
     baseQuery.programBatch = { in: allowedBatches };
   } else {
     // For non-conversation (EFK, EFT, TOEFL), use the standard program matching
-    const poolPrograms = getGlobalPoolPrograms(programType);
-    baseQuery.activeProgram = { in: poolPrograms };
+    if (normType.includes("EFK") || normType.includes("EFT")) {
+      baseQuery.activeProgram = { contains: normType.includes("EFK") ? "EFK" : "EFT", mode: "insensitive" };
+    } else {
+      const poolPrograms = getGlobalPoolPrograms(programType);
+      baseQuery.activeProgram = { in: poolPrograms };
+    }
   }
 
   // 3. Execute Query

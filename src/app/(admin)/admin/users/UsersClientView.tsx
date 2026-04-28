@@ -431,7 +431,7 @@ export function UsersClientView({
       )}
 
       {/* Batch Schedule — EFK/EFT only */}
-      {(program === "EFK" || program === "EFT") && (
+      {(program?.includes("EFK") || program?.includes("EFT")) && (
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Batch Schedule</label>
           <select

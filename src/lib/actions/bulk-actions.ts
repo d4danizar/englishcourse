@@ -112,7 +112,7 @@ export async function processBulkImport(rawData: any[]) {
       let finalEndDate = endDateVal;
 
       // OVERRIDE FOR EFT & EFK ONLY
-      if (cleanProgram === 'EFT' || cleanProgram === 'EFK') {
+      if (cleanProgram.includes('EFT') || cleanProgram.includes('EFK')) {
         const explicitSixMonths = new Date(baseStartDate.getTime());
         explicitSixMonths.setMonth(explicitSixMonths.getMonth() + 6);
         finalEndDate = explicitSixMonths;

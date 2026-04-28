@@ -27,9 +27,9 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
             { endDate: { gte: new Date() } },
             { endDate: null }
           ],
-          programType: {
-            in: programInFilter
-          }
+          ...(group === "EFK" || group === "EFT" || group === "Private"
+            ? { programType: { contains: group, mode: "insensitive" } }
+            : { programType: { in: programInFilter } })
         }
       }
     },
