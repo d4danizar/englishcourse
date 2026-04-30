@@ -2,6 +2,8 @@ import { prisma } from "../../../../../lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
+import { SignatureImage } from "./SignatureImage";
+import { StampImage } from "./StampImage";
 
 export const metadata = {
   title: "Cetak Kuitansi",
@@ -11,7 +13,10 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   const { id } = await params;
   const invoice = await prisma.invoice.findUnique({
     where: { id },
-    include: { lead: true }
+    include: {
+      lead: { include: { assignee: true } },
+      cashflows: { include: { recordedBy: true } }
+    }
   });
 
   if (!invoice) return notFound();
@@ -22,6 +27,76 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   const stampColor = isDP
     ? "text-orange-500 border-orange-500"
     : "text-emerald-500 border-emerald-500";
+
+  const getSignatureUrl = (csName?: string | null, branchName?: string | null) => {
+    if (!csName || !branchName) return null;
+
+    // Assuming we only use the first name for the file, strictly lowercased
+    const firstName = csName.split(' ')[0];
+
+    // Map DB Enum to the exact image codes
+    const cleanBranch = (branchName || '').toUpperCase().trim();
+    let branchCode = 'KTS'; // Default fallback
+
+    // Aggressive matching for the second branch
+    if (
+      cleanBranch.includes('CABANG_2') || 
+      cleanBranch.includes('CABANG2') || 
+      cleanBranch === 'CABANG 2' || 
+      cleanBranch === '2' || 
+      cleanBranch.includes('SRE') || 
+      cleanBranch.includes('SERENGAN')
+    ) {
+      branchCode = 'SRE';
+    } else if (
+      cleanBranch.includes('KARTASURA') || 
+      cleanBranch.includes('KTS') || 
+      cleanBranch.includes('CABANG_1') || 
+      cleanBranch === '1'
+    ) {
+      branchCode = 'KTS';
+    }
+
+    return `/signatures/ttd-${firstName}-${branchCode}.png`;
+  };
+
+  const getStampUrl = (branchName?: string | null) => {
+    if (!branchName) return null;
+    const cleanBranch = (branchName || '').toUpperCase().trim();
+
+    let branchCode = 'KTS'; // Default
+
+    // Aggressive matching for the second branch
+    if (
+      cleanBranch.includes('CABANG_2') || 
+      cleanBranch.includes('CABANG2') || 
+      cleanBranch === 'CABANG 2' || 
+      cleanBranch === '2' || 
+      cleanBranch.includes('SRE') || 
+      cleanBranch.includes('SERENGAN')
+    ) {
+      branchCode = 'SRE';
+    } else if (
+      cleanBranch.includes('KARTASURA') || 
+      cleanBranch.includes('KTS') || 
+      cleanBranch.includes('CABANG_1') || 
+      cleanBranch === '1'
+    ) {
+      branchCode = 'KTS';
+    }
+
+    return `/stamps/stempel-${branchCode}.png`;
+  };
+
+  // CS is usually the one who processed the payment (recorded the cashflow)
+  // Fallback to lead assignee if no cashflow exists yet
+  const csName = invoice.cashflows?.[0]?.recordedBy?.name || invoice.lead?.assignee?.name || null;
+  const branchName = invoice.branch || invoice.lead?.branch || "KARTASURA";
+  
+  console.log("🔴 DB BRANCH VALUE:", invoice.branch, "| LEAD BRANCH:", invoice.lead?.branch, "| FINAL BRANCH:", branchName);
+  
+  const signatureUrl = getSignatureUrl(csName, branchName);
+  const stampUrl = getStampUrl(branchName);
 
   return (
     <div id="printable-invoice" className="p-8 w-full max-w-none mx-auto bg-white text-slate-800 font-sans relative print:p-8 print:m-0">
@@ -128,9 +203,27 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           <p className="font-semibold text-slate-700 mb-1">Catatan:</p>
           <p>Kuitansi valid oleh sistem tanpa tanda tangan basah.</p>
         </div>
-        <div className="text-center">
-          <p className="text-slate-500 text-xs mb-6">Penerima,</p>
-          <p className="font-bold text-slate-800 border-b border-slate-800 pb-1 px-4 inline-block text-xs">Admin/CS Dept</p>
+        <div className="relative text-center w-56">
+
+          {stampUrl && (
+            <StampImage src={stampUrl} alt="Stempel Cabang" />
+          )}
+
+          <div className="relative z-10">
+            <p className="text-xs text-slate-500 mb-2">Penerima,</p>
+            {signatureUrl ? (
+              <SignatureImage src={signatureUrl} alt={`Ttd ${csName}`} />
+            ) : (
+              <div className="h-16 w-full"></div> // Empty space if no image
+            )}
+
+            <p className="font-bold text-slate-800 border-b border-slate-800 pb-1 px-4 inline-block text-xs mt-1 bg-white/50">
+              {csName || "Customer Service"}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium">
+              CS
+            </p>
+          </div>
         </div>
       </div>
 

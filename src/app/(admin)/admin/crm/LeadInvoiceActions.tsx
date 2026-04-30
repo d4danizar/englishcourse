@@ -117,9 +117,28 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
       if (res.error) setError(res.error);
       else if (res.message) {
         setVerifyModalInv(null);
-        setApproveMsg(res.message);
+        // Do not auto-popup message modal anymore
+        // setApproveMsg(res.message);
       }
     });
+  };
+
+  const handleShowPortalAccess = (inv: Invoice) => {
+    const studentData = (inv.studentData as any) || {};
+    const studentName = lead.name || studentData.name || "Siswa";
+    const email = studentData.email || "-";
+    const whatsapp = studentData.whatsapp || "-";
+    const loginUrl = `${window.location.origin}/login`;
+
+    const msg = 
+      `Halo ${studentName}! 🎉 Pembayaran pelunasan untuk program *"${inv.programName}"* sudah terkonfirmasi.\n\n` +
+      `Berikut akun login portal siswa Anda:\n` +
+      `🔗 *Portal*: ${loginUrl}\n` +
+      `📧 *Email*: ${email}\n` +
+      `🔑 *Password*: ${whatsapp}\n\n` +
+      `Mohon segera login dan ganti password Anda. Selamat belajar! 🙌`;
+
+    setApproveMsg(msg);
   };
 
   const handleSettleOnSite = (invoiceId: string) => {
@@ -229,6 +248,24 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                 >
                   <Link className="w-3 h-3 text-indigo-600" />
                   Link Pelunasan
+                </button>
+              </div>
+            )}
+
+            {/* If PAID (Lunas), show button to send portal access manually */}
+            {inv.status === "PAID" && (
+              <div className="flex pl-1 mt-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleShowPortalAccess(inv);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border border-emerald-200 rounded-md text-[10px] font-bold transition-colors"
+                >
+                  <Link className="w-3 h-3" />
+                  Kirim Akses Portal
                 </button>
               </div>
             )}
