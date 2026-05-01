@@ -1,40 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-// Fungsi Helper untuk mengirim balasan via Wablas dengan Token Dinamis
-async function sendWablasMessage(phone: string, message: string, branch: string) {
-  let domain = "";
-  let token = "";
-
-  // Pilih Token berdasarkan cabang (Format Enum: "CABANG_2")
-  if (branch === "CABANG_2") {
-    domain = process.env.WABLAS_DOMAIN_CABANG2 || "";
-    token = process.env.WABLAS_TOKEN_CABANG2 || "";
-  } else {
-    // Default fallback ke KARTASURA
-    domain = process.env.WABLAS_DOMAIN_KARTASURA || "";
-    token = process.env.WABLAS_TOKEN_KARTASURA || "";
-  }
-  
-  if (!domain || !token) {
-    console.warn(`⚠️ Kredensial Wablas untuk cabang ${branch} belum di-set di .env`);
-    return;
-  }
-
-  try {
-    await fetch(`${domain}/api/send-message`, {
-      method: "POST",
-      headers: {
-        "Authorization": token,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ phone, message })
-    });
-  } catch (error) {
-    console.error(`Gagal mengirim balasan Wablas untuk ${branch}:`, error);
-  }
-}
-
 export async function POST(req: Request) {
   try {
     // 1. Tangkap Cabang dari URL
@@ -55,7 +20,7 @@ export async function POST(req: Request) {
       body = {};
     }
 
-    const sender = body.phone || body.sender;
+    const sender = body.phone || body.sender || body.viewer;
     const message = body.message || body.text || "";
 
     if (!sender) {
@@ -70,41 +35,39 @@ export async function POST(req: Request) {
     });
 
     if (!existingLead) {
-      // SKENARIO 1: LEAD BARU
+      // SKENARIO 1: LEAD BARU (Simpan pesan awal ke notes)
       await prisma.lead.create({
         data: {
           name: `WA Lead - ${cleanPhoneNumber}`,
           whatsapp: cleanPhoneNumber,
           status: "NEW",
           branch: validBranch,
+          notes: message ? `[Pesan Awal]: ${message}` : "",
         },
       });
       console.log(`🚀 [${validBranch}] LEAD BARU MASUK: ${cleanPhoneNumber}`);
-      
-      // Kirim auto-reply meminta nama (menggunakan token spesifik cabang)
-      await sendWablasMessage(
-        cleanPhoneNumber, 
-        `Halo Kak! 👋 Terima kasih sudah menghubungi pendaftaran cabang ${validBranch}. Agar kami bisa mendata dengan baik, boleh disebutkan *Nama Lengkapnya*, Kak?`,
-        validBranch
-      );
-
-    } else if (existingLead.name.includes("WA Lead")) {
-      // SKENARIO 2: MENANGKAP NAMA LENGKAP
-      await prisma.lead.update({
-        where: { id: existingLead.id },
-        data: { name: message.trim() },
-      });
-      console.log(`✨ [${validBranch}] LEAD UPDATE NAMA: ${cleanPhoneNumber} -> ${message.trim()}`);
-      
-      await sendWablasMessage(
-        cleanPhoneNumber, 
-        `Terima kasih, Kak ${message.trim()}! Admin kami akan segera merespons pertanyaan Kakak. Mohon ditunggu ya! 🙏`,
-        validBranch
-      );
 
     } else {
-      // SKENARIO 3: LEAD LAMA
-      console.log(`♻️ [${validBranch}] CHAT LEAD LAMA (${existingLead.name}): ${message.substring(0,20)}...`);
+      // SKENARIO 2: LEAD LAMA (Tumpuk pesan baru ke notes & update nama jika masih default)
+      
+      const newNoteEntry = message ? `\n\n[Pesan Baru - ${new Date().toLocaleString('id-ID')}]: ${message}` : "";
+      const appendedNotes = existingLead.notes 
+        ? `${existingLead.notes}${newNoteEntry}`
+        : newNoteEntry.trim();
+
+      // Check if we also need to update the name (if they sent a message and still have the default name)
+      const isDefaultName = existingLead.name.includes("WA Lead");
+      const updatedName = (isDefaultName && message) ? message.trim() : existingLead.name;
+
+      await prisma.lead.update({
+        where: { id: existingLead.id },
+        data: { 
+          name: updatedName,
+          notes: appendedNotes 
+        },
+      });
+      
+      console.log(`♻️ [${validBranch}] CHAT LEAD LAMA DIPERBARUI: ${cleanPhoneNumber}`);
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
