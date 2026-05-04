@@ -135,12 +135,59 @@ export async function updateAttendance(formData: FormData) {
     }
 
     await prisma.$transaction(async (tx) => {
+      // Dapatkan data session saat ini untuk menentukan batas tanggal
+      const currentSession = await tx.session.findUnique({
+        where: { id: sessionId }
+      });
+
+      if (!currentSession) throw new Error("Sesi tidak ditemukan.");
+
+      // Buat batas waktu hari ini (00:00:00 sampai 23:59:59)
+      const todayStart = new Date(currentSession.date);
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEnd = new Date(currentSession.date);
+      todayEnd.setHours(23, 59, 59, 999);
+
       for (let i = 0; i < studentIds.length; i++) {
         const studentId = studentIds[i];
         const status = (statuses[i] || "PRESENT") as "PRESENT" | "ABSENT" | "EXCUSED" | "SICK";
         const pronunciation = parseInt(pronunciations[i]) || null;
         const fluency = parseInt(fluencies[i]) || null;
         const vocabulary = parseInt(vocabularies[i]) || null;
+
+        // 1. Jika programnya Membership, jalankan interogasi kuota harian
+        if (status === "PRESENT") {
+          const membershipEnrollment = await tx.enrollment.findFirst({
+            where: {
+              userId: studentId,
+              status: "ACTIVE",
+              programType: "Membership"
+            }
+          });
+
+          if (membershipEnrollment) {
+            // Cek apakah hari ini sudah pernah hadir di sesi lain
+            const alreadyAttendedToday = await tx.attendance.findFirst({
+              where: {
+                studentId: studentId,
+                status: "PRESENT",
+                sessionId: { not: sessionId }, // Exclude current session in case of update
+                session: {
+                  date: {
+                    gte: todayStart,
+                    lte: todayEnd,
+                  }
+                }
+              }
+            });
+
+            if (alreadyAttendedToday) {
+              const user = await tx.user.findUnique({ where: { id: studentId } });
+              throw new Error(`Gagal diabsen: Murid Membership (${user?.name}) sudah menggunakan kuota 1 sesinya untuk tanggal ${todayStart.toLocaleDateString('id-ID')}.`);
+            }
+          }
+        }
 
         // Upsert: update if exists, create if not
         await tx.attendance.upsert({

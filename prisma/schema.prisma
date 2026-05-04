@@ -60,8 +60,8 @@ model DescriptiveEvaluation {
 
 model Session {
   id               String         @id @default(cuid())
-  date             DateTime
-  timeSlot         String
+  date             DateTime?
+  timeSlot         String?
   isCompleted      Boolean        @default(false)
   tutorId          String
   programType      String
@@ -76,14 +76,16 @@ model Session {
 }
 
 model ClassGroup {
-  id        String         @id @default(cuid())
-  name      String
-  program   String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  branch    BranchLocation @default(KARTASURA)
-  sessions  Session[]
-  students  User[]
+  id            String         @id @default(cuid())
+  name          String
+  program       String
+  classType     String         @default("REGULAR")
+  totalSessions Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  branch        BranchLocation @default(KARTASURA)
+  sessions      Session[]
+  students      User[]
 }
 
 model Attendance {

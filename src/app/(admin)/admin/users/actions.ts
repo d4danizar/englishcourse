@@ -274,28 +274,93 @@ export async function renewStudent(
     duration: string;
     amount: number;
     paymentMethod: string;
+    membershipPackage?: string;
   }
 ) {
   try {
-    const offDays = await prisma.offDay.findMany();
-    const calculatedEndDate = calculateEndDate(new Date(data.startDate), data.duration, offDays, data.programType, 0);
-    const calculatedLeaveQuota = calculateLeaveQuota(data.programType, data.duration);
+    let finalAmount = data.amount || 0;
+    let finalDuration = data.duration;
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        enrollments: {
-          create: {
-            programType: data.programType,
-            startDate: new Date(data.startDate),
-            endDate: calculatedEndDate,
-            durationOption: data.duration,
-            leaveQuota: calculatedLeaveQuota,
-            leaveUsed: 0,
-            status: "ACTIVE"
-          }
+    if (data.programType === "Membership") {
+      const lastEnrollment = await prisma.enrollment.findFirst({
+        where: { userId: userId, status: "COMPLETED" },
+        orderBy: { endDate: 'desc' }
+      });
+
+      if (!lastEnrollment || !lastEnrollment.endDate) {
+        throw new Error("Pendaftaran ditolak: Hanya alumni yang sudah lulus yang dapat mengambil program Membership.");
+      }
+
+      const today = new Date();
+      const graduationDate = new Date(lastEnrollment.endDate);
+      const diffTime = today.getTime() - graduationDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+      if (diffDays > 14) {
+        throw new Error(`Pendaftaran ditolak: Batas waktu maksimal mendaftar Membership adalah 14 hari setelah lulus. Siswa ini lulus ${diffDays} hari yang lalu.`);
+      }
+
+      switch (data.membershipPackage) {
+        case "1_Bulan": finalAmount = 600000; finalDuration = "1_MONTH"; break;
+        case "4_Bulan": finalAmount = 1100000; finalDuration = "4_MONTHS"; break;
+        case "7_Bulan": finalAmount = 1800000; finalDuration = "7_MONTHS"; break;
+        case "13_Bulan": finalAmount = 2950000; finalDuration = "13_MONTHS"; break;
+        default: throw new Error("Paket Membership tidak valid.");
+      }
+    }
+
+    const offDays = await prisma.offDay.findMany();
+    const calculatedEndDate = calculateEndDate(new Date(data.startDate), finalDuration, offDays, data.programType, 0);
+    const calculatedLeaveQuota = calculateLeaveQuota(data.programType, finalDuration);
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    await prisma.$transaction(async (tx) => {
+      const newEnrollment = await tx.enrollment.create({
+        data: {
+          userId: userId,
+          programType: data.programType,
+          startDate: new Date(data.startDate),
+          endDate: calculatedEndDate,
+          durationOption: finalDuration,
+          leaveQuota: calculatedLeaveQuota,
+          leaveUsed: 0,
+          status: "ACTIVE"
         }
-      },
+      });
+
+      if (finalAmount > 0) {
+        // 1. Determine Status based on Payment Method
+        const isCash = data.paymentMethod.toUpperCase() === "CASH";
+        const paymentStatus = isCash ? "PAID" : "PENDING";
+
+        // 2. Create the Payment/Invoice Record
+        await tx.payment.create({
+          data: {
+            id: `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            userId: userId,
+            enrollmentId: newEnrollment.id,
+            amount: finalAmount,
+            paymentMethod: data.paymentMethod,
+            status: paymentStatus, 
+            description: `Repeat Order - ${data.programType}`,
+            updatedAt: new Date()
+          }
+        });
+
+        // 3. ONLY inject into Cashflow if it's a CASH transaction
+        if (isCash) {
+          await tx.cashflow.create({
+            data: {
+              type: "INCOME",
+              category: "COURSE_FEE",
+              amount: finalAmount,
+              description: `Pelunasan Repeat Order ${data.programType} (Cash) - ${user?.name || 'Siswa'}`,
+              branch: user?.branch || "KARTASURA"
+            }
+          });
+        }
+      }
     });
 
     revalidatePath("/admin/users");

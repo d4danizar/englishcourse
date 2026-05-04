@@ -17,8 +17,10 @@ import {
   Loader2,
   Pencil,
   Key,
-  Trash2
+  Trash2,
+  Eye
 } from "lucide-react";
+import Link from "next/link";
 import { createUser, editUser, resetPassword, deleteUser, renewStudent } from "./actions";
 import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
 import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
@@ -120,6 +122,7 @@ export function UsersClientView({
   const [renewDuration, setRenewDuration] = useState("");
   const [renewAmount, setRenewAmount] = useState<number | "">("");
   const [renewPaymentMethod, setRenewPaymentMethod] = useState("CASH");
+  const [membershipPackage, setMembershipPackage] = useState("");
 
   // Auto-calculate endDate for ADD form
   const calculatedEndDate = useMemo(() => {
@@ -675,41 +678,52 @@ export function UsersClientView({
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <ActionDropdown
-                        disabled={isPending}
-                        trigger={isPending ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <MoreVertical className="w-4 h-4" />}
-                        items={[
-                          {
-                            label: "Edit User",
-                            icon: <Pencil />,
-                            onClick: () => { setEditingUser(user); }
-                          },
-                          ...(user.role === "STUDENT" ? [{
-                            label: "🔄 Repeat Order",
-                            icon: <RefreshCcw />,
-                            onClick: () => {
-                              setRenewingUser(user);
-                              setRenewProgram(user.activeProgram === "-" ? "" : user.activeProgram);
-                              setRenewStartDate("");
-                              setRenewDuration("");
-                              setRenewAmount("");
-                              setRenewPaymentMethod("CASH");
-                              setIsRenewModalOpen(true);
+                      <div className="flex items-center justify-end gap-2">
+                        {user.role === "STUDENT" && (
+                          <Link 
+                            href={`/admin/users/${user.id}`}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Profil</span>
+                          </Link>
+                        )}
+                        <ActionDropdown
+                          disabled={isPending}
+                          trigger={isPending ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <MoreVertical className="w-4 h-4" />}
+                          items={[
+                            {
+                              label: "Edit User",
+                              icon: <Pencil />,
+                              onClick: () => { setEditingUser(user); }
+                            },
+                            ...(user.role === "STUDENT" ? [{
+                              label: "🔄 Repeat Order",
+                              icon: <RefreshCcw />,
+                              onClick: () => {
+                                setRenewingUser(user);
+                                setRenewProgram(user.activeProgram === "-" ? "" : user.activeProgram);
+                                setRenewStartDate("");
+                                setRenewDuration("");
+                                setRenewAmount("");
+                                setRenewPaymentMethod("CASH");
+                                setIsRenewModalOpen(true);
+                              }
+                            }] : []),
+                            {
+                              label: "Reset Password",
+                              icon: <Key />,
+                              onClick: () => handleResetPassword(user.id)
+                            },
+                            {
+                              label: "Delete User",
+                              icon: <Trash2 />,
+                              onClick: () => handleDeleteUser(user.id, user.name),
+                              danger: true
                             }
-                          }] : []),
-                          {
-                            label: "Reset Password",
-                            icon: <Key />,
-                            onClick: () => handleResetPassword(user.id)
-                          },
-                          {
-                            label: "Delete User",
-                            icon: <Trash2 />,
-                            onClick: () => handleDeleteUser(user.id, user.name),
-                            danger: true
-                          }
-                        ]}
-                      />
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -971,17 +985,26 @@ export function UsersClientView({
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                if (!renewProgram || !renewStartDate || !renewDuration || !renewAmount) {
-                  alert("Harap lengkapi semua field.");
+                if (!renewProgram || !renewStartDate) {
+                  alert("Harap lengkapi program dan tanggal mulai.");
+                  return;
+                }
+                if (renewProgram === "Membership" && !membershipPackage) {
+                  alert("Harap pilih paket membership.");
+                  return;
+                }
+                if (renewProgram !== "Membership" && (!renewDuration || !renewAmount)) {
+                  alert("Harap lengkapi durasi dan nominal pembayaran.");
                   return;
                 }
                 startTransition(async () => {
                   const result = await renewStudent(renewingUser.id, {
                     programType: renewProgram,
                     startDate: new Date(renewStartDate),
-                    duration: renewDuration,
-                    amount: Number(renewAmount),
+                    duration: renewProgram === "Membership" ? "" : renewDuration,
+                    amount: renewProgram === "Membership" ? 0 : Number(renewAmount),
                     paymentMethod: renewPaymentMethod,
+                    membershipPackage: renewProgram === "Membership" ? membershipPackage : undefined,
                   });
                   if (result.error) {
                     alert("Error: " + result.error);
@@ -989,6 +1012,7 @@ export function UsersClientView({
                     alert(`✅ Repeat Order berhasil! ${renewingUser.name} terdaftar di program ${renewProgram}.`);
                     setIsRenewModalOpen(false);
                     setRenewingUser(null);
+                    setMembershipPackage("");
                     window.location.reload();
                   }
                 });
@@ -1011,8 +1035,36 @@ export function UsersClientView({
                   <option value="EFK">EFK (6 Bulan)</option>
                   <option value="EFT">EFT (6 Bulan)</option>
                   <option value="Private">Private</option>
+                  <option value="Membership">Membership (Khusus Alumni - Max 14 Hari Pasca Lulus)</option>
                   <option value="TOEFL">TOEFL</option>
                 </select>
+
+                {renewProgram === "Membership" && (
+                  <div className="mt-3 p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                    <label className="block text-sm font-semibold text-blue-900 mb-2">Pilih Paket Membership:</label>
+                    <select 
+                      value={membershipPackage} 
+                      onChange={(e) => setMembershipPackage(e.target.value)}
+                      className="w-full border-gray-300 rounded-md shadow-sm mb-3 p-2 text-sm"
+                      required
+                    >
+                      <option value="">-- Pilih Durasi --</option>
+                      <option value="1_Bulan">1 bulan (Rp 600.000)</option>
+                      <option value="4_Bulan">1+3 bulan (Rp 1.100.000)</option>
+                      <option value="7_Bulan">6+1 bulan (Rp 1.800.000)</option>
+                      <option value="13_Bulan">12+1 bulan (Rp 2.950.000)</option>
+                    </select>
+                    
+                    <div className="text-xs text-blue-800 mt-2 space-y-1">
+                      <p className="font-bold">↪️ BENEFIT KELAS:</p>
+                      <ul className="list-disc list-inside">
+                        <li>Biaya lebih hemat</li>
+                        <li>Bebas masuk kapan saja</li>
+                        <li>Kelas fleksibel</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Start Date */}
@@ -1028,37 +1080,41 @@ export function UsersClientView({
               </div>
 
               {/* Duration */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Durasi</label>
-                <select
-                  value={renewDuration}
-                  onChange={(e) => setRenewDuration(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-medium text-slate-700"
-                  required
-                >
-                  <option value="">Pilih durasi...</option>
-                  <option value="1_WEEK">1 Minggu</option>
-                  <option value="2_WEEKS">2 Minggu</option>
-                  <option value="3_WEEKS">3 Minggu</option>
-                  <option value="1_MONTH">1 Bulan</option>
-                  <option value="2_MONTHS">2 Bulan</option>
-                  <option value="6_MONTHS">6 Bulan</option>
-                </select>
-              </div>
+              {renewProgram !== "Membership" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Durasi</label>
+                  <select
+                    value={renewDuration}
+                    onChange={(e) => setRenewDuration(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none font-medium text-slate-700"
+                    required
+                  >
+                    <option value="">Pilih durasi...</option>
+                    <option value="1_WEEK">1 Minggu</option>
+                    <option value="2_WEEKS">2 Minggu</option>
+                    <option value="3_WEEKS">3 Minggu</option>
+                    <option value="1_MONTH">1 Bulan</option>
+                    <option value="2_MONTHS">2 Bulan</option>
+                    <option value="6_MONTHS">6 Bulan</option>
+                  </select>
+                </div>
+              )}
 
               {/* Amount */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nominal Pembayaran (Rp)</label>
-                <input
-                  type="number"
-                  value={renewAmount}
-                  onChange={(e) => setRenewAmount(e.target.value ? Number(e.target.value) : "")}
-                  placeholder="Contoh: 1500000"
-                  min={0}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-slate-900"
-                  required
-                />
-              </div>
+              {renewProgram !== "Membership" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nominal Pembayaran (Rp)</label>
+                  <input
+                    type="number"
+                    value={renewAmount}
+                    onChange={(e) => setRenewAmount(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="Contoh: 1500000"
+                    min={0}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-slate-900"
+                    required
+                  />
+                </div>
+              )}
 
               {/* Payment Method */}
               <div className="flex flex-col gap-1.5">
@@ -1070,7 +1126,6 @@ export function UsersClientView({
                 >
                   <option value="CASH">💵 Cash</option>
                   <option value="TRANSFER">🏦 Transfer Bank</option>
-                  <option value="QRIS">📱 QRIS</option>
                 </select>
               </div>
 

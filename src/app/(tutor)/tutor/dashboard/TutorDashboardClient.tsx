@@ -33,6 +33,7 @@ export type EligibleStudent = {
 
 export type SessionTask = {
   id: string;
+  date: string;
   timeSlot: string;
   isCompleted: boolean;
   className: string;
@@ -266,7 +267,7 @@ export function TutorDashboardClient({
       <div className="flex flex-col gap-5">
         <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-400" />
-          Task of the Day
+          Jadwal Mengajar (7 Hari Kedepan)
         </h2>
 
         {todaySessions.length === 0 ? (
@@ -274,8 +275,8 @@ export function TutorDashboardClient({
             <div className="p-4 bg-emerald-50 rounded-full">
               <CheckCircle className="w-8 h-8 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">No classes scheduled for today</h3>
-            <p className="text-sm font-medium text-slate-500">Take a rest! You deserve it. 🎉</p>
+            <h3 className="text-lg font-bold text-slate-900">Tidak ada jadwal mengajar</h3>
+            <p className="text-sm font-medium text-slate-500">Belum ada kelas yang dijadwalkan dalam 7 hari ke depan. 🎉</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -285,7 +286,7 @@ export function TutorDashboardClient({
               return (
                 <div
                   key={task.id}
-                  className={`group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border ${isCompleted ? "border-slate-200 opacity-75" : "border-slate-200"
+                  className={`group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border ${isCompleted ? "border-slate-200 opacity-75" : "border-l-4 border-l-indigo-500 border-slate-200"
                     } p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300`}
                 >
                   {/* Info Column */}
@@ -305,7 +306,10 @@ export function TutorDashboardClient({
 
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                          {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(task.date))}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                           {task.timeSlot}
                         </span>
                         <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wider bg-slate-100 text-slate-600 border border-slate-200">

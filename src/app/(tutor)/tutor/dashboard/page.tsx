@@ -13,21 +13,26 @@ export default async function TutorDashboardPage() {
 
   const tutorId = session.user.id;
 
-  // 1. Fetch today's sessions for this tutor
+  // 1. Fetch upcoming sessions for this tutor (7 days)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  
+  const nextWeek = new Date(todayStart);
+  nextWeek.setDate(todayStart.getDate() + 7);
+  nextWeek.setHours(23, 59, 59, 999);
 
   const sessions = await prisma.session.findMany({
     where: {
       tutorId,
       date: {
         gte: todayStart,
-        lte: todayEnd,
+        lte: nextWeek,
       },
     },
-    orderBy: { date: "asc" },
+    orderBy: [
+      { date: "asc" },
+      { timeSlot: "asc" }
+    ],
     include: {
       assignedStudents: { select: { id: true } },
       attendances: {
@@ -105,6 +110,7 @@ export default async function TutorDashboardPage() {
 
       return {
         id: s.id,
+        date: s.date.toISOString(),
         timeSlot: s.timeSlot,
         isCompleted: s.isCompleted,
         className: s.title,

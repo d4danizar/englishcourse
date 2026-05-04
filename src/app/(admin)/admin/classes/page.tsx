@@ -6,6 +6,7 @@ import { ActiveSessionsView } from "./ActiveSessionsView";
 import AutoAbsenceButton from "../../../../components/admin/AutoAbsenceButton";
 import { ScheduleTabsWrapper } from "./ScheduleTabsWrapper";
 import { WeeklyRosterBuilder } from "./WeeklyRosterBuilder";
+import { IndependentClassesView } from "./IndependentClassesView";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
 import { getTodayTopic, TodayTopic } from "@/lib/syllabus-helpers";
 
@@ -25,9 +26,37 @@ export default async function ScheduleManagementPage() {
     orderBy: { name: "asc" },
   });
 
-  // 2. Fetch all sessions with tutor info
+  // 1b. Fetch active students for the Independent Class Modal
+  const students = await prisma.user.findMany({
+    where: { 
+      role: "STUDENT", 
+      ...branchFilter 
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  // 1c. Fetch Independent Classes (ClassGroups)
+  const independentClasses = await prisma.classGroup.findMany({
+    where: { 
+      classType: "INDEPENDENT",
+      branch: branchFilter.branch
+    },
+    include: {
+      sessions: {
+        include: { tutor: { select: { name: true } } },
+        orderBy: { id: "asc" }
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  // 2. Fetch all sessions with tutor info (Active Sessions, excluding null dates)
   const sessions = await prisma.session.findMany({
-    where: { ...branchFilter },
+    where: { 
+      ...branchFilter,
+      date: { not: null } 
+    },
     include: {
       tutor: { select: { name: true } },
       _count: { select: { attendances: true } },
@@ -61,9 +90,27 @@ export default async function ScheduleManagementPage() {
     <ActiveSessionsView 
       sessions={sessionsWithData.map(s => ({
         ...s,
-        date: s.date.toISOString(),
+        date: s.date ? s.date.toISOString() : null, // Handle optional date
       }))} 
       tutors={tutors} 
+    />
+  );
+
+  const independentClassesTable = (
+    <IndependentClassesView 
+      classes={independentClasses.map(c => ({
+        id: c.id,
+        name: c.name,
+        program: c.program,
+        classType: c.classType,
+        sessions: c.sessions.map(s => ({
+          id: s.id,
+          title: s.title,
+          date: s.date ? s.date.toISOString() : null,
+          timeSlot: s.timeSlot,
+          tutor: { name: s.tutor.name }
+        }))
+      }))}
     />
   );
 
@@ -71,7 +118,7 @@ export default async function ScheduleManagementPage() {
     <div className="flex flex-col gap-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
       {/* Page Header (Client Component with single-session modal) */}
       <div className="flex flex-col gap-6">
-        <SchedulePageHeader tutors={tutors} />
+        <SchedulePageHeader tutors={tutors} students={students} />
         
         {/* Sweep / Auto-Alpa Button Tracker */}
         <div className="flex justify-end pr-1 border-b border-slate-100 pb-6">
@@ -79,9 +126,10 @@ export default async function ScheduleManagementPage() {
         </div>
       </div>
 
-      {/* Tab Navigation: Active Sessions | Weekly Roster Builder */}
+      {/* Tab Navigation: Active Sessions | Independent | Weekly Roster Builder */}
       <ScheduleTabsWrapper
         activeSessionsTable={activeSessionsTable}
+        independentClassesTable={independentClassesTable}
         rosterBuilder={<WeeklyRosterBuilder tutors={tutors} />}
       />
     </div>

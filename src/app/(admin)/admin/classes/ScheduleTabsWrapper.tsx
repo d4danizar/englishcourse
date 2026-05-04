@@ -1,26 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, LayoutGrid } from "lucide-react";
+import { CalendarDays, LayoutGrid, Sparkles } from "lucide-react";
 
 export function ScheduleTabsWrapper({
   activeSessionsTable,
   rosterBuilder,
+  independentClassesTable,
 }: {
   activeSessionsTable: React.ReactNode;
   rosterBuilder: React.ReactNode;
+  independentClassesTable: React.ReactNode;
 }) {
-  const [activeTab, setActiveTab] = useState<"sessions" | "roster">("sessions");
+  const [activeTab, setActiveTab] = useState<"sessions" | "roster" | "independent">("sessions");
 
   const tabs = [
     { id: "sessions" as const, label: "Active Sessions", icon: CalendarDays },
+    { id: "independent" as const, label: "Independent Classes", icon: Sparkles },
     { id: "roster" as const, label: "Weekly Roster Builder", icon: LayoutGrid },
   ];
 
   return (
     <div className="flex flex-col gap-6">
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl w-fit">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -43,6 +46,7 @@ export function ScheduleTabsWrapper({
 
       {/* Tab Content */}
       {activeTab === "sessions" && activeSessionsTable}
+      {activeTab === "independent" && independentClassesTable}
       {activeTab === "roster" && rosterBuilder}
     </div>
   );

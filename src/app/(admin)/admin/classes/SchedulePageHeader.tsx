@@ -1,16 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, CalendarDays } from "lucide-react";
+import { Plus, Search, CalendarDays, Sparkles } from "lucide-react";
 import { CreateSessionModal } from "./CreateSessionModal";
+import { CreateIndependentClassModal } from "./CreateIndependentClassModal";
 
 type TutorOption = {
   id: string;
   name: string;
 };
 
-export function SchedulePageHeader({ tutors }: { tutors: TutorOption[] }) {
+type StudentOption = {
+  id: string;
+  name: string;
+};
+
+export function SchedulePageHeader({ tutors, students }: { tutors: TutorOption[], students?: StudentOption[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isIndependentModalOpen, setIsIndependentModalOpen] = useState(false);
 
   return (
     <>
@@ -27,6 +34,14 @@ export function SchedulePageHeader({ tutors }: { tutors: TutorOption[] }) {
         <div className="flex items-center gap-3">
           <button
             type="button"
+            onClick={() => setIsIndependentModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-indigo-200 hover:bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm transition-colors whitespace-nowrap"
+          >
+            <Sparkles className="-ml-1 w-4 h-4" />
+            Add Independent Class
+          </button>
+          <button
+            type="button"
             onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors whitespace-nowrap"
           >
@@ -41,6 +56,15 @@ export function SchedulePageHeader({ tutors }: { tutors: TutorOption[] }) {
         onClose={() => setIsModalOpen(false)}
         tutors={tutors}
       />
+
+      {students && (
+        <CreateIndependentClassModal
+          isOpen={isIndependentModalOpen}
+          onClose={() => setIsIndependentModalOpen(false)}
+          tutors={tutors}
+          students={students}
+        />
+      )}
     </>
   );
 }
