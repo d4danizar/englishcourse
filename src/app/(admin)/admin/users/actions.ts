@@ -353,7 +353,7 @@ export async function renewStudent(
           await tx.cashflow.create({
             data: {
               type: "INCOME",
-              category: "COURSE_FEE",
+              category: "PELUNASAN",
               amount: finalAmount,
               description: `Pelunasan Repeat Order ${data.programType} (Cash) - ${user?.name || 'Siswa'}`,
               branch: user?.branch || "KARTASURA"

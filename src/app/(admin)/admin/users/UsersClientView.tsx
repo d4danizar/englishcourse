@@ -245,9 +245,11 @@ export function UsersClientView({
   // Filter users based on tab and search query
   const filteredUsers = initialUsers.filter((user) => {
     const matchesTab = activeTab === "ALL" || user.role === activeTab;
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      user.name.toLowerCase().includes(searchLower) || 
+      user.email.toLowerCase().includes(searchLower) ||
+      user.activeProgram?.toLowerCase().includes(searchLower);
     return matchesTab && matchesSearch;
   });
 
