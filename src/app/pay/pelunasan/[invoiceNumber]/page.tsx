@@ -1,5 +1,6 @@
 import { prisma } from "../../../../lib/prisma";
 import { PelunasanForm } from "./PelunasanForm";
+import { BankTransferInfo } from "../../BankTransferInfo";
 
 export default async function PelunasanPage({
   params,
@@ -113,11 +114,8 @@ export default async function PelunasanPage({
             {invoice.invoiceNumber}
           </div>
 
-          <div className="mt-6 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-700 text-left">
-            <p className="font-semibold mb-1">Transfer ke:</p>
-            <p>
-              🏦 BCA — <strong>1234567890</strong> a/n Kampung Inggris
-            </p>
+          <div className="mt-6 text-left">
+            <BankTransferInfo showRegistrationFeeNote={false} />
           </div>
         </div>
 

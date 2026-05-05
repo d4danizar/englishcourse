@@ -1,6 +1,7 @@
 import { prisma } from "../../../lib/prisma";
 import { notFound } from "next/navigation";
 import { CheckoutForm } from "./CheckoutForm";
+import { BankTransferInfo } from "../BankTransferInfo";
 
 export default async function PaymentPage({
   params,
@@ -124,12 +125,7 @@ export default async function PaymentPage({
             <span className="text-slate-600">Total Pembayaran Saat Ini</span>
             <span className="text-2xl font-bold text-indigo-700">{paidAmountFormatted}</span>
           </div>
-          <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-700">
-            <p className="font-semibold mb-1">Transfer ke:</p>
-            <p>🏦 No. Rekening: <strong>3930719144</strong></p>
-            <p>👤 Atas Nama: <strong>Nofi Mujayati</strong></p>
-            <p className="mt-2 text-xs text-indigo-500">* Biaya Pendaftaran Rp100.000 sudah termasuk dalam total tagihan.</p>
-          </div>
+          <BankTransferInfo showRegistrationFeeNote={true} />
         </div>
 
         {/* Form */}

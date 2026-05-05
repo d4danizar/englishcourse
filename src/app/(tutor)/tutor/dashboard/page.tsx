@@ -13,20 +13,19 @@ export default async function TutorDashboardPage() {
 
   const tutorId = session.user.id;
 
-  // 1. Fetch upcoming sessions for this tutor (7 days)
+  // 1. Fetch upcoming sessions for this tutor (Today Only)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   
-  const nextWeek = new Date(todayStart);
-  nextWeek.setDate(todayStart.getDate() + 7);
-  nextWeek.setHours(23, 59, 59, 999);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setHours(23, 59, 59, 999);
 
   const sessions = await prisma.session.findMany({
     where: {
       tutorId,
       date: {
         gte: todayStart,
-        lte: nextWeek,
+        lte: todayEnd,
       },
     },
     orderBy: [
