@@ -13,19 +13,20 @@ export default async function TutorDashboardPage() {
 
   const tutorId = session.user.id;
 
-  // 1. Fetch upcoming sessions for this tutor (Today Only)
+  // 1. Fetch upcoming sessions for this tutor (7 days)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   
-  const todayEnd = new Date(todayStart);
-  todayEnd.setHours(23, 59, 59, 999);
+  const nextWeek = new Date(todayStart);
+  nextWeek.setDate(todayStart.getDate() + 7);
+  nextWeek.setHours(23, 59, 59, 999);
 
   const sessions = await prisma.session.findMany({
     where: {
       tutorId,
       date: {
         gte: todayStart,
-        lte: todayEnd,
+        lte: nextWeek,
       },
     },
     orderBy: [
@@ -122,8 +123,15 @@ export default async function TutorDashboardPage() {
   );
 
   // 3. Calculate quick stats
-  const totalToday = todaySessions.length;
-  const pendingEvals = todaySessions.filter((s) => !s.isCompleted).length;
+  const totalToday = todaySessions.filter(s => {
+    const d = new Date(s.date);
+    return d.toDateString() === new Date().toDateString();
+  }).length;
+  
+  const pendingEvals = todaySessions.filter(s => {
+    const d = new Date(s.date);
+    return d.toDateString() === new Date().toDateString() && !s.isCompleted;
+  }).length;
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
