@@ -131,6 +131,7 @@ export async function editUser(formData: FormData) {
         role,
         branch,
         secondaryBranch: secondaryBranch ? (secondaryBranch as BranchLocation) : null,
+        referralCode: formData.get("referralCode") ? (formData.get("referralCode") as string).toUpperCase() : null,
       },
     });
 
@@ -266,6 +267,28 @@ export async function deleteUser(userId: string) {
   }
 }
 
+export async function validateReferralCode(code: string) {
+  try {
+    const userWithCode = await prisma.user.findUnique({
+      where: { referralCode: code.toUpperCase() },
+      select: { id: true, name: true, role: true }
+    });
+
+    if (!userWithCode) {
+      return { valid: false, error: "Kode promo tidak ditemukan." };
+    }
+
+    // Assuming only STAFF/ADMIN/TUTOR have codes
+    return { 
+      valid: true, 
+      discount: 100000, 
+      ownerName: userWithCode.name 
+    };
+  } catch (error) {
+    return { valid: false, error: "Terjadi kesalahan sistem." };
+  }
+}
+
 export async function renewStudent(
   userId: string,
   data: {
@@ -275,6 +298,7 @@ export async function renewStudent(
     amount: number;
     paymentMethod: string;
     membershipPackage?: string;
+    referralCode?: string;
   }
 ) {
   try {
@@ -302,10 +326,17 @@ export async function renewStudent(
 
       switch (data.membershipPackage) {
         case "1_Bulan": finalAmount = 600000; finalDuration = "1_MONTH"; break;
-        case "4_Bulan": finalAmount = 1100000; finalDuration = "4_MONTHS"; break;
+        case "4_Bulan": finalAmount = 1250000; finalDuration = "4_MONTHS"; break;
         case "7_Bulan": finalAmount = 1800000; finalDuration = "7_MONTHS"; break;
         case "13_Bulan": finalAmount = 2950000; finalDuration = "13_MONTHS"; break;
         default: throw new Error("Paket Membership tidak valid.");
+      }
+
+      if (data.referralCode) {
+        const checkCode = await prisma.user.findUnique({ where: { referralCode: data.referralCode.toUpperCase() } });
+        if (checkCode) {
+          finalAmount -= 100000;
+        }
       }
     }
 
@@ -325,7 +356,8 @@ export async function renewStudent(
           durationOption: finalDuration,
           leaveQuota: calculatedLeaveQuota,
           leaveUsed: 0,
-          status: "ACTIVE"
+          status: "ACTIVE",
+          referralCodeUsed: data.referralCode ? data.referralCode.toUpperCase() : null
         }
       });
 

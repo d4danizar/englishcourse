@@ -19,7 +19,7 @@ export async function createManualIncome(data: {
         amount: data.amount,
         description: data.description,
         branch: data.branch as any,
-        createdAt: new Date(data.date), // Allow backdating if necessary
+        date: new Date(data.date), // Allow backdating if necessary
       }
     });
 

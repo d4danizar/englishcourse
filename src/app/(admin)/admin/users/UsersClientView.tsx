@@ -113,6 +113,7 @@ export function UsersClientView({
   const [editBranch, setEditBranch] = useState("KARTASURA");
   const [editSecondaryBranch, setEditSecondaryBranch] = useState("");
   const [editTotalLeaves, setEditTotalLeaves] = useState(0);
+  const [editReferralCode, setEditReferralCode] = useState("");
 
   // === RENEW / REPEAT ORDER STATE ===
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
@@ -123,6 +124,7 @@ export function UsersClientView({
   const [renewAmount, setRenewAmount] = useState<number | "">("");
   const [renewPaymentMethod, setRenewPaymentMethod] = useState("CASH");
   const [membershipPackage, setMembershipPackage] = useState("");
+  const [renewReferralCode, setRenewReferralCode] = useState("");
 
   // Auto-calculate endDate for ADD form
   const calculatedEndDate = useMemo(() => {
@@ -157,6 +159,7 @@ export function UsersClientView({
       setEditBatch(editingUser.batchSchedule || "");
       setEditProgramBatch(editingUser.programBatch || "");
       setEditTotalLeaves(editingUser.totalLeaves || 0);
+      setEditReferralCode(editingUser.referralCode || "");
     }
   }, [editingUser]);
 
@@ -164,6 +167,9 @@ export function UsersClientView({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.append("id", editingUser!.id);
+    if (editReferralCode) {
+      formData.append("referralCode", editReferralCode);
+    }
 
     // Append calculated student fields
     if (editRole === "STUDENT") {
@@ -901,6 +907,16 @@ export function UsersClientView({
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Kode Referral Khusus</label>
+                  <input
+                    type="text"
+                    placeholder="Kosongkan jika tidak ada"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700 uppercase"
+                    value={editReferralCode}
+                    onChange={(e) => setEditReferralCode(e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Cabang</label>
                   <select 
                     name="branch" 
@@ -968,10 +984,10 @@ export function UsersClientView({
 
       {/* ======================= REPEAT ORDER MODAL ======================= */}
       {isRenewModalOpen && renewingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <RefreshCcw className="w-5 h-5" /> Repeat Order
@@ -1004,9 +1020,10 @@ export function UsersClientView({
                     programType: renewProgram,
                     startDate: new Date(renewStartDate),
                     duration: renewProgram === "Membership" ? "" : renewDuration,
-                    amount: renewProgram === "Membership" ? 0 : Number(renewAmount),
+                    amount: renewProgram === "Membership" ? 0 : Math.max(0, Number(renewAmount) - 100000),
                     paymentMethod: renewPaymentMethod,
                     membershipPackage: renewProgram === "Membership" ? membershipPackage : undefined,
+                    referralCode: renewProgram === "Membership" && renewReferralCode ? renewReferralCode : undefined,
                   });
                   if (result.error) {
                     alert("Error: " + result.error);
@@ -1019,8 +1036,9 @@ export function UsersClientView({
                   }
                 });
               }}
-              className="p-6 flex flex-col gap-4"
+              className="flex flex-col flex-1 min-h-0"
             >
+              <div className="p-6 flex flex-col gap-4 overflow-y-auto">
               {/* Program */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Program Baru</label>
@@ -1065,6 +1083,18 @@ export function UsersClientView({
                         <li>Kelas fleksibel</li>
                       </ul>
                     </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-semibold text-blue-900 mb-2">Kode Referral / Tutor (Opsional)</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: TUTORBUDI"
+                        className="w-full border-gray-300 rounded-md shadow-sm p-2 text-sm uppercase focus:ring-blue-500 focus:border-blue-500"
+                        value={renewReferralCode}
+                        onChange={(e) => setRenewReferralCode(e.target.value.toUpperCase())}
+                      />
+                      <p className="mt-1 text-xs text-blue-700">* Jika valid, akan otomatis memotong Rp 100.000 dari tagihan akhir.</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1105,16 +1135,22 @@ export function UsersClientView({
               {/* Amount */}
               {renewProgram !== "Membership" && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nominal Pembayaran (Rp)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Harga Normal Program (Rp)</label>
                   <input
                     type="number"
                     value={renewAmount}
                     onChange={(e) => setRenewAmount(e.target.value ? Number(e.target.value) : "")}
-                    placeholder="Contoh: 1500000"
-                    min={0}
+                    placeholder="Contoh: 500000"
+                    min={100000}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-slate-900"
                     required
                   />
+                  {renewAmount !== "" && Number(renewAmount) >= 100000 && (
+                    <div className="mt-1 text-xs font-medium text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                      Total Tagihan Repeat Order: <strong>Rp {(Number(renewAmount) - 100000).toLocaleString("id-ID")}</strong> <br/>
+                      <span className="text-emerald-600 opacity-80">(Otomatis dipotong biaya pendaftaran Rp 100.000)</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1130,9 +1166,10 @@ export function UsersClientView({
                   <option value="TRANSFER">🏦 Transfer Bank</option>
                 </select>
               </div>
+              </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <div className="p-5 border-t border-slate-100 gap-3 flex justify-end bg-slate-50/50 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsRenewModalOpen(false)}

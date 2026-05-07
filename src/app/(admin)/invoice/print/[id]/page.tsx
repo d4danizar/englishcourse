@@ -227,6 +227,12 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         </div>
       </div>
 
+      <div className="mt-16 pt-4 border-t border-slate-300 w-full flex justify-start">
+        <p className="text-left text-xs md:text-sm italic text-slate-500 font-medium">
+          * Keterangan: Uang yang sudah masuk tidak dapat ditarik kembali dengan alasan apapun.
+        </p>
+      </div>
+
       {/* Garis Potong Khusus Print */}
       <div className="hidden print:block border-t-2 border-dashed border-slate-300 mt-12 pt-4 text-center text-[10px] text-slate-400 pb-4">
         ✂️ —————————————————— Potong di sini —————————————————— ✂️

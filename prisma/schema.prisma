@@ -26,6 +26,7 @@ model User {
   discoverySource    String?
   address            String?
   secondaryBranch    BranchLocation?
+  referralCode       String?                 @unique
   announcements      Announcement[]
   attendances        Attendance[]
   cashflows          Cashflow[]
@@ -209,6 +210,7 @@ model Enrollment {
   leaveUsed        Int       @default(0)
   totalLeaves      Int       @default(0)
   status           String    @default("ACTIVE")
+  referralCodeUsed String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
