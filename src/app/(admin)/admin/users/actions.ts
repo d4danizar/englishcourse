@@ -325,11 +325,24 @@ export async function renewStudent(
       }
 
       switch (data.membershipPackage) {
-        case "1_Bulan": finalAmount = 600000; finalDuration = "1_MONTH"; break;
-        case "4_Bulan": finalAmount = 1250000; finalDuration = "4_MONTHS"; break;
-        case "7_Bulan": finalAmount = 1800000; finalDuration = "7_MONTHS"; break;
-        case "13_Bulan": finalAmount = 2950000; finalDuration = "13_MONTHS"; break;
-        default: throw new Error("Paket Membership tidak valid.");
+        case "1_Bulan": 
+          finalAmount = 750000; 
+          finalDuration = "1_MONTH"; 
+          break;
+        case "3_Plus_1_Bulan": 
+          finalAmount = 1250000; 
+          finalDuration = "4_MONTHS"; 
+          break;
+        case "6_Plus_1_Bulan": 
+          finalAmount = 1950000; 
+          finalDuration = "7_MONTHS"; 
+          break;
+        case "12_Plus_1_Bulan": 
+          finalAmount = 3100000; 
+          finalDuration = "13_MONTHS"; 
+          break;
+        default: 
+          throw new Error("Paket Membership tidak valid.");
       }
 
       if (data.referralCode) {

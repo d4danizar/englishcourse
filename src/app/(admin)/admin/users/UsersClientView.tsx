@@ -1068,11 +1068,11 @@ export function UsersClientView({
                       className="w-full border-gray-300 rounded-md shadow-sm mb-3 p-2 text-sm"
                       required
                     >
-                      <option value="">-- Pilih Durasi --</option>
-                      <option value="1_Bulan">1 bulan (Rp 600.000)</option>
-                      <option value="4_Bulan">1+3 bulan (Rp 1.100.000)</option>
-                      <option value="7_Bulan">6+1 bulan (Rp 1.800.000)</option>
-                      <option value="13_Bulan">12+1 bulan (Rp 2.950.000)</option>
+                      <option value="" disabled>Pilih Paket Membership</option>
+                      <option value="1_Bulan">1 Bulan (Rp 750.000)</option>
+                      <option value="3_Plus_1_Bulan">3+1 Bulan (Rp 1.250.000)</option>
+                      <option value="6_Plus_1_Bulan">6+1 Bulan (Rp 1.950.000)</option>
+                      <option value="12_Plus_1_Bulan">12+1 Bulan (Rp 3.100.000)</option>
                     </select>
                     
                     <div className="text-xs text-blue-800 mt-2 space-y-1">
