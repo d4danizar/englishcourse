@@ -45,6 +45,7 @@ export default async function AdminUsersPage() {
     durationOption: user.enrollments?.[0]?.durationOption || null,
     batchSchedule: user.enrollments?.[0]?.batchSchedule || null,
     totalLeaves: user.enrollments?.[0]?.leaveUsed ?? 0,
+    referralCode: user.referralCode || null,
   }));
 
   return <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} offDays={serializedOffDays} />;

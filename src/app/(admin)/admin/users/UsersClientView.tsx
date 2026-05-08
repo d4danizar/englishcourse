@@ -45,6 +45,7 @@ type UserType = {
   durationOption: string | null;
   batchSchedule: string | null;
   totalLeaves?: number;
+  referralCode?: string | null;
 };
 
 // Shared endDate calculation logic (used by both Add and Edit forms)
