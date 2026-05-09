@@ -80,6 +80,7 @@ export function TutorDashboardClient({
   quickStats: QuickStat[];
   isEvalDay: boolean;
 }) {
+  const [activeTab, setActiveTab] = useState<"upcoming" | "overdue">("upcoming");
   const [selectedTask, setSelectedTask] = useState<SessionTask | null>(null);
   const [isPending, startTransition] = useTransition();
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null);
@@ -265,174 +266,71 @@ export function TutorDashboardClient({
         })}
       </div>
 
-      {/* OVERDUE SECTION */}
-      {overdueSessions && overdueSessions.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 sm:p-6 shadow-sm mb-2">
-          <h2 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-4">
-            <span>⚠️</span> Menunggu Presensi ({overdueSessions.length})
-          </h2>
-          <div className="flex flex-col gap-4">
-            {overdueSessions.map((task) => {
-              const eligibleCount = task.students.length;
-              return (
-                <div
-                  key={task.id}
-                  className="group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border border-l-4 border-l-red-500 border-red-200 p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md"
-                >
-                  {/* Info Column */}
-                  <div className="flex items-start gap-4 sm:gap-5 w-full md:w-auto">
-                    <div className="p-3 sm:p-4 rounded-xl flex-shrink-0 bg-red-50 text-red-600">
-                      <AlertCircle className="w-6 h-6" />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="text-sm font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
-                          {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(task.date))}
-                        </span>
-                        <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                          {task.timeSlot}
-                        </span>
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                          {task.programType}
-                        </span>
-                      </div>
-                      <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 sm:mb-3">
-                        {task.className}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-medium text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-slate-400" />
-                          {eligibleCount} Eligible Students
-                        </div>
-                        {task.todayTopic && (
-                          <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
-                            <BookOpen className="w-3.5 h-3.5" />
-                            <span className="font-bold">#{task.todayTopic.topicNumber}</span>
-                            <span className="hidden sm:inline">{task.todayTopic.topicTitle}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Column */}
-                  <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenModal(task)}
-                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200"
-                    >
-                      Take Attendance
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* 3. Schedule Tabs Navigation */}
+      <div className="flex flex-col gap-6">
+        {/* Tabs Bar */}
+        <div className="flex space-x-2 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200">
+          <button
+            onClick={() => setActiveTab("upcoming")}
+            className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+              activeTab === "upcoming"
+                ? "bg-white text-indigo-700 shadow-sm border border-slate-200/50"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            Jadwal Aktif
+          </button>
+          <button
+            onClick={() => setActiveTab("overdue")}
+            className={`flex-1 py-2.5 px-4 text-sm font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+              activeTab === "overdue"
+                ? "bg-white text-red-700 shadow-sm border border-slate-200/50"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+            }`}
+          >
+            <AlertCircle className="w-4 h-4" />
+            Menunggu Presensi
+            {overdueSessions && overdueSessions.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                {overdueSessions.length}
+              </span>
+            )}
+          </button>
         </div>
-      )}
 
-      {/* 3. Task of the Day (Schedule) */}
-      <div className="flex flex-col gap-5">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-slate-400" />
-          Jadwal Hari Ini & Mendatang
-        </h2>
-
-        {todaySessions.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 shadow-sm flex flex-col items-center justify-center text-center gap-3">
-            <div className="p-4 bg-emerald-50 rounded-full">
-              <CheckCircle className="w-8 h-8 text-emerald-500" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">Tidak ada jadwal mengajar</h3>
-            <p className="text-sm font-medium text-slate-500">Belum ada kelas yang dijadwalkan dalam 7 hari ke depan. 🎉</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {todaySessions.map((task) => {
-              const isCompleted = task.isCompleted;
-              const eligibleCount = task.students.length;
-              return (
-                <div
-                  key={task.id}
-                  className={`group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border ${isCompleted ? "border-slate-200 opacity-75" : "border-l-4 border-l-indigo-500 border-slate-200"
-                    } p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300`}
-                >
-                  {/* Info Column */}
-                  <div className="flex items-start gap-4 sm:gap-5 w-full md:w-auto">
-                    <div
-                      className={`p-3 sm:p-4 rounded-xl flex-shrink-0 ${isCompleted
-                          ? "bg-slate-100 text-slate-500"
-                          : "bg-indigo-50 text-indigo-600"
-                        }`}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle className="w-6 h-6" />
-                      ) : (
-                        <Clock className="w-6 h-6" />
-                      )}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                          {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(task.date))}
-                        </span>
-                        <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                          {task.timeSlot}
-                        </span>
-                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                          {task.programType}
-                        </span>
-                      </div>
-                      <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 sm:mb-3">
-                        {task.className}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-medium text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-slate-400" />
-                          {eligibleCount} Eligible Students
-                        </div>
-                        {task.todayTopic && (
-                          <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
-                            <BookOpen className="w-3.5 h-3.5" />
-                            <span className="font-bold">#{task.todayTopic.topicNumber}</span>
-                            <span className="hidden sm:inline">{task.todayTopic.topicTitle}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+        {/* Tab Content */}
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {activeTab === "upcoming" ? (
+            <div className="flex flex-col gap-4">
+              {todaySessions.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 shadow-sm flex flex-col items-center justify-center text-center gap-3">
+                  <div className="p-4 bg-emerald-50 rounded-full">
+                    <CheckCircle className="w-8 h-8 text-emerald-500" />
                   </div>
-
-                  {/* Action Column */}
-                  <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
-                    {isCompleted ? (
-                      <button
-                        type="button"
-                        onClick={() => setDetailSessionId(task.id)}
-                        className="inline-flex w-full md:w-auto items-center justify-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-5 py-3 rounded-xl border border-emerald-100 transition-colors cursor-pointer"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        View Details
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenModal(task)}
-                        className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200"
-                      >
-                        Take Attendance
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Tidak ada jadwal mengajar</h3>
+                  <p className="text-sm font-medium text-slate-500">Belum ada kelas yang dijadwalkan dalam 7 hari ke depan. 🎉</p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ) : (
+                todaySessions.map((task) => renderSessionCard(task, false))
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {!overdueSessions || overdueSessions.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-12 shadow-sm flex flex-col items-center justify-center text-center gap-3">
+                  <div className="p-4 bg-emerald-50 rounded-full">
+                    <Award className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">🎉 Hebat! Semua beres.</h3>
+                  <p className="text-sm font-medium text-slate-500">Semua presensi kelas telah diselesaikan.</p>
+                </div>
+              ) : (
+                overdueSessions.map(task => renderSessionCard(task, true))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 4. The Attendance & Evaluation Modal */}
