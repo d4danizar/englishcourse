@@ -228,6 +228,89 @@ export function TutorDashboardClient({
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good Morning" : hour < 17 ? "Good Afternoon" : "Good Evening";
 
+  const renderSessionCard = (task: SessionTask, isOverdue: boolean = false) => {
+    const isCompleted = task.isCompleted;
+    const eligibleCount = task.students.length;
+    return (
+      <div
+        key={task.id}
+        className={`group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border ${isCompleted ? "border-slate-200 opacity-75" : isOverdue ? "border-l-4 border-l-red-500 border-red-200" : "border-l-4 border-l-indigo-500 border-slate-200"
+          } p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300`}
+      >
+        {/* Info Column */}
+        <div className="flex items-start gap-4 sm:gap-5 w-full md:w-auto">
+          <div
+            className={`p-3 sm:p-4 rounded-xl flex-shrink-0 ${isCompleted
+                ? "bg-slate-100 text-slate-500"
+                : isOverdue ? "bg-red-50 text-red-600" : "bg-indigo-50 text-indigo-600"
+              }`}
+          >
+            {isCompleted ? (
+              <CheckCircle className="w-6 h-6" />
+            ) : isOverdue ? (
+              <AlertCircle className="w-6 h-6" />
+            ) : (
+              <Clock className="w-6 h-6" />
+            )}
+          </div>
+
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className={`text-sm font-bold px-2 py-0.5 rounded-md border ${isOverdue ? "text-red-700 bg-red-50 border-red-100" : "text-indigo-600 bg-indigo-50 border-indigo-100"}`}>
+                {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(task.date))}
+              </span>
+              <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                {task.timeSlot}
+              </span>
+              <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                {task.programType}
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 sm:mb-3">
+              {task.className}
+            </h3>
+            <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-medium text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-slate-400" />
+                {eligibleCount} Eligible Students
+              </div>
+              {task.todayTopic && (
+                <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span className="font-bold">#{task.todayTopic.topicNumber}</span>
+                  <span className="hidden sm:inline">{task.todayTopic.topicTitle}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Column */}
+        <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
+          {isCompleted ? (
+            <button
+              type="button"
+              onClick={() => setDetailSessionId(task.id)}
+              className="inline-flex w-full md:w-auto items-center justify-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-5 py-3 rounded-xl border border-emerald-100 transition-colors cursor-pointer"
+            >
+              <CheckCircle className="w-4 h-4" />
+              View Details
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleOpenModal(task)}
+              className={`w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 ${isOverdue ? "bg-red-600 hover:bg-red-700" : "bg-indigo-600 hover:bg-indigo-700"}`}
+            >
+              Take Attendance
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full pb-24 relative">
 
