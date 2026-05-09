@@ -13,15 +13,43 @@ export default async function TutorDashboardPage() {
 
   const tutorId = session.user.id;
 
-  // 1. Fetch upcoming sessions for this tutor (7 days)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  
+  const now = new Date();
+  const todayStart = new Date(now.setHours(0, 0, 0, 0));
+
+  // 1. Fetch overdue sessions for this tutor
+  const overdueSessionsRaw = await prisma.session.findMany({
+    where: {
+      tutorId,
+      isCompleted: false, // Not yet submitted
+      date: { lt: todayStart }, // Date is in the past
+    },
+    orderBy: { date: "asc" }, // Oldest first
+    include: {
+      assignedStudents: { select: { id: true } },
+      attendances: {
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              enrollments: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { programType: true }
+              }
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // 2. Fetch upcoming sessions for this tutor (7 days)
   const nextWeek = new Date(todayStart);
   nextWeek.setDate(todayStart.getDate() + 7);
   nextWeek.setHours(23, 59, 59, 999);
 
-  const sessions = await prisma.session.findMany({
+  const upcomingSessionsRaw = await prisma.session.findMany({
     where: {
       tutorId,
       date: {
@@ -53,74 +81,75 @@ export default async function TutorDashboardPage() {
     },
   });
 
-  // 2. For each session, fetch eligible students using shared helper (DRY)
-  const todaySessions: SessionTask[] = await Promise.all(
-    sessions.map(async (s) => {
-      // Use shared helper for strict radar filtering
-      const eligibleStudents = await getEligibleStudentsForSession({
-        date: s.date,
-        timeSlot: s.timeSlot,
-        programType: s.programType,
-        assignedStudents: s.assignedStudents,
-        branch: s.branch,
+  // Helper function to map raw session to SessionTask
+  const mapSessionToTask = async (s: any): Promise<SessionTask> => {
+    // Use shared helper for strict radar filtering
+    const eligibleStudents = await getEligibleStudentsForSession({
+      date: s.date,
+      timeSlot: s.timeSlot,
+      programType: s.programType,
+      assignedStudents: s.assignedStudents,
+      branch: s.branch,
+    });
+
+    // Build a set of studentIds that already have attendance records
+    const existingAttendanceMap = new Map<string, any>(
+      s.attendances.map((a: any) => [
+        a.studentId,
+        {
+          status: a.status,
+          pronunciation: a.pronunciation,
+          fluency: a.fluency,
+          vocabulary: a.vocabulary,
+          tutorNotes: a.tutorNotes,
+        },
+      ])
+    );
+
+    // Merge: eligible students + any extra students from existing attendance (manual adds)
+    const allStudentIds = new Set([
+      ...eligibleStudents.map((es: any) => es.id),
+      ...s.attendances.map((a: any) => a.studentId),
+    ]);
+
+    const mergedStudents: EligibleStudent[] = [];
+    for (const studentId of allStudentIds) {
+      const eligible = eligibleStudents.find((es: any) => es.id === studentId);
+      const attendance = existingAttendanceMap.get(studentId);
+      const fromAttendance = s.attendances.find((a: any) => a.studentId === studentId);
+
+      mergedStudents.push({
+        id: studentId as string,
+        name: eligible?.name || fromAttendance?.student?.name || "Unknown",
+        activeProgram: eligible?.activeProgram || fromAttendance?.student?.enrollments?.[0]?.programType || null,
+        existingStatus: (attendance?.status as string) || null,
+        existingPronunciation: attendance?.pronunciation ?? null,
+        existingFluency: attendance?.fluency ?? null,
+        existingVocabulary: attendance?.vocabulary ?? null,
+        existingNotes: attendance?.tutorNotes ?? null,
       });
+    }
 
-      // Build a set of studentIds that already have attendance records
-      const existingAttendanceMap = new Map<string, any>(
-        s.attendances.map((a) => [
-          a.studentId,
-          {
-            status: a.status,
-            pronunciation: a.pronunciation,
-            fluency: a.fluency,
-            vocabulary: a.vocabulary,
-            tutorNotes: a.tutorNotes,
-          },
-        ])
-      );
+    // Use shared helper for global pool (broad, with contains filter for search)
+    const globalPoolRaw = await getGlobalPoolForSession({ programType: s.programType, timeSlot: s.timeSlot });
+    const globalPoolStudents: StudentSearchItem[] = globalPoolRaw
+      .map((gp: any) => ({ id: gp.id, name: gp.name, activeProgram: gp.activeProgram }));
 
-      // Merge: eligible students + any extra students from existing attendance (manual adds)
-      const allStudentIds = new Set([
-        ...eligibleStudents.map((es) => es.id),
-        ...s.attendances.map((a) => a.studentId),
-      ]);
+    return {
+      id: s.id,
+      date: s.date.toISOString(),
+      timeSlot: s.timeSlot,
+      isCompleted: s.isCompleted,
+      className: s.title,
+      programType: s.programType,
+      students: mergedStudents,
+      globalPoolStudents,
+      todayTopic: null,
+    };
+  };
 
-      const mergedStudents: EligibleStudent[] = [];
-      for (const studentId of allStudentIds) {
-        const eligible = eligibleStudents.find((es) => es.id === studentId);
-        const attendance = existingAttendanceMap.get(studentId);
-        const fromAttendance = s.attendances.find((a) => a.studentId === studentId);
-
-        mergedStudents.push({
-          id: studentId,
-          name: eligible?.name || fromAttendance?.student?.name || "Unknown",
-          activeProgram: eligible?.activeProgram || fromAttendance?.student?.enrollments?.[0]?.programType || null,
-          existingStatus: (attendance?.status as string) || null,
-          existingPronunciation: attendance?.pronunciation ?? null,
-          existingFluency: attendance?.fluency ?? null,
-          existingVocabulary: attendance?.vocabulary ?? null,
-          existingNotes: attendance?.tutorNotes ?? null,
-        });
-      }
-
-      // Use shared helper for global pool (broad, with contains filter for search)
-      const globalPoolRaw = await getGlobalPoolForSession({ programType: s.programType, timeSlot: s.timeSlot });
-      const globalPoolStudents: StudentSearchItem[] = globalPoolRaw
-        .map((gp) => ({ id: gp.id, name: gp.name, activeProgram: gp.activeProgram }));
-
-      return {
-        id: s.id,
-        date: s.date.toISOString(),
-        timeSlot: s.timeSlot,
-        isCompleted: s.isCompleted,
-        className: s.title,
-        programType: s.programType,
-        students: mergedStudents,
-        globalPoolStudents,
-        todayTopic: null,
-      };
-    })
-  );
+  const overdueSessions: SessionTask[] = await Promise.all(overdueSessionsRaw.map(mapSessionToTask));
+  const todaySessions: SessionTask[] = await Promise.all(upcomingSessionsRaw.map(mapSessionToTask));
 
   // 3. Calculate quick stats
   const totalToday = todaySessions.filter(s => {
@@ -172,6 +201,7 @@ export default async function TutorDashboardPage() {
     <TutorDashboardClient
       tutorName={session.user.name || "Tutor"}
       todaySessions={todaySessions}
+      overdueSessions={overdueSessions}
       quickStats={quickStats}
       isEvalDay={isEvalDay}
     />

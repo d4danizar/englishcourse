@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { COMPANY_INFO } from "@/lib/constants/branding";
 import { BranchSwitcher, BranchBadge } from "@/components/layout/BranchSwitcher";
 import { BranchLocation } from "@prisma/client";
@@ -148,13 +149,29 @@ export function AdminSidebar({
               </p>
             </div>
           </div>
-          <Link
-            href="/api/auth/signout"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors no-underline w-full"
+          <button
+            onClick={async () => {
+              try {
+                // 1. Perform the actual backend/auth provider logout
+                await signOut({ redirect: false });
+
+                // 2. Nuke Local & Session Storage (destroying any saved branch state, UI state, etc.)
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // 3. NUCLEAR REDIRECT: Do NOT use next/navigation router.push!
+                window.location.href = "/login";
+              } catch (error) {
+                console.error("Logout failed:", error);
+                // Force redirect anyway just to be safe
+                window.location.href = "/login";
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors w-full text-left"
           >
             <span className="block">🚪</span>
             <span className="block">Sign Out</span>
-          </Link>
+          </button>
 
           {/* SaaS Footer Credit */}
           <div className="mt-4 pt-3 border-t border-slate-800 text-center">

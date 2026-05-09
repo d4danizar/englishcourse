@@ -40,18 +40,18 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
 
     // Aggressive matching for the second branch
     if (
-      cleanBranch.includes('CABANG_2') || 
-      cleanBranch.includes('CABANG2') || 
-      cleanBranch === 'CABANG 2' || 
-      cleanBranch === '2' || 
-      cleanBranch.includes('SRE') || 
+      cleanBranch.includes('CABANG_2') ||
+      cleanBranch.includes('CABANG2') ||
+      cleanBranch === 'CABANG 2' ||
+      cleanBranch === '2' ||
+      cleanBranch.includes('SRE') ||
       cleanBranch.includes('SERENGAN')
     ) {
       branchCode = 'SRE';
     } else if (
-      cleanBranch.includes('KARTASURA') || 
-      cleanBranch.includes('KTS') || 
-      cleanBranch.includes('CABANG_1') || 
+      cleanBranch.includes('KARTASURA') ||
+      cleanBranch.includes('KTS') ||
+      cleanBranch.includes('CABANG_1') ||
       cleanBranch === '1'
     ) {
       branchCode = 'KTS';
@@ -68,18 +68,18 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
 
     // Aggressive matching for the second branch
     if (
-      cleanBranch.includes('CABANG_2') || 
-      cleanBranch.includes('CABANG2') || 
-      cleanBranch === 'CABANG 2' || 
-      cleanBranch === '2' || 
-      cleanBranch.includes('SRE') || 
+      cleanBranch.includes('CABANG_2') ||
+      cleanBranch.includes('CABANG2') ||
+      cleanBranch === 'CABANG 2' ||
+      cleanBranch === '2' ||
+      cleanBranch.includes('SRE') ||
       cleanBranch.includes('SERENGAN')
     ) {
       branchCode = 'SRE';
     } else if (
-      cleanBranch.includes('KARTASURA') || 
-      cleanBranch.includes('KTS') || 
-      cleanBranch.includes('CABANG_1') || 
+      cleanBranch.includes('KARTASURA') ||
+      cleanBranch.includes('KTS') ||
+      cleanBranch.includes('CABANG_1') ||
       cleanBranch === '1'
     ) {
       branchCode = 'KTS';
@@ -92,9 +92,9 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   // Fallback to lead assignee if no cashflow exists yet
   const csName = invoice.cashflows?.[0]?.recordedBy?.name || invoice.lead?.assignee?.name || null;
   const branchName = invoice.branch || invoice.lead?.branch || "KARTASURA";
-  
+
   console.log("🔴 DB BRANCH VALUE:", invoice.branch, "| LEAD BRANCH:", invoice.lead?.branch, "| FINAL BRANCH:", branchName);
-  
+
   const signatureUrl = getSignatureUrl(csName, branchName);
   const stampUrl = getStampUrl(branchName);
 
@@ -201,7 +201,9 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
       <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end">
         <div className="text-[10px] text-slate-500 leading-tight max-w-[60%]">
           <p className="font-semibold text-slate-700 mb-1">Catatan:</p>
-          <p>Kuitansi valid oleh sistem tanpa tanda tangan basah.</p>
+          <p>- Kuitansi valid oleh sistem tanpa tanda tangan basah.</p>
+          <p>- Uang yang sudah masuk tidak dapat ditarik kembali dengan alasan apapun.</p>
+
         </div>
         <div className="relative text-center w-56">
 
@@ -225,12 +227,6 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="mt-16 pt-4 border-t border-slate-300 w-full flex justify-start">
-        <p className="text-left text-xs md:text-sm italic text-slate-500 font-medium">
-          * Keterangan: Uang yang sudah masuk tidak dapat ditarik kembali dengan alasan apapun.
-        </p>
       </div>
 
       {/* Garis Potong Khusus Print */}

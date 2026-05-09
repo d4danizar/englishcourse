@@ -70,11 +70,13 @@ export type StudentSearchItem = { id: string; name: string; activeProgram: strin
 export function TutorDashboardClient({
   tutorName,
   todaySessions,
+  overdueSessions = [],
   quickStats,
   isEvalDay,
 }: {
   tutorName: string;
   todaySessions: SessionTask[];
+  overdueSessions?: SessionTask[];
   quickStats: QuickStat[];
   isEvalDay: boolean;
 }) {
@@ -263,11 +265,80 @@ export function TutorDashboardClient({
         })}
       </div>
 
+      {/* OVERDUE SECTION */}
+      {overdueSessions && overdueSessions.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 sm:p-6 shadow-sm mb-2">
+          <h2 className="text-lg font-bold text-red-700 flex items-center gap-2 mb-4">
+            <span>⚠️</span> Menunggu Presensi ({overdueSessions.length})
+          </h2>
+          <div className="flex flex-col gap-4">
+            {overdueSessions.map((task) => {
+              const eligibleCount = task.students.length;
+              return (
+                <div
+                  key={task.id}
+                  className="group flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white rounded-2xl border border-l-4 border-l-red-500 border-red-200 p-5 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                  {/* Info Column */}
+                  <div className="flex items-start gap-4 sm:gap-5 w-full md:w-auto">
+                    <div className="p-3 sm:p-4 rounded-xl flex-shrink-0 bg-red-50 text-red-600">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span className="text-sm font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-md border border-red-100">
+                          {new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(task.date))}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                          {task.timeSlot}
+                        </span>
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                          {task.programType}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 sm:mb-3">
+                        {task.className}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-medium text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-slate-400" />
+                          {eligibleCount} Eligible Students
+                        </div>
+                        {task.todayTopic && (
+                          <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span className="font-bold">#{task.todayTopic.topicNumber}</span>
+                            <span className="hidden sm:inline">{task.todayTopic.topicTitle}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Column */}
+                  <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModal(task)}
+                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200"
+                    >
+                      Take Attendance
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 3. Task of the Day (Schedule) */}
       <div className="flex flex-col gap-5">
         <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-400" />
-          Jadwal Mengajar (7 Hari Kedepan)
+          Jadwal Hari Ini & Mendatang
         </h2>
 
         {todaySessions.length === 0 ? (
