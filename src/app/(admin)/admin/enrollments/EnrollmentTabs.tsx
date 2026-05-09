@@ -108,8 +108,8 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
   });
 
   const filterStudents = (students: StudentData[]) => {
-    return students.filter(s => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    return students.filter(s =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.phoneNumber || "").includes(searchQuery)
     );
@@ -125,27 +125,27 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in">
-      
+
       {/* Search & Tabs Header */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
         <div className="flex overflow-x-auto space-x-2 bg-slate-100 p-1.5 rounded-xl w-full sm:w-auto no-scrollbar">
-          <button 
-            onClick={() => setActiveTab("DP")} 
+          <button
+            onClick={() => setActiveTab("DP")}
             className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "DP" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
           >
             ⏳ Menunggu Pelunasan ({dpInvoices.length})
           </button>
-          <button 
-            onClick={() => setActiveTab("ACTIVE")} 
+          <button
+            onClick={() => setActiveTab("ACTIVE")}
             className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "ACTIVE" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
           >
-            ✅ Resmi Bergabung ({activeStudents.length})
+            ✅ Lunas ({activeStudents.length})
           </button>
-          <button 
-            onClick={() => setActiveTab("EXPIRED")} 
+          <button
+            onClick={() => setActiveTab("EXPIRED")}
             className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "EXPIRED" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
           >
-            🎓 Alumni & Habis Masa ({expiredStudents.length})
+            🎓 Alumni ({expiredStudents.length})
           </button>
         </div>
 
@@ -163,7 +163,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
 
       {/* Content Area */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        
+
         {/* DP TAB */}
         {activeTab === "DP" && (
           <div className="flex flex-col p-2 sm:p-4 gap-3 bg-slate-50/50">
@@ -178,7 +178,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                     <p className="font-bold text-slate-900 text-sm md:text-base">{sd.fullName || sd.name || "-"}</p>
                     <p className="text-xs md:text-sm text-slate-500">{sd.email} • {sd.whatsapp || sd.phone}</p>
                   </div>
-                  
+
                   {/* Middle: Program & Tagihan */}
                   <div className="flex flex-col sm:items-center">
                     <p className="font-semibold text-slate-800 text-sm">{inv.programName}</p>
@@ -189,7 +189,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
 
                   {/* Right Side: Action */}
                   <div className="flex flex-col sm:items-end w-full sm:w-auto">
-                    <Link 
+                    <Link
                       href={`/pay/pelunasan/${inv.invoiceNumber}`}
                       target="_blank"
                       className="w-full sm:w-auto inline-flex justify-center px-4 py-2.5 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg shadow-sm"
@@ -209,33 +209,33 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
             {filteredActive.length === 0 ? (
               <div className="p-8 text-center text-slate-500 bg-white rounded-xl border border-slate-200">Tidak ada siswa aktif.</div>
             ) : filteredActive.map((user) => (
-                <div key={user.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border border-slate-200 rounded-xl gap-4 hover:shadow-sm transition-shadow bg-white">
-                  {/* Left Side: Name & Contact */}
-                  <div className="flex flex-col">
-                    <p className="font-bold text-slate-900 text-sm md:text-base">{user.name}</p>
-                    <p className="text-xs md:text-sm text-slate-500">{user.email}</p>
-                  </div>
-                  
-                  {/* Middle: Program & Tagihan */}
-                  <div className="flex flex-col sm:items-center">
-                    <span className="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">
-                      {user.activeProgram}
-                    </span>
-                    <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Berakhir: {formatDate(user.endDate)}
-                    </div>
-                  </div>
+              <div key={user.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border border-slate-200 rounded-xl gap-4 hover:shadow-sm transition-shadow bg-white">
+                {/* Left Side: Name & Contact */}
+                <div className="flex flex-col">
+                  <p className="font-bold text-slate-900 text-sm md:text-base">{user.name}</p>
+                  <p className="text-xs md:text-sm text-slate-500">{user.email}</p>
+                </div>
 
-                  {/* Right Side: Action */}
-                  <div className="flex flex-col sm:items-end w-full sm:w-auto">
-                    <Link 
-                      href={`/admin/users/${user.id}`}
-                      className="w-full sm:w-auto inline-flex justify-center px-4 py-2.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-lg"
-                    >
-                      Lihat Profil
-                    </Link>
+                {/* Middle: Program & Tagihan */}
+                <div className="flex flex-col sm:items-center">
+                  <span className="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">
+                    {user.activeProgram}
+                  </span>
+                  <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Berakhir: {formatDate(user.endDate)}
                   </div>
                 </div>
+
+                {/* Right Side: Action */}
+                <div className="flex flex-col sm:items-end w-full sm:w-auto">
+                  <Link
+                    href={`/admin/users/${user.id}`}
+                    className="w-full sm:w-auto inline-flex justify-center px-4 py-2.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-lg"
+                  >
+                    Lihat Profil
+                  </Link>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -246,35 +246,35 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
             {filteredExpired.length === 0 ? (
               <div className="p-8 text-center text-slate-500 bg-white rounded-xl border border-slate-200">Tidak ada alumni.</div>
             ) : filteredExpired.map((user) => (
-                <div key={user.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border border-slate-200 rounded-xl gap-4 hover:shadow-sm transition-shadow bg-white">
-                  {/* Left Side: Name & Contact */}
-                  <div className="flex flex-col">
-                    <p className="font-bold text-slate-900 text-sm md:text-base">{user.name}</p>
-                    <p className="text-xs md:text-sm text-slate-500">{user.email}</p>
-                  </div>
-                  
-                  {/* Middle: Program & Tagihan */}
-                  <div className="flex flex-col sm:items-center">
-                    <p className="font-medium text-slate-700 text-sm">{user.activeProgram !== "-" ? user.activeProgram : "Belum ada program"}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Sejak: {formatDate(user.createdAt)}</p>
-                  </div>
-
-                  {/* Right Side: Action */}
-                  <div className="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto gap-2">
-                    <Link 
-                      href={`/admin/users/${user.id}`}
-                      className="w-full sm:w-auto inline-flex justify-center px-4 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
-                    >
-                      Profil
-                    </Link>
-                    <button 
-                      onClick={() => handleOpenRenewModal(user)}
-                      className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
-                    >
-                      <RefreshCcw className="w-3.5 h-3.5" /> Repeat Order
-                    </button>
-                  </div>
+              <div key={user.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border border-slate-200 rounded-xl gap-4 hover:shadow-sm transition-shadow bg-white">
+                {/* Left Side: Name & Contact */}
+                <div className="flex flex-col">
+                  <p className="font-bold text-slate-900 text-sm md:text-base">{user.name}</p>
+                  <p className="text-xs md:text-sm text-slate-500">{user.email}</p>
                 </div>
+
+                {/* Middle: Program & Tagihan */}
+                <div className="flex flex-col sm:items-center">
+                  <p className="font-medium text-slate-700 text-sm">{user.activeProgram !== "-" ? user.activeProgram : "Belum ada program"}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Sejak: {formatDate(user.createdAt)}</p>
+                </div>
+
+                {/* Right Side: Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto gap-2">
+                  <Link
+                    href={`/admin/users/${user.id}`}
+                    className="w-full sm:w-auto inline-flex justify-center px-4 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                  >
+                    Profil
+                  </Link>
+                  <button
+                    onClick={() => handleOpenRenewModal(user)}
+                    className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+                  >
+                    <RefreshCcw className="w-3.5 h-3.5" /> Repeat Order
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -320,8 +320,8 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                   {renewProgram === "Membership" && (
                     <div className="mt-3 p-4 border border-blue-200 bg-blue-50 rounded-lg">
                       <label className="block text-sm font-semibold text-blue-900 mb-2">Pilih Paket Membership:</label>
-                      <select 
-                        value={membershipPackage} 
+                      <select
+                        value={membershipPackage}
                         onChange={(e) => setMembershipPackage(e.target.value)}
                         className="w-full border-gray-300 rounded-md shadow-sm mb-3 p-2 text-sm"
                         required
@@ -332,7 +332,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                         <option value="6_Plus_1_Bulan">6+1 Bulan (Rp 1.950.000)</option>
                         <option value="12_Plus_1_Bulan">12+1 Bulan (Rp 3.100.000)</option>
                       </select>
-                      
+
                       <div className="mt-4">
                         <label className="block text-sm font-semibold text-blue-900 mb-2">Kode Referral / Tutor (Opsional)</label>
                         <input
@@ -392,7 +392,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                     />
                     {renewAmount !== "" && Number(renewAmount) >= 100000 && (
                       <div className="mt-1 text-xs font-medium text-indigo-700 bg-indigo-50 p-2 rounded-lg border border-indigo-200">
-                        Total Tagihan Repeat Order: <strong>Rp {(Number(renewAmount) - 100000).toLocaleString("id-ID")}</strong> <br/>
+                        Total Tagihan Repeat Order: <strong>Rp {(Number(renewAmount) - 100000).toLocaleString("id-ID")}</strong> <br />
                         <span className="text-indigo-600 opacity-80">(Otomatis dipotong biaya pendaftaran Rp 100.000)</span>
                       </div>
                     )}

@@ -53,7 +53,7 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   // Dynamically find truly active enrollment
   const activeEnrollment = user.enrollments.find(e => {
     if (e.status !== "ACTIVE") return false;
-    if (!e.endDate) return true; // Pending or open-ended
+    if (!e.endDate) return false; // If no end date from import, assume expired
     const endDate = new Date(e.endDate);
     endDate.setHours(0, 0, 0, 0);
     return endDate >= todayStart;

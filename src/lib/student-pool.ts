@@ -79,10 +79,7 @@ export async function getEligibleStudentsForSession(session: {
             ? { programType: { contains: session.programType.toUpperCase().includes('EFK') ? 'EFK' : 'EFT', mode: 'insensitive' } }
             : { programType: { in: eligiblePrograms } }),
           startDate: { lte: sessionEndOfDay }, // startDate sekarang wajib (not null) di schema
-          OR: [
-            { endDate: null },
-            { endDate: { gte: sessionStartOfDay } }
-          ]
+          endDate: { gte: sessionStartOfDay }
         }
       }
     },
