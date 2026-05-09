@@ -10,6 +10,7 @@ import { BranchLocation } from "@prisma/client";
 
 // Standard ops items accessible to all admin roles
 const standardNavItems = [
+  { label: "Pendaftaran", href: "/admin/enrollments", emoji: "📝" },
   { label: "Classes", href: "/admin/classes", emoji: "📚" },
   { label: "Users", href: "/admin/users", emoji: "👥" },
   { label: "Announcements", href: "/admin/announcements", emoji: "📢" },
