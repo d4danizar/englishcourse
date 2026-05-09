@@ -13,7 +13,12 @@ export function SignOutButton({ className }: { className?: string }) {
       localStorage.clear();
       sessionStorage.clear();
 
-      // 3. NUCLEAR REDIRECT: Do NOT use next/navigation router.push!
+      // 3. NUKE ALL COOKIES (This is the new addition)
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+
+      // 4. NUCLEAR REDIRECT: Do NOT use next/navigation router.push!
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout failed:", error);

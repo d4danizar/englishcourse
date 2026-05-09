@@ -74,6 +74,7 @@ export async function getEligibleStudentsForSession(session: {
       ...(session.branch ? { branch: session.branch as any } : {}),
       enrollments: {
         some: {
+          status: "ACTIVE",
           ...(session.programType.toUpperCase().includes('EFK') || session.programType.toUpperCase().includes('EFT')
             ? { programType: { contains: session.programType.toUpperCase().includes('EFK') ? 'EFK' : 'EFT', mode: 'insensitive' } }
             : { programType: { in: eligiblePrograms } }),

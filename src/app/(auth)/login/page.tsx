@@ -35,8 +35,8 @@ function LoginForm() {
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        router.push(callbackUrl);
-        router.refresh(); // Force refresh to update session state in layouts
+        // NUCLEAR LOGIN: Force a complete browser refresh to ensure Next.js builds the layout using the NEW user's branch data
+        window.location.href = callbackUrl;
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");

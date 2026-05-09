@@ -306,22 +306,12 @@ export async function renewStudent(
     let finalDuration = data.duration;
 
     if (data.programType === "Membership") {
-      const lastEnrollment = await prisma.enrollment.findFirst({
-        where: { userId: userId, status: "COMPLETED" },
-        orderBy: { endDate: 'desc' }
+      const activeEnrollmentCount = await prisma.enrollment.count({
+        where: { userId: userId, status: "ACTIVE" }
       });
 
-      if (!lastEnrollment || !lastEnrollment.endDate) {
+      if (activeEnrollmentCount > 0) {
         throw new Error("Pendaftaran ditolak: Hanya alumni yang sudah lulus yang dapat mengambil program Membership.");
-      }
-
-      const today = new Date();
-      const graduationDate = new Date(lastEnrollment.endDate);
-      const diffTime = today.getTime() - graduationDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-      if (diffDays > 14) {
-        throw new Error(`Pendaftaran ditolak: Batas waktu maksimal mendaftar Membership adalah 14 hari setelah lulus. Siswa ini lulus ${diffDays} hari yang lalu.`);
       }
 
       switch (data.membershipPackage) {
@@ -360,6 +350,12 @@ export async function renewStudent(
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     await prisma.$transaction(async (tx) => {
+      // 0. Set all existing active enrollments for this user to EXPIRED to clean up DB
+      await tx.enrollment.updateMany({
+        where: { userId: userId, status: "ACTIVE" },
+        data: { status: "EXPIRED" }
+      });
+
       const newEnrollment = await tx.enrollment.create({
         data: {
           userId: userId,

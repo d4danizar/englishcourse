@@ -19,6 +19,8 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const { id } = await params;
 
   // Fetch the user along with enrollments and attendances
+  console.log(`[StudentProfilePage] Fetching user profile for ID: ${id}`);
+  
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
@@ -45,7 +47,18 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const presentAttendances = user.attendances.filter(a => a.status === "PRESENT").length;
   const totalAttendances = user.attendances.length;
 
-  const activeEnrollment = user.enrollments.find(e => e.status === "ACTIVE");
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  // Dynamically find truly active enrollment
+  const activeEnrollment = user.enrollments.find(e => {
+    if (e.status !== "ACTIVE") return false;
+    if (!e.endDate) return true; // Pending or open-ended
+    const endDate = new Date(e.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate >= todayStart;
+  });
+
   const historyEnrollments = user.enrollments.filter(e => e.id !== activeEnrollment?.id);
 
   // Helper function to get attendance stats for a specific enrollment
@@ -149,14 +162,21 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
         <div className="lg:col-span-2 space-y-6">
           
           {/* Active Program Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-emerald-200 overflow-hidden relative">
+          <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden relative ${activeEnrollment ? 'border-emerald-200' : 'border-slate-200'}`}>
             <div className="absolute top-0 right-0 p-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                ACTIVE
-              </span>
+              {activeEnrollment ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  ACTIVE
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">
+                  <span className="w-2 h-2 rounded-full bg-slate-400" />
+                  INACTIVE
+                </span>
+              )}
             </div>
-            <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-white">
+            <div className={`p-6 border-b border-slate-100 ${activeEnrollment ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-slate-50'}`}>
               <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2 mb-1">
                 <Activity className="w-4 h-4" /> Program Berjalan
               </h3>

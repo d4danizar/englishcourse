@@ -27,13 +27,38 @@ export default async function ScheduleManagementPage() {
   });
 
   // 1b. Fetch active students for the Independent Class Modal
-  const students = await prisma.user.findMany({
+  const rawStudents = await prisma.user.findMany({
     where: { 
       role: "STUDENT", 
       ...branchFilter 
     },
-    select: { id: true, name: true },
+    select: { 
+      id: true, 
+      name: true,
+      enrollments: {
+        where: { status: "ACTIVE" },
+        select: { status: true, endDate: true }
+      }
+    },
     orderBy: { name: "asc" },
+  });
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const students = rawStudents.map((s) => {
+    const hasActiveEnrollment = s.enrollments.some((e) => {
+      if (e.status !== "ACTIVE") return false;
+      if (!e.endDate) return true;
+      const end = new Date(e.endDate);
+      end.setHours(0, 0, 0, 0);
+      return end >= todayStart;
+    });
+
+    return {
+      id: s.id,
+      name: hasActiveEnrollment ? s.name : `${s.name} [EXPIRED]`
+    };
   });
 
   // 1c. Fetch Independent Classes (ClassGroups)

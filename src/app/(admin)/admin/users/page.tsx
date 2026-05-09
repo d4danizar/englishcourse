@@ -9,6 +9,22 @@ export default async function AdminUsersPage() {
 
   const branchFilter = await getBranchFilter();
 
+  // 1. Define "today" starting at midnight
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 2. THE AUTO-SWEEPER: Permanently update the DB for any expired enrollments
+  await prisma.enrollment.updateMany({
+    where: {
+      status: "ACTIVE",
+      endDate: { lt: today }
+    },
+    data: {
+      status: "EXPIRED"
+    }
+  });
+
+  // 3. Now fetch the users as usual
   const rawUsers = await prisma.user.findMany({
     where: { ...branchFilter },
     orderBy: { createdAt: "desc" },
