@@ -85,6 +85,8 @@ export async function getStudentEvaluations(studentId: string) {
       createdAt: "desc",
     },
   });
+
+  return evaluations;
 }
 
 export async function submitFinalVideo(enrollmentId: string, videoLink: string) {
