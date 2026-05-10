@@ -148,9 +148,7 @@ export async function submitLeaveRequest(enrollmentId: string, leaveDate: Date, 
   const newTotalLeaves = (enrollment.totalLeaves || 0) + 1;
 
   // 2. FETCH OFF DAYS (Global Holidays)
-  const offDays = await prisma.globalHoliday.findMany({
-    where: { isActive: true }
-  });
+  const offDays = await prisma.offDay.findMany();
 
   // 3. CALCULATE NEW END DATE
   const newEndDate = calculateEndDate(
