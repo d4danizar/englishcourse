@@ -26,9 +26,11 @@ const KPI_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR"];
 export function AdminSidebar({
   user,
   activeBranch,
+  pendingCertCount = 0,
 }: {
   user: { name?: string | null; email?: string | null; role?: string | null };
   activeBranch: BranchLocation;
+  pendingCertCount?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const role = (user?.role ?? "") as string;
@@ -37,6 +39,7 @@ export function AdminSidebar({
     // HEAD_TUTOR only gets access to Classes (Roster Builder) + escape back to Tutor Panel
     if (role === "HEAD_TUTOR") {
       return [
+        { label: "Verifikasi Sertifikat", href: "/tutor/certificates", emoji: "🎓", badge: pendingCertCount },
         { label: "Classes", href: "/admin/classes", emoji: "📚" },
         { label: "Back to Tutor Panel", href: "/tutor/dashboard", emoji: "⬅️" },
       ];
@@ -47,6 +50,8 @@ export function AdminSidebar({
       ...(role === "SUPER_ADMIN" ? [{ label: "Dashboard Bisnis", href: "/admin/dashboard", emoji: "📊" }] : []),
       // Keuangan — SUPER_ADMIN, MANAGER, CS
       ...(["SUPER_ADMIN", "MANAGER", "CS"].includes(role) ? [{ label: "Keuangan", href: "/admin/finance", emoji: "💰" }] : []),
+      // Verifikasi Sertifikat
+      ...(["SUPER_ADMIN", "MANAGER", "CS", "HEAD_TUTOR"].includes(role) ? [{ label: "Verifikasi Sertifikat", href: "/tutor/certificates", emoji: "🎓", badge: pendingCertCount }] : []),
       // CRM — SUPER_ADMIN, CS, MARKETING
       ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
       // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
@@ -120,19 +125,29 @@ export function AdminSidebar({
 
         {/* Navigation — scrollable */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1 bg-slate-900">
-          {visibleNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-150 group no-underline"
-            >
-              <span className="text-lg group-hover:scale-110 transition-transform block">
-                {item.emoji}
-              </span>
-              <span className="block">{item.label}</span>
-            </Link>
-          ))}
+          {visibleNavItems.map((item) => {
+            const hasBadge = item.badge && item.badge > 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-150 group no-underline"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg group-hover:scale-110 transition-transform block">
+                    {item.emoji}
+                  </span>
+                  <span className="block">{item.label}</span>
+                </div>
+                {hasBadge ? (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* User Info & Sign Out */}

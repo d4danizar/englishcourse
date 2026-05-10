@@ -22,6 +22,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { COMPANY_INFO } from "@/lib/constants/branding";
 import { ChangePasswordForm } from "./ChangePasswordForm";
+import FinalTaskSubmission from "./FinalTaskSubmission";
+import LeaveRequestForm from "./LeaveRequestForm";
 
 type ProfileContent = {
   id: string;
@@ -33,6 +35,7 @@ type ProfileContent = {
   endDate: Date | null;
   leaveQuota?: number;
   leaveUsed?: number;
+  currentEnrollment?: any;
 };
 
 type AttendanceWithSession = {
@@ -193,32 +196,15 @@ export function StudentDashboardClient({
         </div>
       </div>
 
-      {/* 1.5. Dynamic Banner for E-Certificate if Eligible */}
-      {daysLeft !== null && daysLeft < 0 && (
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 sm:px-8 text-white shadow-lg border border-emerald-400 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-20">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shadow-inner hide-print">
-              <Award className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white drop-shadow-sm">
-                🎉 Program Selesai!
-              </h3>
-              <p className="text-emerald-50 text-sm font-medium">
-                Selamat! Anda telah menyelesaikan program. E-Certificate Anda sudah rilis.
-              </p>
-            </div>
-          </div>
-          <a
-            href="/api/certificate"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-auto text-center px-6 py-3 bg-white text-emerald-700 hover:bg-emerald-50 font-bold rounded-xl shadow-md transition-all whitespace-nowrap"
-          >
-            Unduh E-Certificate
-          </a>
+      {/* 1.2 Final Task / Video Submission */}
+      {profile.currentEnrollment && (
+        <div className="relative z-20 flex flex-col gap-2">
+          <FinalTaskSubmission enrollment={profile.currentEnrollment} />
+          <LeaveRequestForm enrollment={profile.currentEnrollment} />
         </div>
       )}
+
+
 
       {/* Homework / PR Section */}
       <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm relative z-20 transition-shadow hover:shadow-md">

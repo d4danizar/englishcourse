@@ -14,6 +14,8 @@ const navItems = [
   { label: "Payroll", href: "/admin/payroll", emoji: "💰" },
 ];
 
+import { prisma } from "@/lib/prisma";
+
 export default async function AdminLayout({
   children,
 }: {
@@ -21,6 +23,13 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
   const activeBranch = await getActiveBranch();
+
+  const pendingCertCount = await prisma.enrollment.count({
+    where: {
+      finalVideoLink: { not: null },
+      isCertificateApproved: false,
+    }
+  });
 
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row bg-slate-50">
@@ -31,6 +40,7 @@ export default async function AdminLayout({
           role: session?.user?.role,
         }}
         activeBranch={activeBranch}
+        pendingCertCount={pendingCertCount}
       />
       {/* Main Content */}
       <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">

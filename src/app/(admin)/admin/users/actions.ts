@@ -335,11 +335,10 @@ export async function renewStudent(
           throw new Error("Paket Membership tidak valid.");
       }
 
-      if (data.referralCode) {
-        const checkCode = await prisma.user.findUnique({ where: { referralCode: data.referralCode.toUpperCase() } });
-        if (checkCode) {
-          finalAmount -= 100000;
-        }
+      if (data.referralCode && data.referralCode.trim() !== "") {
+        // Apply the exact 100,000 discount if a code is provided
+        const discountAmount = 100000;
+        finalAmount = finalAmount - discountAmount;
       }
     }
 

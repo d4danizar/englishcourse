@@ -343,6 +343,23 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                           onChange={(e) => setRenewReferralCode(e.target.value.toUpperCase())}
                         />
                       </div>
+
+                      {membershipPackage && (
+                        <div className="mt-4 text-xs font-medium text-indigo-700 bg-indigo-100 p-3 rounded-lg border border-indigo-200">
+                          Total Tagihan Membership: <strong>Rp {(() => {
+                            let basePrice = 0;
+                            if (membershipPackage === "1_Bulan") basePrice = 750000;
+                            else if (membershipPackage === "3_Plus_1_Bulan") basePrice = 1250000;
+                            else if (membershipPackage === "6_Plus_1_Bulan") basePrice = 1950000;
+                            else if (membershipPackage === "12_Plus_1_Bulan") basePrice = 3100000;
+                            
+                            if (renewReferralCode && renewReferralCode.trim().length > 0) {
+                              return (basePrice - 100000).toLocaleString("id-ID") + " (Diskon 100Rb)";
+                            }
+                            return basePrice.toLocaleString("id-ID");
+                          })()}</strong>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

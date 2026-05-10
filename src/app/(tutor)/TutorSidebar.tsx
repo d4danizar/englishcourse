@@ -12,12 +12,23 @@ const baseNavItems = [
   { label: "Pengaturan", href: "/tutor/settings", emoji: "⚙️" },
 ];
 
-export function TutorSidebar({ userRole = "TUTOR" }: { userRole?: string }) {
+export function TutorSidebar({ 
+  userRole = "TUTOR",
+  pendingCertCount = 0 
+}: { 
+  userRole?: string;
+  pendingCertCount?: number;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   // HEAD_TUTOR gets an extra link to the Roster Builder in admin
   const navItems = userRole === "HEAD_TUTOR"
-    ? [...baseNavItems, { label: "Homework", href: "/tutor/homework", emoji: "📝" }, { label: "Roster Builder", href: "/admin/classes", emoji: "📐" }]
+    ? [
+        ...baseNavItems, 
+        { label: "Verifikasi Sertifikat", href: "/tutor/certificates", emoji: "🎓", badge: pendingCertCount },
+        { label: "Homework", href: "/tutor/homework", emoji: "📝" }, 
+        { label: "Roster Builder", href: "/admin/classes", emoji: "📐" }
+      ]
     : baseNavItems;
 
   const panelLabel = userRole === "HEAD_TUTOR" ? "Head Tutor Panel" : "Tutor Panel";
@@ -81,19 +92,29 @@ export function TutorSidebar({ userRole = "TUTOR" }: { userRole?: string }) {
 
         {/* Navigation — scrollable */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-150 group"
-            >
-              <span className="text-lg group-hover:scale-110 transition-transform">
-                {item.emoji}
-              </span>
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const hasBadge = (item as any).badge && (item as any).badge > 0;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-150 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg group-hover:scale-110 transition-transform">
+                    {item.emoji}
+                  </span>
+                  {item.label}
+                </div>
+                {hasBadge && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                    {(item as any).badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Sign Out — pinned bottom */}
