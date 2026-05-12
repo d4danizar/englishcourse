@@ -12,7 +12,8 @@ import {
   BookOpen, 
   AlertCircle,
   Activity,
-  Award
+  Award,
+  FileText
 } from "lucide-react";
 
 export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +47,30 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   const totalPrograms = user.enrollments.length;
   const presentAttendances = user.attendances.filter(a => a.status === "PRESENT").length;
   const totalAttendances = user.attendances.length;
+
+  // Find lead and invoices
+  const lead = await prisma.lead.findFirst({
+    where: {
+      OR: [
+        { whatsapp: user.phoneNumber || "UNKNOWN" },
+        { name: user.name }
+      ]
+    },
+    include: {
+      invoices: {
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  });
+  const invoices = lead?.invoices || [];
+
+  let registrationData: any = null;
+  if (invoices.length > 0) {
+    const regInvoice = invoices.find(i => (i.studentData as any)?.address) || invoices[invoices.length - 1];
+    if (regInvoice?.studentData) {
+      registrationData = regInvoice.studentData as any;
+    }
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -156,6 +181,46 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
               </span>
             </div>
           </div>
+
+          {/* Biodata & Info Pendaftaran */}
+          {registrationData && (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-3 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-500" /> Biodata & Info Pendaftaran
+              </h3>
+              <div className="flex flex-col gap-3 text-sm">
+                {Object.entries(registrationData)
+                  .filter(([k, v]) => v && !['name', 'program', 'whatsapp', 'activeProgram', 'programBatch', 'durationOption', 'batchSchedule', 'startDate'].includes(k))
+                  .map(([key, value]) => {
+                    const labelMap: Record<string, string> = {
+                      email: "Email",
+                      school: "Status Kesibukan",
+                      gender: "Jenis Kelamin",
+                      birthPlace: "Tempat Lahir",
+                      birthDate: "Tanggal Lahir",
+                      occupation: "Kesibukan Detail",
+                      discoverySource: "Sumber Info",
+                      address: "Alamat",
+                      tshirtSize: "Ukuran Kaos",
+                    };
+                    return (
+                      <div key={key}>
+                        <div className="text-xs text-slate-500">{labelMap[key] || key}</div>
+                        <div className="font-semibold text-slate-800">
+                          {key === "tshirtSize" ? (
+                            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase font-bold tracking-widest text-xs mt-0.5 inline-block">
+                              {String(value)}
+                            </span>
+                          ) : (
+                            String(value)
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column: Active Program & History */}
@@ -226,6 +291,66 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
               ) : (
                 <div className="py-8 text-center text-slate-500">
                   <p>Tidak ada program yang sedang aktif.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Invoice History Section */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Riwayat Tagihan / Invoices
+              </h3>
+            </div>
+            <div className="p-0">
+              {invoices.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">No. Invoice</th>
+                        <th className="px-4 py-3">Program</th>
+                        <th className="px-4 py-3">Total / Dibayar</th>
+                        <th className="px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {invoices.map((inv: any) => (
+                        <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-4 py-4 font-medium text-slate-900">{inv.invoiceNumber}</td>
+                          <td className="px-4 py-4">{inv.programName}</td>
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-slate-900">Rp {inv.totalAmount.toLocaleString("id-ID")}</span>
+                              <span className="text-xs text-slate-500">Dibayar: Rp {inv.paidAmount.toLocaleString("id-ID")}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            {inv.status === "PAID" && (
+                              <span className="inline-flex px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-xs font-bold">LUNAS</span>
+                            )}
+                            {inv.status === "DP_PAID" && (
+                              <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-bold">DP LUNAS</span>
+                            )}
+                            {inv.status === "PENDING" && (
+                              <span className="inline-flex px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-bold">BELUM BAYAR</span>
+                            )}
+                            {inv.status === "WAITING_CONFIRMATION" && (
+                              <span className="inline-flex px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-xs font-bold">MENUNGGU VERIFIKASI</span>
+                            )}
+                            {inv.status === "CANCELLED" && (
+                              <span className="inline-flex px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-bold">DIBATALKAN</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-500">
+                  <p>Belum ada riwayat tagihan.</p>
                 </div>
               )}
             </div>

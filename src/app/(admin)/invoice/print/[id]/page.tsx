@@ -22,6 +22,10 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   if (!invoice) return notFound();
 
   const isDP = invoice.status === "DP_PAID";
+  const dpCashflow = invoice.cashflows?.find((c: any) => c.category === "DP");
+  const dpPaidAmount = dpCashflow ? dpCashflow.amount : 0;
+  const isPelunasan = invoice.status === "PAID" && dpPaidAmount > 0;
+
   const title = isDP ? "KUITANSI DOWN PAYMENT (DP)" : "KUITANSI LUNAS";
   const stampText = isDP ? "DP LUNAS" : "LUNAS";
   const stampColor = isDP
@@ -98,6 +102,17 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   const signatureUrl = getSignatureUrl(csName, branchName);
   const stampUrl = getStampUrl(branchName);
 
+  let paymentMethodText = "TRANSFER";
+  if (invoice.paymentMethod === "CASH" || invoice.paymentMethod === "CASH_ON_SITE") {
+    paymentMethodText = "CASH";
+  } else if ((invoice.studentData as any)?.paymentChannel === "CASH") {
+    paymentMethodText = "CASH";
+  }
+  
+  if (isPelunasan && invoice.paymentProof && invoice.paymentMethod !== "CASH_ON_SITE") {
+    paymentMethodText = "TRANSFER";
+  }
+
   return (
     <div id="printable-invoice" className="p-8 w-full max-w-none mx-auto bg-white text-slate-800 font-sans relative print:p-8 print:m-0">
       <style>{`
@@ -158,6 +173,12 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
             })}
           </p>
         </div>
+        <div className="flex-1">
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Metode Bayar</h3>
+          <p className="font-semibold text-sm text-slate-800 leading-none uppercase">
+            {paymentMethodText}
+          </p>
+        </div>
       </div>
 
       <table className="w-full text-left border-collapse mb-4">
@@ -169,9 +190,16 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
         </thead>
         <tbody className="divide-y divide-slate-100">
           <tr>
-            <td className="py-4 px-3 text-sm font-medium text-slate-800">{invoice.programName}</td>
+            <td className="py-4 px-3 text-sm font-medium text-slate-800">
+              {invoice.programName}
+              {(invoice.studentData as any)?.tshirtSize && (
+                <div className="text-xs text-slate-500 mt-1">
+                  Ukuran Kaos (Merchandise): <span className="font-bold text-slate-700 uppercase">{(invoice.studentData as any).tshirtSize}</span>
+                </div>
+              )}
+            </td>
             <td className="py-4 px-3 text-sm font-bold text-right text-slate-800">
-              Rp {invoice.paidAmount.toLocaleString("id-ID")}
+              Rp {(isPelunasan ? invoice.totalAmount : invoice.paidAmount).toLocaleString("id-ID")}
             </td>
           </tr>
         </tbody>
@@ -179,15 +207,40 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
 
       <div className="flex justify-end pt-2 border-t-2 border-slate-200">
         <div className="w-1/2">
-          <div className="flex justify-between mb-2 text-slate-600 text-xs">
-            <span className="font-semibold">Total Tagihan:</span>
-            <span className="font-bold">Rp {invoice.totalAmount.toLocaleString("id-ID")}</span>
-          </div>
+          {/* Default Total Tagihan */}
+          {!isPelunasan && (
+            <div className="flex justify-between mb-2 text-slate-600 text-xs">
+              <span className="font-semibold">Total Tagihan:</span>
+              <span className="font-bold">Rp {invoice.totalAmount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
 
-          <div className="flex justify-between mb-2 items-center">
-            <span className="font-bold text-slate-900 text-sm">Total Dibayar:</span>
-            <span className="font-black text-slate-900 text-lg">Rp {invoice.paidAmount.toLocaleString("id-ID")}</span>
-          </div>
+          {/* Breakdown if this is Pelunasan with prior DP */}
+          {isPelunasan && (
+            <>
+              <div className="flex justify-between mb-2 text-slate-600 text-xs">
+                <span className="font-semibold">Total Biaya Program:</span>
+                <span className="font-bold">Rp {invoice.totalAmount.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between mb-2 pb-2 border-b border-slate-200 text-red-600 text-xs">
+                <span className="font-semibold">Telah Dibayar (DP):</span>
+                <span className="font-bold">- Rp {dpPaidAmount.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex justify-between mb-2 items-center pt-1">
+                <span className="font-bold text-slate-900 text-sm">Total Tagihan Pelunasan:</span>
+                <span className="font-black text-slate-900 text-lg">
+                  Rp {(invoice.totalAmount - dpPaidAmount).toLocaleString("id-ID")}
+                </span>
+              </div>
+            </>
+          )}
+
+          {!isPelunasan && (
+            <div className="flex justify-between mb-2 items-center">
+              <span className="font-bold text-slate-900 text-sm">Total Dibayar:</span>
+              <span className="font-black text-slate-900 text-lg">Rp {invoice.paidAmount.toLocaleString("id-ID")}</span>
+            </div>
+          )}
 
           {isDP && (
             <div className="flex justify-between mt-2 pt-2 border-t border-slate-200 text-orange-600 items-center bg-orange-50 p-2 rounded-lg">

@@ -114,17 +114,20 @@ export function CheckoutForm({
   programName,
   leadName,
   leadWa,
+  paymentChannel = "TRANSFER",
 }: {
   invoiceId: string;
   programName: string;
   leadName: string;
   leadWa: string;
+  paymentChannel?: "TRANSFER" | "CASH";
 }) {
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "compressing" | "uploading" | "done" | "error"
   >("idle");
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [tshirtSize, setTshirtSize] = useState("");
 
   const {
     register,
@@ -143,6 +146,11 @@ export function CheckoutForm({
   });
 
   const selectedProgram = useWatch({ control, name: "program" });
+
+  const excludedPrograms = ["private", "toefl", "efk", "eft"];
+  const isTshirtEligible = 
+    selectedProgram && 
+    !excludedPrograms.some(name => selectedProgram.toLowerCase().includes(name));
 
   // ── Upload ────────────────────────────────────────────────────────────────
   const uploadProof = async (file: File): Promise<string> => {
@@ -175,20 +183,23 @@ export function CheckoutForm({
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
 
-    const fileInput = document.getElementById("paymentProof") as HTMLInputElement;
-    const file = fileInput?.files?.[0];
-    if (!file) {
-      setServerError("Bukti transfer wajib diunggah.");
-      return;
-    }
+    let proofUrl = "CASH_PAYMENT";
 
-    let proofUrl: string;
-    try {
-      proofUrl = await uploadProof(file);
-    } catch (err: any) {
-      setUploadStatus("error");
-      setServerError(err.message ?? "Gagal mengupload bukti transfer.");
-      return;
+    if (paymentChannel === "TRANSFER") {
+      const fileInput = document.getElementById("paymentProof") as HTMLInputElement;
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        setServerError("Bukti transfer wajib diunggah.");
+        return;
+      }
+
+      try {
+        proofUrl = await uploadProof(file);
+      } catch (err: any) {
+        setUploadStatus("error");
+        setServerError(err.message ?? "Gagal mengupload bukti transfer.");
+        return;
+      }
     }
 
     const programFull = values.programDetail
@@ -214,6 +225,7 @@ export function CheckoutForm({
       occupation: values.occupation,
       discoverySource: values.discoverySource,
       address: values.address,
+      tshirtSize: isTshirtEligible ? tshirtSize : undefined,
     };
 
     const res = await submitPaymentProof(invoiceId, studentData as any, proofUrl);
@@ -375,6 +387,25 @@ export function CheckoutForm({
           <FieldWrap label="Rencana Tanggal Mulai (Senin)" required error={errors.startDate?.message} hint="Kelas dimulai hari Senin.">
             <input type="date" {...register("startDate")} className={inputCls} />
           </FieldWrap>
+
+          {/* Conditional: T-Shirt Size */}
+          {isTshirtEligible && (
+            <FieldWrap label="Ukuran Kaos (Free Merchandise)" required={isTshirtEligible}>
+              <select 
+                value={tshirtSize} 
+                onChange={(e) => setTshirtSize(e.target.value)}
+                required={isTshirtEligible}
+                className={inputCls}
+              >
+                <option value="" disabled>-- Pilih Ukuran --</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="XXL">XXL</option>
+              </select>
+            </FieldWrap>
+          )}
         </div>
 
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
@@ -383,28 +414,40 @@ export function CheckoutForm({
         </div>
       </section>
 
-      {/* ── 3. Bukti Transfer ──────────────────────────────────────────── */}
+      {/* ── 3. Bukti Transfer / Konfirmasi Tunai ──────────────────────────── */}
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-          3. Bukti Transfer
+          3. Pembayaran
         </h2>
-        <div className="flex flex-col gap-1.5">
-          <label className={labelCls}>
-            Upload Foto Bukti Transfer <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="paymentProof"
-            type="file"
-            accept="image/*"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:text-indigo-700 file:font-semibold file:text-xs hover:file:bg-indigo-200 transition-colors"
-          />
-          <p className="text-xs text-slate-400">
-            Gambar dikompres otomatis (maks. 1 MB). Format: JPG, PNG, HEIC.
-          </p>
-          {uploadStatus === "error" && (
-            <p className="text-xs text-red-500">Gagal mengupload. Periksa koneksi dan coba lagi.</p>
-          )}
-        </div>
+        
+        {paymentChannel === "CASH" ? (
+          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" required className="mt-1 w-4 h-4 accent-orange-600" />
+              <span className="text-sm text-orange-800 font-medium">
+                Saya mengonfirmasi bahwa saya akan/telah membayar secara tunai (Cash On-Site) di lokasi Kampung Inggris.
+              </span>
+            </label>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <label className={labelCls}>
+              Upload Foto Bukti Transfer <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="paymentProof"
+              type="file"
+              accept="image/*"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:text-indigo-700 file:font-semibold file:text-xs hover:file:bg-indigo-200 transition-colors"
+            />
+            <p className="text-xs text-slate-400">
+              Gambar dikompres otomatis (maks. 1 MB). Format: JPG, PNG, HEIC.
+            </p>
+            {uploadStatus === "error" && (
+              <span className="text-xs text-red-500 font-medium">Gagal mengupload gambar.</span>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Error */}

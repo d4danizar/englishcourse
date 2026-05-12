@@ -134,6 +134,7 @@ export default async function PaymentPage({
           programName={invoice.programName}
           leadName={invoice.lead.name}
           leadWa={invoice.lead.whatsapp}
+          paymentChannel={(invoice.studentData as any)?.paymentChannel || "TRANSFER"}
         />
       </div>
     </main>

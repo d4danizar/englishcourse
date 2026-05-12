@@ -45,6 +45,9 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
   const [renewPaymentMethod, setRenewPaymentMethod] = useState("CASH");
   const [membershipPackage, setMembershipPackage] = useState("");
   const [renewReferralCode, setRenewReferralCode] = useState("");
+  const [paymentType, setPaymentType] = useState<"LUNAS" | "DP">("LUNAS");
+  const [dpAmount, setDpAmount] = useState<number | "">("");
+  const [isPaidConfirmed, setIsPaidConfirmed] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleOpenRenewModal = (student: StudentData) => {
@@ -57,6 +60,9 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
     setRenewPaymentMethod("CASH");
     setMembershipPackage("");
     setRenewReferralCode("");
+    setPaymentType("LUNAS");
+    setDpAmount("");
+    setIsPaidConfirmed(false);
   };
 
   const handleRenewSubmit = async (e: React.FormEvent) => {
@@ -81,8 +87,10 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
         programType: renewProgram,
         startDate: new Date(renewStartDate),
         duration: renewProgram === "Membership" ? "" : renewDuration,
-        amount: renewProgram === "Membership" ? 0 : Math.max(0, Number(renewAmount) - 100000),
+        amount: renewProgram === "Membership" ? 0 : Number(renewAmount), // Pass raw base amount, backend handles deduction
         paymentMethod: renewPaymentMethod,
+        paymentType: paymentType,
+        dpAmount: paymentType === "DP" ? Number(dpAmount) : undefined,
         membershipPackage: renewProgram === "Membership" ? membershipPackage : undefined,
         referralCode: renewProgram === "Membership" && renewReferralCode ? renewReferralCode : undefined,
       });
@@ -417,7 +425,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Metode Pembayaran</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Metode Pembayaran (Asal Uang)</label>
                   <select
                     value={renewPaymentMethod}
                     onChange={(e) => setRenewPaymentMethod(e.target.value)}
@@ -426,6 +434,61 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                     <option value="CASH">💵 Cash</option>
                     <option value="TRANSFER">🏦 Transfer Bank</option>
                   </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Status Pembayaran</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="paymentType" 
+                        value="LUNAS" 
+                        checked={paymentType === "LUNAS"} 
+                        onChange={() => setPaymentType("LUNAS")} 
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      LUNAS
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="paymentType" 
+                        value="DP" 
+                        checked={paymentType === "DP"} 
+                        onChange={() => setPaymentType("DP")} 
+                        className="w-4 h-4 text-indigo-600"
+                      />
+                      Cicilan / DP
+                    </label>
+                  </div>
+                </div>
+
+                {paymentType === "DP" && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Nominal DP yang Dibayar (Rp)</label>
+                    <input
+                      type="number"
+                      value={dpAmount}
+                      onChange={(e) => setDpAmount(e.target.value ? Number(e.target.value) : "")}
+                      placeholder="Contoh: 200000"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      required={paymentType === "DP"}
+                    />
+                  </div>
+                )}
+
+                <div className="mt-2 flex items-start gap-2 bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="paidConfirmation"
+                    checked={isPaidConfirmed}
+                    onChange={(e) => setIsPaidConfirmed(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded cursor-pointer"
+                  />
+                  <label htmlFor="paidConfirmation" className="text-xs text-yellow-900 font-medium cursor-pointer leading-tight">
+                    Saya mengonfirmasi bahwa murid telah membayar biaya sesuai tagihan di atas via Cash/Transfer. Jika belum membayar, jangan centang opsi ini.
+                  </label>
                 </div>
               </div>
 
@@ -440,7 +503,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                 </button>
                 <button
                   type="submit"
-                  disabled={isPending}
+                  disabled={isPending || !isPaidConfirmed}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors disabled:opacity-50"
                 >
                   {isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : "✅ Daftarkan & Bayar"}

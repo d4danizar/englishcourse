@@ -299,6 +299,8 @@ export async function renewStudent(
     paymentMethod: string;
     membershipPackage?: string;
     referralCode?: string;
+    paymentType?: "LUNAS" | "DP";
+    dpAmount?: number;
   }
 ) {
   try {
@@ -370,12 +372,7 @@ export async function renewStudent(
       });
 
       if (finalAmount > 0 && user) {
-        // 1. Determine Status based on Payment Method
-        const isCash = data.paymentMethod.toUpperCase() === "CASH";
-        const paymentStatus = isCash ? "PAID" : "PENDING"; // Though usually RO is considered PAID if Cash, or PENDING if Transfer. Wait, admin assumes PAID if they process it? The user said "Since admin processes it, assume it's paid" - let's stick to the user's explicit instructions.
-        const finalStatus = isCash ? "PAID" : "WAITING_CONFIRMATION";
-
-        // 2. Ensure Lead exists for Invoice
+        // 1. Ensure Lead exists for Invoice
         let lead = await tx.lead.findFirst({
           where: { whatsapp: user.phoneNumber || "UNKNOWN" }
         });
@@ -395,19 +392,34 @@ export async function renewStudent(
           });
         }
 
-        // 3. Create the Invoice Record
+        // 2. Prepare Invoice Details
         const dateStr = `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}`;
         const invoiceNumber = `INV-RO-${dateStr}-${Math.floor(1000 + Math.random() * 9000)}`;
         
+        let finalStatus = "PENDING";
+        let amountDue = finalAmount;
+        let paidAmount = 0;
+
+        if (data.paymentType === "LUNAS") {
+          finalStatus = "PAID";
+          amountDue = 0;
+          paidAmount = finalAmount;
+        } else if (data.paymentType === "DP" && data.dpAmount) {
+          finalStatus = "DP_PAID";
+          amountDue = Math.max(0, finalAmount - data.dpAmount);
+          paidAmount = data.dpAmount;
+        }
+
+        // 3. Create the Invoice Record
         const invoice = await tx.invoice.create({
           data: {
             invoiceNumber: invoiceNumber,
             leadId: lead.id,
             programName: `Repeat Order - ${data.programType}`,
-            amountDue: isCash ? 0 : finalAmount,
+            amountDue: amountDue,
             totalAmount: finalAmount,
-            paidAmount: isCash ? finalAmount : 0,
-            status: finalStatus,
+            paidAmount: paidAmount,
+            status: finalStatus as any,
             paymentMethod: data.paymentMethod,
             branch: user.branch,
             studentData: {
@@ -415,19 +427,33 @@ export async function renewStudent(
               email: user.email,
               whatsapp: user.phoneNumber,
               program: data.programType,
-              isRepeatOrder: true
+              isRepeatOrder: true,
+              paymentType: data.paymentType
             }
           }
         });
 
-        // 4. Inject into Cashflow if it's a CASH transaction
-        if (isCash) {
+        // 4. Create Cashflow (Since admin explicitly confirmed payment via Checkbox)
+        if (data.paymentType === "LUNAS") {
           await tx.cashflow.create({
             data: {
               type: "INCOME",
-              category: "PELUNASAN", // Kept PELUNASAN as per Prisma schema enum
+              category: "PELUNASAN", 
               amount: finalAmount,
-              description: `Repeat Order ${data.programType} (Cash) - ${user.name}`,
+              description: `Pembayaran Lunas Repeat Order - ${data.programType} (${user.name})`,
+              date: new Date(),
+              invoiceId: invoice.id,
+              branch: user.branch
+            }
+          });
+        } else if (data.paymentType === "DP" && data.dpAmount) {
+          await tx.cashflow.create({
+            data: {
+              type: "INCOME",
+              category: "DP",
+              amount: data.dpAmount,
+              description: `Pembayaran DP Repeat Order - ${data.programType} (${user.name})`,
+              date: new Date(),
               invoiceId: invoice.id,
               branch: user.branch
             }
@@ -437,6 +463,9 @@ export async function renewStudent(
     });
 
     revalidatePath("/admin/users");
+    revalidatePath("/admin/finance");
+    revalidatePath("/admin/enrollments");
+    revalidatePath("/admin/dashboard");
     revalidatePath("/student/dashboard"); // Refresh if student is currently looking
     return { success: true };
   } catch (error: any) {

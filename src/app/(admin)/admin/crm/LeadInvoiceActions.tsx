@@ -48,6 +48,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
   // Modal: generate link
   const [showModal, setShowModal] = useState(false);
   const [paymentType, setPaymentType] = useState<"DP" | "FULL">("DP");
+  const [paymentChannel, setPaymentChannel] = useState<"TRANSFER" | "CASH">("TRANSFER");
   const [programName, setProgramName] = useState(PROGRAMS[0]);
   const [duration, setDuration] = useState("");
   const [dpAmount, setDpAmount] = useState("");
@@ -58,6 +59,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
 
   // Approval / Review Modal
   const [verifyModalInv, setVerifyModalInv] = useState<Invoice | null>(null);
+  const [isCashConfirmed, setIsCashConfirmed] = useState(false);
   const [approveMsg, setApproveMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,7 +102,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
     setError(null);
 
     startTransition(async () => {
-      const res = await createInvoice(lead.id, programName, duration, paymentType, parsedDp);
+      const res = await createInvoice(lead.id, programName, duration, paymentType, parsedDp, paymentChannel);
       if (res.error) {
         setError(res.error);
       } else if (res.invoiceNumber) {
@@ -354,6 +356,36 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                   </div>
                 </div>
 
+                {/* Payment Channel */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+                    Metode Pembayaran
+                  </label>
+                  <div className="flex gap-3">
+                    {(["TRANSFER", "CASH"] as const).map((pc) => (
+                      <label
+                        key={pc}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border-2 rounded-xl cursor-pointer transition-colors ${
+                          paymentChannel === pc
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                            : "border-slate-200 hover:border-slate-300 text-slate-600"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value={pc}
+                          checked={paymentChannel === pc}
+                          onChange={() => setPaymentChannel(pc)}
+                          className="hidden"
+                        />
+                        <span className="text-sm font-bold">
+                          {pc === "TRANSFER" ? "Transfer" : "Cash On-Site"}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Program */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
@@ -489,6 +521,34 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                   <div className="font-semibold text-slate-800">
                     {verifyModalInv.studentData?.whatsapp || "-"}
                   </div>
+                  {/* Ekstra Data Pendaftaran */}
+                  {Object.entries(verifyModalInv.studentData || {})
+                    .filter(([k, v]) => v && !['name', 'program', 'whatsapp', 'activeProgram', 'programBatch', 'durationOption', 'batchSchedule', 'startDate'].includes(k))
+                    .map(([key, value]) => {
+                      const labelMap: Record<string, string> = {
+                        email: "Email",
+                        school: "Status Kesibukan",
+                        gender: "Jenis Kelamin",
+                        birthPlace: "Tempat Lahir",
+                        birthDate: "Tanggal Lahir",
+                        occupation: "Kesibukan Detail",
+                        discoverySource: "Sumber Info",
+                        address: "Alamat",
+                        tshirtSize: "Ukuran Kaos",
+                      };
+                      return (
+                        <div key={key} className="contents">
+                          <div className="text-slate-500">{labelMap[key] || key}</div>
+                          <div className="font-semibold text-slate-800">
+                            {key === "tshirtSize" ? (
+                              <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase font-bold tracking-widest">{String(value)}</span>
+                            ) : (
+                              String(value)
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
@@ -525,36 +585,54 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                 </div>
               </div>
 
-              {/* Bukti Transfer */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center justify-between">
-                  <span>Foto Bukti Transfer</span>
-                  {verifyModalInv.paymentProof && (
-                    <a
-                      href={verifyModalInv.paymentProof}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-indigo-600 hover:text-indigo-800 text-[10px] capitalize font-medium flex items-center gap-1"
-                    >
-                      Buka di tab baru <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </h3>
-                <div className="bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 min-h-[200px]">
-                  {verifyModalInv.paymentProof ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={verifyModalInv.paymentProof}
-                      alt="Bukti Transfer"
-                      className="max-h-80 w-auto object-contain rounded-md"
+              {/* Bukti Transfer / Pembayaran Tunai */}
+              {(verifyModalInv.studentData as any)?.paymentChannel === "CASH" ? (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4">
+                  <h4 className="font-bold text-orange-800 mb-2">Pembayaran Tunai (Cash On-Site)</h4>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      required 
+                      checked={isCashConfirmed} 
+                      onChange={(e) => setIsCashConfirmed(e.target.checked)} 
+                      className="mt-1 w-4 h-4 accent-orange-600"
                     />
-                  ) : (
-                    <p className="text-sm text-slate-400 font-medium my-10">
-                      Bukti transfer tidak ditemukan.
-                    </p>
-                  )}
+                    <span className="text-sm font-medium text-orange-900 leading-tight">
+                      Saya selaku Admin mengonfirmasi telah menerima pembayaran tunai dari murid ini.
+                    </span>
+                  </label>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest flex items-center justify-between">
+                    <span>Foto Bukti Transfer</span>
+                    {verifyModalInv.paymentProof && (
+                      <a
+                        href={verifyModalInv.paymentProof}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800 text-[10px] capitalize font-medium flex items-center gap-1"
+                      >
+                        Buka di tab baru <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </h3>
+                  <div className="bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 min-h-[200px]">
+                    {verifyModalInv.paymentProof && verifyModalInv.paymentProof !== "CASH_PAYMENT" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={verifyModalInv.paymentProof}
+                        alt="Bukti Transfer"
+                        className="max-h-80 w-auto object-contain rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-400 font-medium my-10">
+                        Bukti transfer tidak ditemukan.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
@@ -569,7 +647,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
               <button
                 type="button"
                 onClick={() => handleApprove(verifyModalInv.id)}
-                disabled={isPending}
+                disabled={isPending || ((verifyModalInv.studentData as any)?.paymentChannel === "CASH" && !isCashConfirmed)}
                 className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
                 {isPending ? (

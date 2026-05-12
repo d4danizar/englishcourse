@@ -17,7 +17,8 @@ export async function createInvoice(
   programName: string,
   duration: string,
   paymentType: "DP" | "FULL" = "DP",
-  dpAmount: number = 0
+  dpAmount: number = 0,
+  paymentChannel: "CASH" | "TRANSFER" = "TRANSFER"
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -49,6 +50,7 @@ export async function createInvoice(
         paidAmount,
         status: "PENDING",
         paymentMethod: paymentType,
+        studentData: { paymentChannel },
         branch: branchFilter.branch,
       },
     });
@@ -284,17 +286,18 @@ export async function approvePayment(invoiceId: string) {
           ...(dataPayload.occupation && { occupation: dataPayload.occupation }),
           ...(dataPayload.discoverySource && { discoverySource: dataPayload.discoverySource }),
           ...(dataPayload.address && { address: dataPayload.address }),
-          enrollments: {
-            create: {
-              programType: finalActiveProgram,
-              durationOption: finalDurationOption,
-              programBatch: finalBatch,
-              batchSchedule: batchSchedule,
-              startDate: calculatedStartDate,
-              endDate: calculatedEndDate,
-              leaveQuota: calculatedLeaveQuota,
+            enrollments: {
+              create: {
+                programType: finalActiveProgram,
+                durationOption: finalDurationOption,
+                programBatch: finalBatch,
+                batchSchedule: batchSchedule,
+                startDate: calculatedStartDate,
+                endDate: calculatedEndDate,
+                leaveQuota: calculatedLeaveQuota,
+                tshirtSize: dataPayload.tshirtSize || null,
+              }
             }
-          }
         },
         create: {
           name: studentName,
@@ -309,26 +312,30 @@ export async function approvePayment(invoiceId: string) {
           occupation: dataPayload.occupation || null,
           discoverySource: dataPayload.discoverySource || null,
           address: dataPayload.address || null,
-          enrollments: {
-            create: {
-              programType: finalActiveProgram,
-              durationOption: finalDurationOption,
-              programBatch: finalBatch,
-              batchSchedule: batchSchedule,
-              startDate: calculatedStartDate,
-              endDate: calculatedEndDate,
-              leaveQuota: calculatedLeaveQuota,
-              leaveUsed: 0,
+            enrollments: {
+              create: {
+                programType: finalActiveProgram,
+                durationOption: finalDurationOption,
+                programBatch: finalBatch,
+                batchSchedule: batchSchedule,
+                startDate: calculatedStartDate,
+                endDate: calculatedEndDate,
+                leaveQuota: calculatedLeaveQuota,
+                leaveUsed: 0,
+                tshirtSize: dataPayload.tshirtSize || null,
+              }
             }
-          }
         }
       });
 
-      // 4. Mark the related Lead as CLOSED_WON
+      // 4. Mark the related Lead as CLOSED_WON and update tshirtSize
       if (invoice.leadId) {
         await tx.lead.update({
           where: { id: invoice.leadId },
-          data: { status: "CLOSED_WON" },
+          data: { 
+            status: "CLOSED_WON",
+            ...(dataPayload.tshirtSize && { tshirtSize: dataPayload.tshirtSize }),
+          },
         });
       }
     });
