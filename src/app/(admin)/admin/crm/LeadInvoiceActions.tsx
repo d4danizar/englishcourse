@@ -429,6 +429,9 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                       )}
                       {programName === "Asrama" && (
                         <>
+                          <option>1 Minggu</option>
+                          <option>2 Minggu</option>
+                          <option>3 Minggu</option>
                           <option>1 Bulan</option>
                           <option>2 Bulan</option>
                         </>
