@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { Role, BranchLocation } from "@prisma/client";
 import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
 import { calculateEndDate } from "@/lib/offday-utils";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function createUser(formData: FormData) {
   console.log("=== 🚨 ADD USER PAYLOAD RADAR 🚨 ===");
@@ -303,6 +305,9 @@ export async function renewStudent(
     dpAmount?: number;
   }
 ) {
+  const session = await getServerSession(authOptions);
+  const adminId = (session?.user as any)?.id || null;
+
   try {
     let finalAmount = data.amount || 0;
     let finalDuration = data.duration;
@@ -351,7 +356,21 @@ export async function renewStudent(
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     await prisma.$transaction(async (tx) => {
-      // 0. Set all existing active enrollments for this user to EXPIRED to clean up DB
+      // 0. SATPAM BACKEND: Pengecekan Duplikasi
+      const duplicateCheck = await tx.enrollment.findFirst({
+        where: {
+          userId: userId,
+          programType: data.programType,
+          startDate: new Date(data.startDate)
+        }
+      });
+
+      if (duplicateCheck) {
+        console.log(`[WARNING] Duplication blocked for User ${userId} on program ${data.programType}`);
+        throw new Error("Pendaftaran untuk program dan tanggal mulai ini sudah terproses. Menolak duplikasi data.");
+      }
+
+      // 0.5 Set all existing active enrollments for this user to EXPIRED to clean up DB
       await tx.enrollment.updateMany({
         where: { userId: userId, status: "ACTIVE" },
         data: { status: "EXPIRED" }
@@ -387,7 +406,8 @@ export async function renewStudent(
               name: user.name,
               whatsapp: user.phoneNumber || "000000",
               status: "CLOSED_WON",
-              branch: user.branch
+              branch: user.branch,
+              assigneeId: adminId,
             }
           });
         }
@@ -443,7 +463,8 @@ export async function renewStudent(
               description: `Pembayaran Lunas Repeat Order - ${data.programType} (${user.name})`,
               date: new Date(),
               invoiceId: invoice.id,
-              branch: user.branch
+              branch: user.branch,
+              recordedById: adminId,
             }
           });
         } else if (data.paymentType === "DP" && data.dpAmount) {
@@ -455,7 +476,8 @@ export async function renewStudent(
               description: `Pembayaran DP Repeat Order - ${data.programType} (${user.name})`,
               date: new Date(),
               invoiceId: invoice.id,
-              branch: user.branch
+              branch: user.branch,
+              recordedById: adminId,
             }
           });
         }

@@ -2,6 +2,8 @@
 
 import { prisma } from "../../../../lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function createManualIncome(data: {
   amount: number;
@@ -11,6 +13,12 @@ export async function createManualIncome(data: {
   date: Date;
 }) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !(session.user as any).id) {
+      throw new Error("Unauthorized: Sesi login tidak ditemukan.");
+    }
+    const currentUserId = (session.user as any).id;
+
     await prisma.cashflow.create({
       data: {
         type: "INCOME",
@@ -20,6 +28,7 @@ export async function createManualIncome(data: {
         description: data.description,
         branch: data.branch as any,
         date: new Date(data.date), // Allow backdating if necessary
+        recordedById: currentUserId,
       }
     });
 

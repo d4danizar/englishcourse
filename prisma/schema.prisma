@@ -315,3 +315,12 @@ model OffDay {
   startDate   DateTime
   endDate     DateTime
 }
+
+model BonusTier {
+  id         String   @id @default(cuid())
+  minOmzet   Float
+  maxOmzet   Float?
+  percentage Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}

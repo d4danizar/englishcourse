@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { calculateInvoiceAmount } from "../utils/pricing";
 import { nextMonday, addWeeks, addMonths } from "date-fns";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { calculateEndDate } from "@/lib/offday-utils";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "CS"];
 
@@ -232,35 +233,14 @@ export async function approvePayment(invoiceId: string) {
         finalDurationOption = durationOption || "1_MONTH"; // Fallback aman
       }
 
-      function calculateActiveEndDate(startDate: Date, durationLabel: string) {
-        let totalMeetings = 20; // Default 1 Bulan
-
-        const fLabel = durationLabel.toLowerCase();
-        if (fLabel.includes("1 bulan") || fLabel.includes("1 month") || fLabel.includes("1_month")) totalMeetings = 20;
-        else if (fLabel.includes("2 bulan") || fLabel.includes("2 month") || fLabel.includes("2_month")) totalMeetings = 40;
-        else if (fLabel.includes("6 bulan") || fLabel.includes("6 month") || fLabel.includes("6_month")) totalMeetings = 120;
-        else if (fLabel.includes("3 minggu") || fLabel.includes("3 week") || fLabel.includes("3_week")) totalMeetings = 15;
-        else if (fLabel.includes("2 minggu") || fLabel.includes("2 week") || fLabel.includes("2_week")) totalMeetings = 10;
-        else if (fLabel.includes("1 minggu") || fLabel.includes("1 week") || fLabel.includes("1_week")) totalMeetings = 5;
-
-        let resultDate = new Date(startDate);
-        let daysAdded = 0;
-
-        // Kurangi 1 karena hari mulai dihitung sebagai pertemuan pertama
-        const targetDays = totalMeetings > 0 ? totalMeetings - 1 : 0;
-
-        while (daysAdded < targetDays) {
-          resultDate.setDate(resultDate.getDate() + 1);
-          const dayOfWeek = resultDate.getDay();
-          // 0 = Minggu, 6 = Sabtu. Hanya hitung jika bukan weekend.
-          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            daysAdded++;
-          }
-        }
-        return resultDate;
-      }
-
-      const calculatedEndDate = calculateActiveEndDate(calculatedStartDate, finalDurationOption);
+      const offDays = await tx.offDay.findMany();
+      const calculatedEndDate = calculateEndDate(
+        calculatedStartDate, 
+        finalDurationOption, 
+        offDays, 
+        finalActiveProgram, 
+        0
+      );
 
       // E. Kalkulasi Jatah Izin (Leave Quota)
       let calculatedLeaveQuota = 0;
@@ -273,7 +253,25 @@ export async function approvePayment(invoiceId: string) {
       else if (finalDurationOption === "6_MONTHS") calculatedLeaveQuota = 12; // EFK / EFT
       else if (finalActiveProgram === "Regular") calculatedLeaveQuota = 3; // Fallback untuk Regular
 
-      // 3. UPSERT USER DATABASE
+      // 3. SATPAM BACKEND: Pengecekan Duplikasi
+      const existingUser = await tx.user.findUnique({ where: { email } });
+      if (existingUser) {
+        const duplicateCheck = await tx.enrollment.findFirst({
+          where: {
+            userId: existingUser.id,
+            programType: finalActiveProgram,
+            startDate: calculatedStartDate,
+            status: "ACTIVE"
+          }
+        });
+
+        if (duplicateCheck) {
+          console.log(`[WARNING] Duplication blocked for User ${existingUser.id} on program ${finalActiveProgram}`);
+          throw new Error("Pendaftaran untuk program dan tanggal mulai ini sudah terproses. Menolak duplikasi data.");
+        }
+      }
+
+      // 4. UPSERT USER DATABASE
       await tx.user.upsert({
         where: { email },
         update: {

@@ -54,6 +54,8 @@ export function AdminSidebar({
       ...(["SUPER_ADMIN", "MANAGER", "CS", "HEAD_TUTOR"].includes(role) ? [{ label: "Verifikasi Sertifikat", href: "/tutor/certificates", emoji: "🎓", badge: pendingCertCount }] : []),
       // CRM — SUPER_ADMIN, CS, MARKETING
       ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
+      // Bonus & Performa CS — SUPER_ADMIN only
+      ...(role === "SUPER_ADMIN" ? [{ label: "Bonus & Performa CS", href: "/admin/cs-performance", emoji: "🏆" }] : []),
       // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
       ...(KPI_ROLES.includes(role) ? [{ label: "KPI & WIG", href: "/admin/kpi", emoji: "🎯" }] : []),
       // Standard items for everyone in admin panel

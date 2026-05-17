@@ -16,6 +16,9 @@ import {
   FileText
 } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -72,19 +75,49 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
     }
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
 
-  // Dynamically find truly active enrollment
-  const activeEnrollment = user.enrollments.find(e => {
-    if (e.status !== "ACTIVE") return false;
-    if (!e.endDate) return false; // If no end date from import, assume expired
-    const endDate = new Date(e.endDate);
-    endDate.setHours(0, 0, 0, 0);
-    return endDate >= todayStart;
+  // 2. Map through enrollments to attach a `dynamicStatus`
+  const processedEnrollments = user.enrollments.map((enrollment) => {
+    let dynamicStatus = enrollment.status; // fallback to DB status
+    
+    if (enrollment.endDate) {
+      const end = new Date(enrollment.endDate);
+      end.setHours(0, 0, 0, 0);
+      
+      // If the end date is strictly in the past, FORCE status to EXPIRED
+      if (end < now) {
+        dynamicStatus = "EXPIRED";
+      } else if (end >= now && enrollment.status === "ACTIVE") {
+        dynamicStatus = "ACTIVE";
+      }
+    }
+    return { ...enrollment, dynamicStatus };
   });
 
-  const historyEnrollments = user.enrollments.filter(e => e.id !== activeEnrollment?.id);
+  // 3. Determine Overall User Status for the Top Banner
+  // A user is ACTIVE globally ONLY IF they have at least one dynamically active program
+  const isGloballyActive = processedEnrollments.some(e => e.dynamicStatus === "ACTIVE");
+  const globalDisplayStatus = isGloballyActive ? "ACTIVE" : "EXPIRED";
+
+  // Deduplicate just in case of double-submits in the DB
+  const uniqueEnrollments = Array.from(
+    new Map(processedEnrollments.map(e => [e.programType + '-' + e.dynamicStatus, e])).values()
+  );
+
+  const activePrograms = uniqueEnrollments.filter(e => {
+    if (e.dynamicStatus === "ACTIVE" && !e.endDate) return true;
+    if (e.dynamicStatus === "ACTIVE" && e.endDate && new Date(e.endDate) >= now) return true;
+    if (!e.endDate && e.dynamicStatus === "ACTIVE") return true; // fallback
+    return e.dynamicStatus === "ACTIVE";
+  });
+
+  const historyEnrollments = uniqueEnrollments.filter(e => {
+    if (e.dynamicStatus !== "ACTIVE" && !e.endDate) return true;
+    if (!e.endDate) return false;
+    return e.dynamicStatus === "EXPIRED" && !activePrograms.some(a => a.id === e.id);
+  });
 
   // Helper function to get attendance stats for a specific enrollment
   const getAttendanceStatsForEnrollment = (enrollment: any) => {
@@ -142,9 +175,11 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
               </span>
             </div>
             <h2 className="text-xl font-bold text-slate-800">{user.name}</h2>
-            <div className="inline-flex items-center px-2.5 py-1 mt-2 rounded-full bg-slate-100 text-xs font-semibold text-slate-600 border border-slate-200">
-              {user.role}
-            </div>
+            <span className={`px-3 py-1 mt-2 rounded-full text-sm font-bold ${
+              globalDisplayStatus === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}>
+              {globalDisplayStatus}
+            </span>
 
             <div className="w-full mt-6 space-y-3 text-left">
               <div className="flex items-center gap-3 text-sm text-slate-600">
@@ -227,69 +262,74 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
         <div className="lg:col-span-2 space-y-6">
           
           {/* Active Program Section */}
-          <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden relative ${activeEnrollment ? 'border-emerald-200' : 'border-slate-200'}`}>
-            <div className="absolute top-0 right-0 p-4">
-              {activeEnrollment ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  ACTIVE
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  INACTIVE
-                </span>
-              )}
-            </div>
-            <div className={`p-6 border-b border-slate-100 ${activeEnrollment ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-slate-50'}`}>
+          <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden relative ${activePrograms.length > 0 ? 'border-emerald-200' : 'border-slate-200'}`}>
+            <div className={`p-6 border-b border-slate-100 ${activePrograms.length > 0 ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-slate-50'}`}>
               <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-widest flex items-center gap-2 mb-1">
-                <Activity className="w-4 h-4" /> Program Berjalan
+                <Activity className="w-4 h-4" /> Program Berjalan ({activePrograms.length})
               </h3>
-              {activeEnrollment ? (
-                <>
-                  <div className="mt-4">
-                    <h4 className="text-2xl font-bold text-slate-900">{activeEnrollment.programType}</h4>
-                    <p className="text-slate-500 text-sm mt-1">
-                      {formatDate(activeEnrollment.startDate)} — {formatDate(activeEnrollment.endDate)}
-                    </p>
-                  </div>
-
-                  {/* Active Program Attendance Progress */}
-                  {(() => {
-                    const stats = getAttendanceStatsForEnrollment(activeEnrollment);
-                    const totalSesi = stats.total || 1; // prevent div by 0
-                    const percentage = Math.min(100, Math.round((stats.present / totalSesi) * 100));
-                    
-                    return (
-                      <div className="mt-6">
-                        <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
-                          <span>Kehadiran Program Ini</span>
-                          <span>{stats.present} / {stats.total} Sesi ({percentage}%)</span>
-                        </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="bg-emerald-500 h-2.5 rounded-full transition-all duration-1000" 
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <div className="flex gap-4 mt-3 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3 text-emerald-500"/> {stats.present} Hadir</span>
-                          <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3 text-red-500"/> {stats.absent} Alpa</span>
-                        </div>
-                        
-                        {/* Leave Quota Info */}
-                        <div className="mt-4 p-3 bg-white/60 rounded-xl border border-emerald-100 flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-600">Sisa Cuti / Izin</span>
-                          <span className="text-sm font-bold text-slate-800">
-                            {activeEnrollment.leaveQuota - activeEnrollment.leaveUsed} dari {activeEnrollment.leaveQuota} hari
-                          </span>
-                        </div>
+              
+              {activePrograms.length > 0 ? (
+                <div className="space-y-6 mt-4">
+                  {activePrograms.map(activeEnrollment => (
+                    <div key={activeEnrollment.id} className="relative bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
+                      <div className="absolute top-0 right-0 p-4">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          {activeEnrollment.dynamicStatus}
+                        </span>
                       </div>
-                    );
-                  })()}
-                </>
+                      
+                      <div className="pr-20">
+                        <h4 className="text-xl font-bold text-slate-900">{activeEnrollment.programType}</h4>
+                        {!activeEnrollment.endDate ? (
+                          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-50 text-red-600 text-xs font-bold border border-red-200">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            Tanggal Akhir Tidak Valid/Kosong
+                          </div>
+                        ) : (
+                          <p className="text-slate-500 text-sm mt-1 font-medium">
+                            {formatDate(activeEnrollment.startDate)} — {formatDate(activeEnrollment.endDate)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Active Program Attendance Progress */}
+                      {(() => {
+                        const stats = getAttendanceStatsForEnrollment(activeEnrollment);
+                        const totalSesi = stats.total || 1;
+                        const percentage = Math.min(100, Math.round((stats.present / totalSesi) * 100));
+                        
+                        return (
+                          <div className="mt-5 pt-5 border-t border-slate-100">
+                            <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
+                              <span>Kehadiran Sesi</span>
+                              <span>{stats.present} / {stats.total} Sesi ({percentage}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                              <div 
+                                className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" 
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            
+                            <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+                              <span className="text-xs font-medium text-slate-500">Sisa Cuti / Izin Program Ini</span>
+                              <span className="text-sm font-bold text-slate-800">
+                                {activeEnrollment.leaveQuota - activeEnrollment.leaveUsed} dari {activeEnrollment.leaveQuota} hari
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="py-8 text-center text-slate-500">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-bold border border-slate-200 mb-4">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    INACTIVE
+                  </span>
                   <p>Tidak ada program yang sedang aktif.</p>
                 </div>
               )}
@@ -378,8 +418,12 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
                             <span>{formatDate(enrollment.startDate)} — {formatDate(enrollment.endDate)}</span>
                           </div>
                         </div>
-                        <span className="inline-flex px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
-                          {enrollment.status}
+                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          enrollment.dynamicStatus === 'EXPIRED' 
+                            ? 'bg-red-50 text-red-600 border border-red-100' 
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {enrollment.dynamicStatus}
                         </span>
                       </div>
                       

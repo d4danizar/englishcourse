@@ -1,5 +1,21 @@
 import { getDurationBaseDays } from "./utils/academic-calendar";
 
+export function getRequiredClassDays(durationOption: string): number {
+  const normalized = (durationOption || "").toLowerCase();
+  if (normalized.includes("1_minggu") || normalized === "1 minggu" || normalized.includes("1_week")) return 5;
+  if (normalized.includes("2_minggu") || normalized === "2 minggu" || normalized.includes("2_weeks")) return 10;
+  if (normalized.includes("3_minggu") || normalized === "3 minggu" || normalized.includes("3_weeks")) return 15;
+  
+  // 1 Bulan = 4 weeks = 20 active days
+  if (normalized.includes("1_bulan") || normalized === "1 bulan" || normalized.includes("1_month")) return 20;
+  if (normalized.includes("2_bulan") || normalized === "2 bulan" || normalized.includes("2_months")) return 40;
+  if (normalized.includes("3_bulan") || normalized === "3 bulan" || normalized.includes("3_months")) return 60;
+  if (normalized.includes("4_bulan") || normalized === "4 bulan" || normalized.includes("4_months")) return 80;
+  if (normalized.includes("6_bulan") || normalized === "6 bulan" || normalized.includes("6_months")) return 120;
+  
+  return 20; // Default fallback to 1 month
+}
+
 export function calculateEndDate(
   startDate: Date | string,
   durationOption: string | null,
@@ -10,74 +26,53 @@ export function calculateEndDate(
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0); // Normalisasi ke tengah malam
 
-  // 1. Map Duration to Exact Calendar Days
-  const durationMap: Record<string, number> = {
-    '1_WEEK': 7,
-    '2_WEEKS': 14,
-    '3_WEEKS': 21,
-    '1_MONTH': 30,
-    '2_MONTHS': 60,
-    '6_MONTHS': 180,
-  };
-  
-  // Fallback if not found (default to 30)
-  let baseDays = durationMap[(durationOption || "").toUpperCase()] || 30; 
+  const cleanProgram = String(programType || "").toUpperCase().trim();
 
   // OVERRIDE for EFT and EFK natively across the app
-  const cleanProgram = String(programType || "").toUpperCase().trim();
+  let requiredDays = getRequiredClassDays(durationOption || "");
   if (cleanProgram.includes('EFT') || cleanProgram.includes('EFK')) {
-    baseDays = 180; // Exactly 6 months equivalent
+    requiredDays = 120; // Exactly 6 months equivalent in active days
   }
 
   // === SMART CALENDAR FOR ENGLISH ON SATURDAY ===
-  // 8 Saturday sessions, skipping holidays. Early return.
   if (cleanProgram.includes('ENGLISH ON SATURDAY') || cleanProgram.includes('SATURDAY')) {
-    const TOTAL_SESSIONS = 8 + (leaveUsed || 0); // Base 8 sessions + missed sessions (izin)
-    let sessionCount = 1; // Start date = Session 1
+    const TOTAL_SESSIONS = 8 + (leaveUsed || 0); 
+    let sessionCount = 1; 
     let calculatedDate = new Date(start);
 
     while (sessionCount < TOTAL_SESSIONS) {
-      // Jump to the next Saturday (7 days)
       calculatedDate.setDate(calculatedDate.getDate() + 7);
-
-      // Normalize for comparison
-      const checkDate = new Date(
-        calculatedDate.getFullYear(),
-        calculatedDate.getMonth(),
-        calculatedDate.getDate()
-      ).getTime();
-
-      // Check against the same offDays array used by the rest of the system
+      const checkDate = new Date(calculatedDate.getFullYear(), calculatedDate.getMonth(), calculatedDate.getDate()).getTime();
       const isOffDay = offDays.some(holiday => {
         const hStart = new Date(holiday.startDate).setHours(0, 0, 0, 0);
         const hEnd = holiday.endDate ? new Date(holiday.endDate).setHours(0, 0, 0, 0) : hStart;
         return checkDate >= hStart && checkDate <= hEnd;
       });
 
-      // Only count the session if it's NOT a holiday
       if (!isOffDay) {
         sessionCount++;
       }
     }
-
     return calculatedDate;
   }
   // === END ENGLISH ON SATURDAY ===
 
-  // 2. Set the target days to loop (Base Duration + Leaves)
-  // We subtract 1 because the startDate itself counts as Day 1.
-  let targetDays = (baseDays + leaveUsed) - 1; 
-  if (targetDays < 0) targetDays = 0;
+  const resultDate = new Date(start);
+  
+  // Base required days + leave Used
+  const totalRequiredDays = requiredDays + (leaveUsed || 0);
+  
+  // if 0 days needed, just return start date
+  if (totalRequiredDays <= 0) return resultDate;
 
-  let currentDate = new Date(start);
-  let daysCounted = 0;
+  let activeDaysCount = 0;
 
-  // 3. Loop Day by Day
-  while (daysCounted < targetDays) {
-    currentDate.setDate(currentDate.getDate() + 1);
-
+  // We loop day by day.
+  while (activeDaysCount < totalRequiredDays) {
+    const dayOfWeek = resultDate.getDay();
+    
     // Normalisasi currentDate untuk komparasi akurat
-    const checkDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime();
+    const checkDate = new Date(resultDate.getFullYear(), resultDate.getMonth(), resultDate.getDate()).getTime();
 
     // Cek apakah hari ini masuk dalam rentang tanggal merah (OffDays)
     const isOffDay = offDays.some(holiday => {
@@ -85,15 +80,17 @@ export function calculateEndDate(
       const hEnd = holiday.endDate ? new Date(holiday.endDate).setHours(0,0,0,0) : hStart;
       return checkDate >= hStart && checkDate <= hEnd;
     });
-
-    // Jika hari ini tanggal merah, JANGAN hitung (masa belajar diperpanjang)
-    if (isOffDay) {
-      continue; 
+    
+    // 0 = Sunday, 6 = Saturday. Skip weekends and offDays
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isOffDay) {
+      activeDaysCount++;
     }
-
-    // Hari normal (termasuk Minggu), hitungan berjalan
-    daysCounted++;
+    
+    // Only move to the next day IF we haven't reached the required days yet
+    if (activeDaysCount < totalRequiredDays) {
+      resultDate.setDate(resultDate.getDate() + 1);
+    }
   }
 
-  return currentDate;
+  return resultDate;
 }
