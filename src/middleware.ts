@@ -35,9 +35,12 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login?error=unauthorized", req.url));
     }
 
-    // /tutor → TUTOR and HEAD_TUTOR
-    if (pathname.startsWith("/tutor") && userRole !== "TUTOR" && userRole !== "HEAD_TUTOR") {
-      return NextResponse.redirect(new URL("/login?error=unauthorized", req.url));
+    // /tutor → TUTOR, HEAD_TUTOR, and STAFF_ROLES (for certificates/monitoring)
+    if (pathname.startsWith("/tutor")) {
+      const allowedForTutor = ["TUTOR", "HEAD_TUTOR", ...STAFF_ROLES];
+      if (!allowedForTutor.includes(userRole)) {
+        return NextResponse.redirect(new URL("/login?error=unauthorized", req.url));
+      }
     }
 
     // /student → STUDENT only

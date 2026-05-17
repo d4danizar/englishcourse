@@ -53,7 +53,10 @@ export function AdminSidebar({
       // Verifikasi Sertifikat
       ...(["SUPER_ADMIN", "MANAGER", "CS", "HEAD_TUTOR"].includes(role) ? [{ label: "Verifikasi Sertifikat", href: "/tutor/certificates", emoji: "🎓", badge: pendingCertCount }] : []),
       // CRM — SUPER_ADMIN, CS, MARKETING
-      ...(CRM_ROLES.includes(role) ? [{ label: "CRM", href: "/admin/crm", emoji: "🤝" }] : []),
+      ...(CRM_ROLES.includes(role) ? [
+        { label: "CRM", href: "/admin/crm", emoji: "🤝" },
+        { label: "Tracking Iklan", href: "/admin/lead-source", emoji: "🎯" }
+      ] : []),
       // Bonus & Performa CS — SUPER_ADMIN only
       ...(role === "SUPER_ADMIN" ? [{ label: "Bonus & Performa CS", href: "/admin/cs-performance", emoji: "🏆" }] : []),
       // KPI & WIG — SUPER_ADMIN, MANAGER, CS, MARKETING, CREATOR
