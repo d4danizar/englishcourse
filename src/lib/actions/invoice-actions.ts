@@ -255,7 +255,7 @@ export async function approvePayment(invoiceId: string) {
 
       // 3. SATPAM BACKEND: Pengecekan Duplikasi
       const existingUser = await tx.user.findUnique({ where: { email } });
-      if (existingUser) {
+      if (existingUser && !isPelunasanVerify) {
         const duplicateCheck = await tx.enrollment.findFirst({
           where: {
             userId: existingUser.id,
@@ -284,6 +284,7 @@ export async function approvePayment(invoiceId: string) {
           ...(dataPayload.occupation && { occupation: dataPayload.occupation }),
           ...(dataPayload.discoverySource && { discoverySource: dataPayload.discoverySource }),
           ...(dataPayload.address && { address: dataPayload.address }),
+          ...(!isPelunasanVerify && {
             enrollments: {
               create: {
                 programType: finalActiveProgram,
@@ -296,6 +297,7 @@ export async function approvePayment(invoiceId: string) {
                 tshirtSize: dataPayload.tshirtSize || null,
               }
             }
+          })
         },
         create: {
           name: studentName,

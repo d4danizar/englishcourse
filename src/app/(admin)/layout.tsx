@@ -4,7 +4,7 @@ import { authOptions } from "../../lib/auth";
 import { cookies } from "next/headers";
 import { BranchLocation } from "@prisma/client";
 import { AdminSidebar } from "./AdminSidebar";
-import { getActiveBranch } from "@/lib/actions/branch-actions";
+import { getBranchFilter } from "@/lib/actions/branch-actions";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", emoji: "📊" },
@@ -22,7 +22,8 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-  const activeBranch = await getActiveBranch();
+  const branchFilter = await getBranchFilter();
+  const activeBranch = branchFilter.branch;
 
   const pendingCertCount = await prisma.enrollment.count({
     where: {
