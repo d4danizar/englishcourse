@@ -19,7 +19,7 @@ export type GlobalSession = {
 
 const BRANCH_LABELS: Record<string, string> = {
   KARTASURA: "Kartasura (Pusat)",
-  CABANG_2: "Cabang 2",
+  CABANG_2: "Serengan",
   CABANG_3: "Cabang 3",
 };
 

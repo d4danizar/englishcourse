@@ -7,7 +7,7 @@ export const sendWablasMessage = async (
   let domain = process.env.WABLAS_DOMAIN || process.env.WABLAS_DOMAIN_KARTASURA;
   let token = process.env.WABLAS_TOKEN || process.env.WABLAS_TOKEN_KARTASURA;
 
-  // Aggressive check for Cabang 2
+  // Aggressive check for Serengan (Cabang 2)
   if (branchName) {
     const cleanBranch = branchName.toUpperCase().trim();
     if (
@@ -18,7 +18,7 @@ export const sendWablasMessage = async (
       cleanBranch.includes('SRE') || 
       cleanBranch.includes('SERENGAN')
     ) {
-      // Override with Cabang 2 credentials
+      // Override with Serengan credentials
       domain = process.env.WABLAS_DOMAIN_CABANG2 || domain;
       token = process.env.WABLAS_TOKEN_CABANG2 || token;
     }

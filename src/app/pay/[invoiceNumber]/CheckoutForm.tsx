@@ -18,6 +18,10 @@ const PROGRAMS = [
   "EFT",
   "Private",
   "TOEFL",
+  "Holiday Kids - Fullday",
+  "Holiday Kids - Camp",
+  "Holiday Teens - Fullday",
+  "Holiday Teens - Camp",
 ] as const;
 
 const SESSION_OPTIONS = [
@@ -58,10 +62,11 @@ const formSchema = z
     address: z.string().min(5, "Alamat lengkap wajib diisi."),
   })
   .superRefine((data, ctx) => {
+    const isHoliday = data.program?.includes("Holiday");
+    const needsDuration = data.program === "Fullday" || data.program === "Asrama" || isHoliday;
+    
     if (
-      (data.program === "Regular" ||
-        data.program === "Fullday" ||
-        data.program === "Asrama") &&
+      (data.program === "Regular" || needsDuration) &&
       !data.programDetail
     ) {
       ctx.addIssue({
@@ -374,8 +379,8 @@ export function CheckoutForm({
             </FieldWrap>
           )}
 
-          {/* Conditional: Fullday / Asrama → Durasi */}
-          {(selectedProgram === "Fullday" || selectedProgram === "Asrama") && (
+          {/* Conditional: Fullday / Asrama / Holiday → Durasi */}
+          {(selectedProgram === "Fullday" || selectedProgram === "Asrama" || selectedProgram?.includes("Holiday")) && (
             <FieldWrap label="Durasi Program" required error={errors.programDetail?.message}>
               <select {...register("programDetail")} className={inputCls}>
                 <option value="">-- Pilih durasi --</option>

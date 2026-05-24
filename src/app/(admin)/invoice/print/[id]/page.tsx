@@ -42,7 +42,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
     const cleanBranch = (branchName || '').toUpperCase().trim();
     let branchCode = 'KTS'; // Default fallback
 
-    // Aggressive matching for the second branch
+    // Aggressive matching for the second branch (Serengan)
     if (
       cleanBranch.includes('CABANG_2') ||
       cleanBranch.includes('CABANG2') ||
@@ -70,7 +70,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
 
     let branchCode = 'KTS'; // Default
 
-    // Aggressive matching for the second branch
+    // Aggressive matching for the second branch (Serengan)
     if (
       cleanBranch.includes('CABANG_2') ||
       cleanBranch.includes('CABANG2') ||

@@ -46,6 +46,24 @@ export function calculateInvoiceAmount(
       else if (duration === "1 Bulan") basePrice = 2500000;
       else if (duration === "2 Bulan") basePrice = 3950000;
       break;
+    case "Holiday Kids - Fullday":
+    case "Holiday Teens - Fullday": {
+      const durationWeeks = duration ? parseInt(duration.replace(/\D/g, '')) || 1 : 1;
+      if (durationWeeks === 1) basePrice = 750000;
+      else if (durationWeeks === 2) basePrice = 1400000;
+      else if (durationWeeks === 3) basePrice = 2150000;
+      else basePrice = 750000;
+      break;
+    }
+    case "Holiday Kids - Camp":
+    case "Holiday Teens - Camp": {
+      const durationWeeks = duration ? parseInt(duration.replace(/\D/g, '')) || 1 : 1;
+      if (durationWeeks === 1) basePrice = 1100000;
+      else if (durationWeeks === 2) basePrice = 1900000;
+      else if (durationWeeks === 3) basePrice = 4000000;
+      else basePrice = 1100000;
+      break;
+    }
     default:
       basePrice = 0;
   }

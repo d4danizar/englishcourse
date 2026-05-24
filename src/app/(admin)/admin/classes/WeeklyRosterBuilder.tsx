@@ -21,15 +21,26 @@ type TutorOption = {
   name: string;
 };
 
-// Fixed time slots & their default program types
 const TIME_SLOTS = [
   { time: "08:00 - 09:30", program: "Conversation" },
   { time: "10:00 - 11:30", program: "Conversation" },
   { time: "12:30 - 14:00", program: "Conversation" },
   { time: "14:30 - 16:00", program: "Conversation" },
-  { time: "16:30 - 18:00", program: "EFK" },
-  { time: "16:30 - 18:00", program: "EFT" },
   { time: "18:30 - 20:00", program: "Conversation" },
+  { time: "14:30 - 16:00", program: "EFK" },
+  { time: "16:30 - 18:00", program: "EFK" },
+  { time: "14:30 - 16:00", program: "EFT" },
+  { time: "16:30 - 18:00", program: "EFT" },
+  { time: "08:00 - 09:30", program: "Holiday Kids" },
+  { time: "10:00 - 11:30", program: "Holiday Kids" },
+  { time: "12:30 - 14:00", program: "Holiday Kids" },
+  { time: "14:30 - 16:00", program: "Holiday Kids" },
+  { time: "18:30 - 20:00", program: "Holiday Kids" },
+  { time: "08:00 - 09:30", program: "Holiday Teens" },
+  { time: "10:00 - 11:30", program: "Holiday Teens" },
+  { time: "12:30 - 14:00", program: "Holiday Teens" },
+  { time: "14:30 - 16:00", program: "Holiday Teens" },
+  { time: "18:30 - 20:00", program: "Holiday Teens" },
 ] as const;
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -52,10 +63,16 @@ export function WeeklyRosterBuilder({ tutors }: { tutors: TutorOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [mondayDate, setMondayDate] = useState<Date>(() => getMondayOfWeek(new Date()));
   const [grid, setGrid] = useState<GridState>({});
+  const [programFilter, setProgramFilter] = useState("ALL");
 
   const weekDates = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => addDays(mondayDate, i));
   }, [mondayDate]);
+
+  const filteredTimeSlots = useMemo(() => {
+    if (programFilter === "ALL") return TIME_SLOTS;
+    return TIME_SLOTS.filter((slot) => slot.program === programFilter);
+  }, [programFilter]);
 
   // Key includes program to differentiate EFK/EFT at same time
   const cellKey = (date: Date, timeSlot: string, program: string) =>
@@ -180,6 +197,24 @@ export function WeeklyRosterBuilder({ tutors }: { tutors: TutorOption[] }) {
           </div>
         </div>
 
+        {/* Filter Dropdown */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="programFilter" className="text-sm font-medium text-slate-700 whitespace-nowrap">Filter Program:</label>
+          <select
+            id="programFilter"
+            value={programFilter}
+            onChange={(e) => setProgramFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg shadow-sm text-sm p-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+          >
+            <option value="ALL">Semua Program</option>
+            <option value="Conversation">Conversation</option>
+            <option value="EFK">EFK</option>
+            <option value="EFT">EFT</option>
+            <option value="Holiday Kids">Holiday Kids</option>
+            <option value="Holiday Teens">Holiday Teens</option>
+          </select>
+        </div>
+
         {/* Week Navigator */}
         <div className="flex items-center gap-2">
           <button
@@ -230,7 +265,7 @@ export function WeeklyRosterBuilder({ tutors }: { tutors: TutorOption[] }) {
               </tr>
             </thead>
             <tbody>
-              {TIME_SLOTS.map((slot, slotIdx) => (
+              {filteredTimeSlots.map((slot, slotIdx) => (
                 <tr
                   key={slotIdx}
                   className={`border-b border-slate-100 last:border-b-0 ${

@@ -190,7 +190,11 @@ export async function approvePayment(invoiceId: string) {
       let finalBatch = dataPayload.programBatch || dataPayload.session || null;
 
       // B. JARING PROGRAM (Keyword Matching Mutlak)
-      if (rawProgram.includes("regular")) finalActiveProgram = "Regular";
+      if (rawProgram.includes("holiday kids - fullday")) finalActiveProgram = "Holiday Kids - Fullday";
+      else if (rawProgram.includes("holiday kids - camp")) finalActiveProgram = "Holiday Kids - Camp";
+      else if (rawProgram.includes("holiday teens - fullday")) finalActiveProgram = "Holiday Teens - Fullday";
+      else if (rawProgram.includes("holiday teens - camp")) finalActiveProgram = "Holiday Teens - Camp";
+      else if (rawProgram.includes("regular")) finalActiveProgram = "Regular";
       else if (rawProgram.includes("fullday")) finalActiveProgram = "Fullday";
       else if (rawProgram.includes("asrama")) finalActiveProgram = "Asrama";
       else if (rawProgram.includes("english on saturday") || rawProgram.includes("eos")) finalActiveProgram = "English on Saturday";

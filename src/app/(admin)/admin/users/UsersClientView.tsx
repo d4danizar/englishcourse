@@ -386,6 +386,10 @@ export function UsersClientView({
           <option value="EFK">EFK (6 Bulan)</option>
           <option value="EFT">EFT (6 Bulan)</option>
           <option value="Private">Private</option>
+          <option value="Holiday Kids - Fullday">Holiday Kids - Fullday</option>
+          <option value="Holiday Kids - Camp">Holiday Kids - Camp</option>
+          <option value="Holiday Teens - Fullday">Holiday Teens - Fullday</option>
+          <option value="Holiday Teens - Camp">Holiday Teens - Camp</option>
           <option value="TOEFL">TOEFL</option>
         </select>
       </div>
@@ -794,7 +798,7 @@ export function UsersClientView({
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
                   >
                     <option value="KARTASURA">Kartasura</option>
-                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_2">Serengan</option>
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
@@ -810,7 +814,7 @@ export function UsersClientView({
                   >
                     <option value="">Tidak Ada</option>
                     <option value="KARTASURA">Kartasura</option>
-                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_2">Serengan</option>
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
@@ -914,7 +918,7 @@ export function UsersClientView({
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
                   >
                     <option value="KARTASURA">Kartasura</option>
-                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_2">Serengan</option>
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>
@@ -930,7 +934,7 @@ export function UsersClientView({
                   >
                     <option value="">Tidak Ada</option>
                     <option value="KARTASURA">Kartasura</option>
-                    <option value="CABANG_2">Cabang 2</option>
+                    <option value="CABANG_2">Serengan</option>
                     <option value="CABANG_3">Cabang 3</option>
                   </select>
                 </div>

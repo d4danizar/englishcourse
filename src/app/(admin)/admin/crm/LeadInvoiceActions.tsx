@@ -32,6 +32,10 @@ const PROGRAMS = [
   "TOEFL Prep",
   "EFK",
   "EFT",
+  "Holiday Kids - Fullday",
+  "Holiday Kids - Camp",
+  "Holiday Teens - Fullday",
+  "Holiday Teens - Camp",
 ];
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -84,7 +88,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
       setError("Pilih program.");
       return;
     }
-    const needsDuration = ["Fullday", "Asrama"].includes(programName);
+    const needsDuration = ["Fullday", "Asrama"].includes(programName) || programName.includes("Holiday");
     if (needsDuration && !duration) {
       setError("Pilih durasi program.");
       return;
@@ -406,7 +410,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                 </div>
 
                 {/* Duration (Conditional) */}
-                {["Fullday", "Asrama"].includes(programName) && (
+                {(["Fullday", "Asrama"].includes(programName) || programName.includes("Holiday")) && (
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
                       Durasi
@@ -418,7 +422,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 text-slate-800"
                     >
                       <option value="">-- Pilih Durasi --</option>
-                      {programName === "Fullday" && (
+                      {(["Fullday", "Asrama"].includes(programName)) && (
                         <>
                           <option>1 Minggu</option>
                           <option>2 Minggu</option>
@@ -427,13 +431,11 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                           <option>2 Bulan</option>
                         </>
                       )}
-                      {programName === "Asrama" && (
+                      {programName.includes("Holiday") && (
                         <>
                           <option>1 Minggu</option>
                           <option>2 Minggu</option>
                           <option>3 Minggu</option>
-                          <option>1 Bulan</option>
-                          <option>2 Bulan</option>
                         </>
                       )}
                     </select>

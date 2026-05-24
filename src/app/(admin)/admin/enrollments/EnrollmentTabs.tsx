@@ -321,6 +321,10 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                     <option value="EFK">EFK (6 Bulan)</option>
                     <option value="EFT">EFT (6 Bulan)</option>
                     <option value="Private">Private</option>
+                    <option value="Holiday Kids - Fullday">Holiday Kids - Fullday</option>
+                    <option value="Holiday Kids - Camp">Holiday Kids - Camp</option>
+                    <option value="Holiday Teens - Fullday">Holiday Teens - Fullday</option>
+                    <option value="Holiday Teens - Camp">Holiday Teens - Camp</option>
                     <option value="Membership">Membership (Khusus Alumni - Max 14 Hari Pasca Lulus)</option>
                     <option value="TOEFL">TOEFL</option>
                   </select>

@@ -8,6 +8,11 @@ import { COMPANY_INFO } from "@/lib/constants/branding";
 export const metadata = {
   title: COMPANY_INFO.name,
   description: COMPANY_INFO.tagline,
+  icons: {
+    icon: "/logo-icon.png",
+    shortcut: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({

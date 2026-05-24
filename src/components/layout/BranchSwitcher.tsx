@@ -8,7 +8,7 @@ import { Building2, ChevronDown, Check, Loader2, MapPin } from "lucide-react";
 
 const BRANCH_LABELS: Record<BranchLocation, string> = {
   KARTASURA: "Kartasura",
-  CABANG_2: "Cabang 2",
+  CABANG_2: "Serengan",
   CABANG_3: "Cabang 3",
 };
 
