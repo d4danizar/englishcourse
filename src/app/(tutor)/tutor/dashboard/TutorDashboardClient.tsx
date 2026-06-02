@@ -29,6 +29,8 @@ export type EligibleStudent = {
   existingFluency: number | null;
   existingVocabulary: number | null;
   existingNotes: string | null;
+  alergi?: string | null;
+  penyakit?: string | null;
 };
 
 export type SessionTask = {
@@ -502,17 +504,29 @@ export function TutorDashboardClient({
                       {/* Student Name & Program Badge */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
                             {student.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-bold text-slate-900">{student.name}</span>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-bold text-slate-900">{student.name}</p>
+                              {(student.alergi || student.penyakit) && (
+                                <div className="group relative flex items-center">
+                                  <AlertCircle className="w-4 h-4 text-amber-500 cursor-help" />
+                                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                    {student.alergi && <p><strong>Alergi:</strong> {student.alergi}</p>}
+                                    {student.penyakit && <p><strong>Penyakit:</strong> {student.penyakit}</p>}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                              {student.activeProgram || "No Program"}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {student.activeProgram && (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-100">
-                              {student.activeProgram}
-                            </span>
-                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveStudent(student.id)}

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Search, Loader2, X, RefreshCcw, User, Calendar, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 import { renewStudent } from "../users/actions";
+import MedicalManifesto, { MedicalRecord } from "./MedicalManifesto";
 
 type InvoiceDP = {
   id: string;
@@ -29,10 +30,11 @@ type Props = {
   dpInvoices: InvoiceDP[];
   activeStudents: StudentData[];
   expiredStudents: StudentData[];
+  medicalRecords?: MedicalRecord[];
 };
 
-export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStudents }: Props) {
-  const [activeTab, setActiveTab] = useState<"DP" | "ACTIVE" | "EXPIRED">("DP");
+export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStudents, medicalRecords = [] }: Props) {
+  const [activeTab, setActiveTab] = useState<"DP" | "ACTIVE" | "EXPIRED" | "MEDICAL">("DP");
   const [searchQuery, setSearchQuery] = useState("");
 
   // === RENEW / REPEAT ORDER STATE ===
@@ -151,13 +153,21 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
           </button>
           <button
             onClick={() => setActiveTab("EXPIRED")}
-            className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "EXPIRED" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
+            className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "EXPIRED" ? "bg-white text-rose-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
           >
-            🎓 Alumni ({expiredStudents.length})
+            ❌ Expired ({expiredStudents.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("MEDICAL")}
+            className={`shrink-0 py-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${activeTab === "MEDICAL" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:bg-slate-200"}`}
+          >
+            🏥 Medical Data ({medicalRecords.length})
           </button>
         </div>
 
-        <div className="relative w-full sm:w-64">
+        {/* Global Search Bar (Only shown for non-Medical tabs, since Medical has its own search) */}
+        {activeTab !== "MEDICAL" && (
+          <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
             type="text"
@@ -167,6 +177,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
             className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
           />
         </div>
+        )}
       </div>
 
       {/* Content Area */}
@@ -286,6 +297,14 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
             ))}
           </div>
         )}
+        
+        {/* === TAB MEDICAL === */}
+        {activeTab === "MEDICAL" && (
+          <div className="animate-in fade-in">
+            <MedicalManifesto records={medicalRecords} />
+          </div>
+        )}
+
       </div>
 
       {/* ======================= REPEAT ORDER MODAL ======================= */}

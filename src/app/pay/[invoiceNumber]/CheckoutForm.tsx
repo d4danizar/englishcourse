@@ -133,6 +133,10 @@ export function CheckoutForm({
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [tshirtSize, setTshirtSize] = useState("");
+  const [gelombang, setGelombang] = useState("");
+  const [infoSource, setInfoSource] = useState("");
+  const [alergi, setAlergi] = useState("");
+  const [penyakit, setPenyakit] = useState("");
 
   const {
     register,
@@ -151,6 +155,7 @@ export function CheckoutForm({
   });
 
   const selectedProgram = useWatch({ control, name: "program" });
+  const isHolidayProgram = selectedProgram?.includes("Holiday") ?? false;
 
   const excludedPrograms = ["private", "toefl", "efk", "eft"];
   const isTshirtEligible = 
@@ -231,6 +236,12 @@ export function CheckoutForm({
       discoverySource: values.discoverySource,
       address: values.address,
       tshirtSize: isTshirtEligible ? tshirtSize : undefined,
+      ...(isHolidayProgram && {
+         gelombang,
+         infoSource,
+         alergi,
+         penyakit,
+      })
     };
 
     const res = await submitPaymentProof(invoiceId, studentData as any, proofUrl);
@@ -410,6 +421,68 @@ export function CheckoutForm({
                 <option value="XXL">XXL</option>
               </select>
             </FieldWrap>
+          )}
+
+          {/* Conditional: Holiday Program Extra Fields */}
+          {isHolidayProgram && (
+            <div className="space-y-5 border p-5 rounded-2xl bg-orange-50/50 border-orange-200 col-span-1 md:col-span-2">
+               <h3 className="font-bold text-orange-800 text-sm uppercase tracking-widest border-b border-orange-200/60 pb-3">Informasi Khusus Holiday Program</h3>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FieldWrap label="Gelombang (Batch)" required>
+                   <select 
+                     value={gelombang} 
+                     onChange={(e) => setGelombang(e.target.value)} 
+                     required={isHolidayProgram}
+                     className={inputCls}
+                   >
+                     <option value="" disabled>-- Pilih Gelombang --</option>
+                     <option value="Gel 1 (15 Juni - 20 Juni 2026)">Gel 1 (15 Juni - 20 Juni 2026)</option>
+                     <option value="Gel 2 (22 Juni - 27 Juni 2026)">Gel 2 (22 Juni - 27 Juni 2026)</option>
+                     <option value="Gel 3 (29 Juni - 4 Juli 2026)">Gel 3 (29 Juni - 4 Juli 2026)</option>
+                   </select>
+                 </FieldWrap>
+
+                 <FieldWrap label="Info Kampung Inggris Dari" required>
+                   <select 
+                     value={infoSource} 
+                     onChange={(e) => setInfoSource(e.target.value)} 
+                     required={isHolidayProgram}
+                     className={inputCls}
+                   >
+                     <option value="" disabled>-- Pilih Sumber Info --</option>
+                     <option value="Facebook">Facebook</option>
+                     <option value="Instagram">Instagram</option>
+                     <option value="Tiktok">Tiktok</option>
+                     <option value="Google Maps">Google Maps</option>
+                     <option value="Website">Website</option>
+                     <option value="Keluarga/teman/kerabat">Keluarga/teman/kerabat</option>
+                   </select>
+                 </FieldWrap>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FieldWrap label="Alergi Makanan/Obat (Opsional)">
+                   <input 
+                     type="text" 
+                     value={alergi} 
+                     onChange={(e) => setAlergi(e.target.value)} 
+                     placeholder="Kosongkan jika tidak ada" 
+                     className={inputCls}
+                   />
+                 </FieldWrap>
+
+                 <FieldWrap label="Riwayat Penyakit Khusus (Opsional)">
+                   <input 
+                     type="text" 
+                     value={penyakit} 
+                     onChange={(e) => setPenyakit(e.target.value)} 
+                     placeholder="Kosongkan jika tidak ada" 
+                     className={inputCls}
+                   />
+                 </FieldWrap>
+               </div>
+            </div>
           )}
         </div>
 

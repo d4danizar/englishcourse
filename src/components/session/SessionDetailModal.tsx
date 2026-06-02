@@ -282,7 +282,20 @@ export function SessionDetailModal({
                               {student.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-slate-900">{student.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-bold text-slate-900">{student.name}</p>
+                                {/* Edit Mode doesn't need the badge necessarily, but let's add it for consistency or leave it. Wait, the user said "Class/Roster UI". Let's add it here too. */}
+                                {(student as any).alergi || (student as any).penyakit ? (
+                                  <div className="group relative flex items-center">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                      {(student as any).alergi && <p><strong>Alergi:</strong> {(student as any).alergi}</p>}
+                                      {(student as any).penyakit && <p><strong>Penyakit:</strong> {(student as any).penyakit}</p>}
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
                               <p className="text-[10px] text-slate-400 font-medium uppercase">{student.activeProgram || "—"}</p>
                             </div>
                           </div>
@@ -384,7 +397,19 @@ export function SessionDetailModal({
                               {a.studentName.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
+                                {(a.alergi || a.penyakit) && (
+                                  <div className="group relative flex items-center">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                      {a.alergi && <p><strong>Alergi:</strong> {a.alergi}</p>}
+                                      {a.penyakit && <p><strong>Penyakit:</strong> {a.penyakit}</p>}
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                               <p className="text-[10px] text-slate-400 font-medium uppercase">{a.studentProgram || "—"}</p>
                             </div>
                           </div>
@@ -442,7 +467,19 @@ export function SessionDetailModal({
                           {s.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                            {(s.alergi || s.penyakit) && (
+                              <div className="group relative flex items-center">
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                  {s.alergi && <p><strong>Alergi:</strong> {s.alergi}</p>}
+                                  {s.penyakit && <p><strong>Penyakit:</strong> {s.penyakit}</p>}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                           <p className="text-[10px] text-slate-400 font-medium uppercase">{s.activeProgram || "—"}</p>
                         </div>
                       </div>

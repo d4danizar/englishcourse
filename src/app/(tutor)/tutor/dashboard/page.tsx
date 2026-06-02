@@ -4,6 +4,7 @@ import { prisma } from "../../../../lib/prisma";
 import { redirect } from "next/navigation";
 import { TutorDashboardClient, type SessionTask, type EligibleStudent, type StudentSearchItem } from "./TutorDashboardClient";
 import { getEligibleStudentsForSession, getGlobalPoolForSession } from "../../../../lib/student-pool";
+import { getMedicalMap } from "../../../../lib/actions/invoice-actions";
 
 export default async function TutorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -81,6 +82,8 @@ export default async function TutorDashboardPage() {
     },
   });
 
+  const medicalMap = await getMedicalMap();
+
   // Helper function to map raw session to SessionTask
   const mapSessionToTask = async (s: any): Promise<SessionTask> => {
     // Use shared helper for strict radar filtering
@@ -118,15 +121,20 @@ export default async function TutorDashboardPage() {
       const attendance = existingAttendanceMap.get(studentId);
       const fromAttendance = s.attendances.find((a: any) => a.studentId === studentId);
 
+      const studentName = eligible?.name || fromAttendance?.student?.name || "Unknown";
+      const medical = medicalMap[studentName.toLowerCase()];
+
       mergedStudents.push({
         id: studentId as string,
-        name: eligible?.name || fromAttendance?.student?.name || "Unknown",
+        name: studentName,
         activeProgram: eligible?.activeProgram || fromAttendance?.student?.enrollments?.[0]?.programType || null,
         existingStatus: (attendance?.status as string) || null,
         existingPronunciation: attendance?.pronunciation ?? null,
         existingFluency: attendance?.fluency ?? null,
         existingVocabulary: attendance?.vocabulary ?? null,
         existingNotes: attendance?.tutorNotes ?? null,
+        alergi: medical?.alergi || null,
+        penyakit: medical?.penyakit || null,
       });
     }
 

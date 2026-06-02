@@ -3,6 +3,7 @@ import EnrollmentTabs from "./EnrollmentTabs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { getHolidayMedicalData } from "@/lib/actions/invoice-actions";
 import { notFound } from "next/navigation";
 
 export const metadata = {
@@ -73,6 +74,9 @@ export default async function EnrollmentsPage() {
     }
   });
 
+  // 3. Fetch Medical Data
+  const medicalRecords = await getHolidayMedicalData();
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
@@ -85,7 +89,8 @@ export default async function EnrollmentsPage() {
       <EnrollmentTabs 
         dpInvoices={dpInvoices} 
         activeStudents={activeStudents} 
-        expiredStudents={expiredStudents} 
+        expiredStudents={expiredStudents}
+        medicalRecords={medicalRecords}
       />
     </div>
   );

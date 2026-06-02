@@ -447,3 +447,65 @@ export async function submitPelunasanProof(invoiceId: string, proofUrl: string) 
     return { error: "Terjadi kesalahan." };
   }
 }
+
+// ── 6. Get Holiday Medical Data (Operations & Tutors) ────────────────────────
+export async function getHolidayMedicalData() {
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        programName: { contains: "Holiday" },
+        status: { in: ["PAID", "DP_PAID"] },
+      },
+      select: {
+        invoiceNumber: true,
+        programName: true,
+        studentData: true,
+      },
+    });
+
+    const medicalRecords = invoices
+      .map((inv) => {
+        const data = inv.studentData as any;
+        if (!data) return null;
+
+        return {
+          invoiceNumber: inv.invoiceNumber,
+          studentName: data.name || data.fullName || "Unknown",
+          program: inv.programName,
+          batch: data.gelombang || data.session || data.programBatch || "-",
+          allergies: data.alergi || null,
+          illnesses: data.penyakit || null,
+        };
+      })
+      .filter((r) => r !== null) as {
+      invoiceNumber: string;
+      studentName: string;
+      program: string;
+      batch: string;
+      allergies: string | null;
+      illnesses: string | null;
+    }[];
+
+    return medicalRecords;
+  } catch (error) {
+    console.error("[getHolidayMedicalData] Error fetching medical data:", error);
+    return [];
+  }
+}
+
+export async function getMedicalMap(): Promise<Record<string, { alergi: string; penyakit: string }>> {
+  const records = await getHolidayMedicalData();
+  const map: Record<string, { alergi: string; penyakit: string }> = {};
+  
+  records.forEach((record) => {
+    if (record.allergies || record.illnesses) {
+      map[record.studentName.toLowerCase()] = {
+        alergi: record.allergies || "",
+        penyakit: record.illnesses || "",
+      };
+    }
+  });
+  
+  return map;
+}
+

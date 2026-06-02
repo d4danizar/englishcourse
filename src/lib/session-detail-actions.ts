@@ -2,6 +2,7 @@
 
 import { prisma } from "./prisma";
 import { getEligibleStudentsForSession, getGlobalPoolForSession } from "./student-pool";
+import { getMedicalMap } from "./actions/invoice-actions";
 import { revalidatePath } from "next/cache";
 
 export type SessionDetailData = {
@@ -23,11 +24,15 @@ export type SessionDetailData = {
     vocabulary: number | null;
     tutorNotes: string | null;
     rescheduleNotes: string | null;
+    alergi?: string | null;
+    penyakit?: string | null;
   }[];
   eligibleStudents: {
     id: string;
     name: string;
     activeProgram: string | null;
+    alergi?: string | null;
+    penyakit?: string | null;
   }[];
   globalPoolStudents: {
     id: string;
@@ -88,6 +93,8 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
   const attendedIds = new Set(session.attendances.map((a) => a.studentId));
   const eligibleIds = new Set(eligibleStudents.map((s) => s.id));
 
+  const medicalMap = await getMedicalMap();
+
   return {
     id: session.id,
     title: session.title,
@@ -97,19 +104,31 @@ export async function getSessionDetail(sessionId: string): Promise<SessionDetail
     isCompleted: session.isCompleted,
     tutorName: session.tutor.name,
     isEvalDay,
-    attendances: session.attendances.map((a) => ({
-      id: a.id,
-      studentId: a.student.id,
-      studentName: a.student.name,
-      studentProgram: a.student.enrollments?.[0]?.programType || null,
-      status: a.status,
-      pronunciation: a.pronunciation,
-      fluency: a.fluency,
-      vocabulary: a.vocabulary,
-      tutorNotes: a.tutorNotes,
-      rescheduleNotes: a.rescheduleNotes,
-    })),
-    eligibleStudents,
+    attendances: session.attendances.map((a) => {
+      const medical = medicalMap[a.student.name.toLowerCase()];
+      return {
+        id: a.id,
+        studentId: a.student.id,
+        studentName: a.student.name,
+        studentProgram: a.student.enrollments?.[0]?.programType || null,
+        status: a.status,
+        pronunciation: a.pronunciation,
+        fluency: a.fluency,
+        vocabulary: a.vocabulary,
+        tutorNotes: a.tutorNotes,
+        rescheduleNotes: a.rescheduleNotes,
+        alergi: medical?.alergi || null,
+        penyakit: medical?.penyakit || null,
+      };
+    }),
+    eligibleStudents: eligibleStudents.map((s) => {
+      const medical = medicalMap[s.name.toLowerCase()];
+      return {
+        ...s,
+        alergi: medical?.alergi || null,
+        penyakit: medical?.penyakit || null,
+      };
+    }),
     globalPoolStudents: globalPoolStudents.filter(
       (s) => !attendedIds.has(s.id) && !eligibleIds.has(s.id)
     ),
