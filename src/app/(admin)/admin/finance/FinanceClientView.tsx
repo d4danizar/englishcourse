@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
 import { getFinanceStats, createManualExpense } from "../../../../lib/actions/cashflow-actions";
 import { Download, Plus, Wallet, ArrowDownRight, ArrowUpRight, Loader2, Landmark } from "lucide-react";
@@ -21,6 +21,30 @@ export function FinanceClientView() {
     totalIncome: 0, totalExpense: 0, netProfit: 0, chartData: []
   });
   const [history, setHistory] = useState<any[]>([]);
+
+  const [transactionType, setTransactionType] = useState<"ALL" | "INCOME" | "EXPENSE">("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredHistory = useMemo(() => {
+    return history.filter((tx) => {
+      // Type Filter
+      const matchesType = 
+        transactionType === "ALL" ? true :
+        transactionType === "INCOME" ? tx.type === "INCOME" :
+        tx.type === "EXPENSE";
+
+      // Search Filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        !searchQuery || 
+        tx.description?.toLowerCase().includes(searchLower) ||
+        tx.invoice?.invoiceNumber?.toLowerCase().includes(searchLower) ||
+        tx.recordedBy?.name?.toLowerCase().includes(searchLower) ||
+        tx.category?.toLowerCase().includes(searchLower);
+
+      return matchesType && matchesSearch;
+    });
+  }, [history, transactionType, searchQuery]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -231,8 +255,26 @@ export function FinanceClientView() {
 
           {/* History */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-200">
+            <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi Terbaru</h3>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Cari deskripsi, invoice..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-64 border border-slate-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 outline-none"
+                />
+                <select 
+                  value={transactionType} 
+                  onChange={(e) => setTransactionType(e.target.value as any)}
+                  className="w-full sm:w-auto border border-slate-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2 outline-none bg-white"
+                >
+                  <option value="ALL">Semua Transaksi</option>
+                  <option value="INCOME">Pemasukan</option>
+                  <option value="EXPENSE">Pengeluaran</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse min-w-[700px]">
@@ -247,9 +289,9 @@ export function FinanceClientView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/80">
-                  {history.length === 0 ? (
-                    <tr><td colSpan={6} className="p-6 text-center text-slate-500">Belum ada transaksi di database.</td></tr>
-                  ) : history.map((tx: any) => (
+                  {filteredHistory.length === 0 ? (
+                    <tr><td colSpan={6} className="p-6 text-center text-slate-500">Tidak ada transaksi yang cocok.</td></tr>
+                  ) : filteredHistory.map((tx: any) => (
                     <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 text-sm font-medium text-slate-700 whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
