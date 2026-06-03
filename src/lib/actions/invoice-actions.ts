@@ -270,8 +270,21 @@ export async function approvePayment(invoiceId: string) {
         });
 
         if (duplicateCheck) {
-          console.log(`[WARNING] Duplication blocked for User ${existingUser.id} on program ${finalActiveProgram}`);
-          throw new Error("Pendaftaran untuk program dan tanggal mulai ini sudah terproses. Menolak duplikasi data.");
+          // Try to get the name of the student being registered right now
+          const incomingName = studentName || "";
+          const existingName = existingUser.name || "";
+
+          // Check if names are significantly different (Sibling check)
+          const isSibling = incomingName && existingName && incomingName.trim().toLowerCase() !== existingName.trim().toLowerCase();
+
+          if (isSibling) {
+            console.log(`[INFO] Sibling detected for User ${existingUser.id}. Allowing duplicate enrollment for different student name: ${incomingName}`);
+            // DO NOT throw error. Let the enrollment proceed.
+          } else {
+            // True duplicate (Same phone, same name, same program)
+            console.log(`[WARNING] True duplication blocked for User ${existingUser.id} on program ${finalActiveProgram}`);
+            throw new Error("Pendaftaran untuk siswa, program, dan tanggal yang sama sudah terproses. Menolak duplikasi data.");
+          }
         }
       }
 
