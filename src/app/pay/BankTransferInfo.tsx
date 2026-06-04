@@ -21,8 +21,8 @@ export function BankTransferInfo({ showRegistrationFeeNote = false }: { showRegi
       <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-indigo-100 shadow-sm">
         <div>
           <p className="font-bold text-slate-800 text-sm">Bank BCA</p>
-          <p className="text-lg font-mono font-bold text-indigo-700">3930719144</p> 
-          <p className="text-xs font-medium text-slate-500">a.n. Nofi Mujayati</p>
+          <p className="text-lg font-mono font-bold text-indigo-700">3931191762</p> 
+          <p className="text-xs font-medium text-slate-500">a.n. Star Jaya Education PT</p>
         </div>
         <button 
           type="button" 
