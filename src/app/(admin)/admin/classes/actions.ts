@@ -58,6 +58,7 @@ export async function updateSession(formData: FormData) {
     const timeSlot = formData.get("timeSlot") as string;
     const programType = formData.get("programType") as string;
     const tutorId = formData.get("tutorId") as string;
+    const topicOffsetRaw = formData.get("topicOffset");
 
     if (!sessionId) return { error: "Session ID is required." };
 
@@ -67,6 +68,7 @@ export async function updateSession(formData: FormData) {
     if (timeSlot) data.timeSlot = timeSlot;
     if (programType) data.programType = programType;
     if (tutorId) data.tutorId = tutorId;
+    if (topicOffsetRaw !== null) data.topicOffset = parseInt(topicOffsetRaw as string) || 0;
 
     await prisma.session.update({
       where: { id: sessionId },

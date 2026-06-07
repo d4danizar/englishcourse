@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { TutorDashboardClient, type SessionTask, type EligibleStudent, type StudentSearchItem } from "./TutorDashboardClient";
 import { getEligibleStudentsForSession, getGlobalPoolForSession } from "../../../../lib/student-pool";
 import { getMedicalMap } from "../../../../lib/actions/invoice-actions";
+import { getTodayTopic } from "../../../../lib/syllabus-helpers";
 
 export default async function TutorDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -152,7 +153,12 @@ export default async function TutorDashboardPage() {
       programType: s.programType,
       students: mergedStudents,
       globalPoolStudents,
-      todayTopic: null,
+      todayTopic: (() => {
+        const d = new Date(s.date);
+        const dayOfWeek = d.getDay();
+        const dayIndex = dayOfWeek >= 1 && dayOfWeek <= 6 ? dayOfWeek - 1 : 0;
+        return getTodayTopic(s.timeSlot, 1, (s.topicOffset || 0) + dayIndex, s.date) || null;
+      })(),
     };
   };
 

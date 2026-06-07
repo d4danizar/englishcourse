@@ -4,7 +4,7 @@ import { useState } from "react";
 import { format, parseISO, startOfWeek, addDays } from "date-fns";
 import { List, CalendarDays, Clock, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { SessionRowActions } from "./SessionRowActions";
-import { TodayTopic } from "@/lib/syllabus-helpers";
+import { TodayTopic, getTodayTopic } from "@/lib/syllabus-helpers";
 
 type SessionData = {
   id: string;
@@ -15,6 +15,7 @@ type SessionData = {
   tutorId: string;
   isCompleted: boolean;
   tutor: { name: string };
+  topicOffset?: number;
 };
 
 type TutorOption = { id: string; name: string };
@@ -285,8 +286,8 @@ export function ActiveSessionsView({
                                         </div>
                                       </div>
                                     </div>
-                                    <h4 className="text-xs font-bold text-slate-900 leading-tight">
-                                      {s.title}
+                                    <h4 className="text-xs font-bold text-slate-900 leading-tight truncate" title={getTodayTopic(s.timeSlot, 1, (s.topicOffset || 0) + dIdx, s.date)?.topicTitle || s.title}>
+                                      {getTodayTopic(s.timeSlot, 1, (s.topicOffset || 0) + dIdx, s.date)?.topicTitle || s.title}
                                     </h4>
                                     <p className="text-[10px] font-medium text-slate-500 mt-0.5 border-t border-slate-100 pt-1.5 flex flex-col gap-1">
                                       <span>{s.tutor.name}</span>

@@ -58,6 +58,8 @@ export function getTodayTopic(
 
   const { name, shortName, data } = moduleInfo;
   
+  if (!data || data.length === 0) return null;
+  
   // Adjusted meeting count includes the offset
   const adjustedMeetingCount = meetingCount + offset;
   const safeCount = Math.max(1, adjustedMeetingCount);

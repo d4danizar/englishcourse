@@ -14,6 +14,7 @@ type SessionData = {
   programType: string;
   tutorId: string;
   isCompleted: boolean;
+  topicOffset?: number;
 };
 
 type TutorOption = { id: string; name: string };
@@ -54,6 +55,7 @@ export function SessionRowActions({
   const [editTimeSlot, setEditTimeSlot] = useState(session.timeSlot);
   const [editProgramType, setEditProgramType] = useState(session.programType);
   const [editTutorId, setEditTutorId] = useState(session.tutorId);
+  const [editTopicOffset, setEditTopicOffset] = useState(session.topicOffset || 0);
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this session? All attendance records will also be deleted.")) {
@@ -73,6 +75,7 @@ export function SessionRowActions({
       formData.set("timeSlot", editTimeSlot);
       formData.set("programType", editProgramType);
       formData.set("tutorId", editTutorId);
+      formData.set("topicOffset", editTopicOffset.toString());
       const res = await updateSession(formData);
       if (res.error) {
         alert(res.error);
@@ -258,6 +261,24 @@ export function SessionRowActions({
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Topic Offset */}
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                  <BookOpen className="w-3 h-3" /> Offset Materi
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editTopicOffset}
+                  onChange={(e) => setEditTopicOffset(parseInt(e.target.value) || 0)}
+                  className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  placeholder="0 = Materi Pertama"
+                />
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  0 = Materi Pertama. Gunakan ini untuk menyesuaikan kelas yang sudah berjalan jauh.
+                </p>
               </div>
               </div>
             </div>

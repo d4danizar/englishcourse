@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { redirect } from "next/navigation";
 import { getStudentUpcomingSchedules } from "./actions";
-import { CalendarDays, Clock, User } from "lucide-react";
+import { CalendarDays, Clock, User, BookOpen } from "lucide-react";
 import { format } from "date-fns";
+import { getTodayTopic } from "@/lib/syllabus-helpers";
 
 export default async function StudentSchedulesPage() {
   const sessionUser = await getServerSession(authOptions);
@@ -40,7 +41,12 @@ export default async function StudentSchedulesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingSchedules.map((session) => (
+              {upcomingSchedules.map((session) => {
+                const dayOfWeek = new Date(session.date).getDay();
+                const dayIndex = dayOfWeek >= 1 && dayOfWeek <= 6 ? dayOfWeek - 1 : 0;
+                const topicObj = getTodayTopic(session.timeSlot, 1, (session.topicOffset || 0) + dayIndex, session.date);
+                
+                return (
                 <div 
                   key={session.id} 
                   className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md hover:border-indigo-200 transition-all flex flex-col"
@@ -51,9 +57,21 @@ export default async function StudentSchedulesPage() {
                         {session.programType}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 leading-tight">
-                      {session.title}
-                    </h3>
+                    {topicObj ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5 text-indigo-700">
+                           <BookOpen className="w-3.5 h-3.5" />
+                           <span className="text-xs font-bold uppercase tracking-widest">Topic #{topicObj.topicNumber}</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 leading-tight truncate" title={topicObj.topicTitle}>
+                          {topicObj.topicTitle}
+                        </h3>
+                      </div>
+                    ) : (
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight truncate" title={session.title}>
+                        {session.title}
+                      </h3>
+                    )}
                   </div>
                   
                   <div className="p-4 flex flex-col gap-3 flex-grow">
@@ -88,7 +106,7 @@ export default async function StudentSchedulesPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>

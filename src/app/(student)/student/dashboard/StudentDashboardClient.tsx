@@ -24,6 +24,7 @@ import { COMPANY_INFO } from "@/lib/constants/branding";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import FinalTaskSubmission from "./FinalTaskSubmission";
 import LeaveRequestForm from "./LeaveRequestForm";
+import { getTodayTopic } from "@/lib/syllabus-helpers";
 
 type ProfileContent = {
   id: string;
@@ -51,6 +52,7 @@ type AttendanceWithSession = {
     timeSlot: string;
     programType: string;
     tutor: { name: string };
+    topicOffset?: number;
   };
 };
 
@@ -344,6 +346,21 @@ export function StudentDashboardClient({
                             <h4 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
                               {att.session.title}
                             </h4>
+                            {(() => {
+                              const dayOfWeek = sessionDate.getDay();
+                              const dayIndex = dayOfWeek >= 1 && dayOfWeek <= 6 ? dayOfWeek - 1 : 0;
+                              const topic = getTodayTopic(att.session.timeSlot, 1, (att.session.topicOffset || 0) + dayIndex, sessionDate);
+                              if (topic) {
+                                return (
+                                  <div className="flex items-center gap-1.5 mt-1 bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md w-fit">
+                                    <BookOpen className="w-3 h-3" />
+                                    <span className="text-[10px] sm:text-xs font-bold">#{topic.topicNumber}</span>
+                                    <span className="text-[10px] sm:text-xs font-medium truncate max-w-[200px] sm:max-w-xs">{topic.topicTitle}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                             <div className="flex items-center gap-1.5 mt-2 text-sm font-medium text-slate-500">
                               <User className="w-3.5 h-3.5" />
                               <span className="truncate max-w-[150px] sm:max-w-xs">{att.session.tutor.name}</span>
