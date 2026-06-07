@@ -624,7 +624,7 @@ export function UsersClientView({
                 <th className="px-6 py-4">Phone Number</th>
                 <th className="px-6 py-4">Program</th>
                 <th className="px-6 py-4">Sesi / Batch</th>
-                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Start Date</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -661,8 +661,10 @@ export function UsersClientView({
                     <td className="px-6 py-4 text-sm font-medium text-slate-600">
                       {user.programBatch || user.batchSchedule || "-"}
                     </td>
-                    <td className="px-6 py-4">
-                      {getRoleBadge(user.role)}
+                    <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                      {user.startDate
+                        ? new Date(user.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : '-'}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-600">
                       {user.role === "STUDENT" ? (
