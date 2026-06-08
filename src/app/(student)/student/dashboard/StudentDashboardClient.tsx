@@ -15,7 +15,8 @@ import {
   FileText,
   Star,
   Award,
-  Settings
+  Settings,
+  BookOpen
 } from "lucide-react";
 import { getProgramGradingScale, calculatePredicate } from "@/lib/grading";
 import Link from "next/link";
