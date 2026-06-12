@@ -284,8 +284,9 @@ export function CheckoutForm({
 
   return (
     <form
+      translate="no"
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-8"
+      className="notranslate bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col gap-8"
     >
       {/* ── 1. Data Diri ────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-4">

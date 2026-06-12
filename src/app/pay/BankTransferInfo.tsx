@@ -8,7 +8,7 @@ export function BankTransferInfo({ showRegistrationFeeNote = false }: { showRegi
 
   const handleCopy = () => {
     if (typeof navigator !== "undefined") {
-      navigator.clipboard.writeText("3930719144");
+      navigator.clipboard.writeText("3931191762");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

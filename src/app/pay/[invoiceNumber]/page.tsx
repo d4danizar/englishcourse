@@ -2,6 +2,14 @@ import { prisma } from "../../../lib/prisma";
 import { notFound } from "next/navigation";
 import { CheckoutForm } from "./CheckoutForm";
 import { BankTransferInfo } from "../BankTransferInfo";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pendaftaran | Kampung Inggris",
+  other: {
+    google: "notranslate",
+  },
+};
 
 export default async function PaymentPage({
   params,
