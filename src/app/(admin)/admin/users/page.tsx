@@ -62,6 +62,14 @@ export default async function AdminUsersPage() {
     batchSchedule: user.enrollments?.[0]?.batchSchedule || null,
     totalLeaves: user.enrollments?.[0]?.leaveUsed ?? 0,
     referralCode: user.referralCode || null,
+    gender: user.gender || null,
+    discoverySource: user.discoverySource || null,
+    birthPlace: user.birthPlace || null,
+    birthDate: user.birthDate ? user.birthDate.toISOString() : null,
+    occupation: user.occupation || null,
+    address: user.address || null,
+    tshirtSize: user.enrollments?.[0]?.tshirtSize || null,
+    enrollmentStatus: user.enrollments?.[0]?.status || null,
   }));
 
   return <UsersClientView initialUsers={users} activeBranch={branchFilter.branch} offDays={serializedOffDays} />;

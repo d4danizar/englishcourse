@@ -46,6 +46,14 @@ type UserType = {
   batchSchedule: string | null;
   totalLeaves?: number;
   referralCode?: string | null;
+  gender?: string | null;
+  discoverySource?: string | null;
+  birthPlace?: string | null;
+  birthDate?: string | null;
+  occupation?: string | null;
+  address?: string | null;
+  tshirtSize?: string | null;
+  enrollmentStatus?: string | null;
 };
 
 // Shared endDate calculation logic (used by both Add and Edit forms)
@@ -262,6 +270,8 @@ export function UsersClientView({
 
   // State for export
   const [isExporting, setIsExporting] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [downloadProgramFilter, setDownloadProgramFilter] = useState("ALL");
 
   // Client-side Excel Export logic
   const handleExportExcel = async () => {
@@ -269,37 +279,79 @@ export function UsersClientView({
     try {
       // Lazy load xlsx to avoid huge bundle payload initially
       const XLSX = await import("xlsx");
-      const { getExportStudentsData } = await import("./export-actions");
 
-      const res = await getExportStudentsData();
-      if (!res?.success || !res?.data) {
-        throw new Error(res?.error || "Gagal mengambil data dari server");
+      // 1. Filter the users based on the modal selection
+      const filteredForExport = filteredUsers.filter(user => {
+        if (downloadProgramFilter === "ALL") return true;
+        const userProgram = user.activeProgram || "";
+        return userProgram.toLowerCase().includes(downloadProgramFilter.toLowerCase());
+      });
+
+      // 2. Map ALL data correctly
+      const exportData = filteredForExport.map(user => {
+        const formatDate = (dateValue: any) => {
+          if (!dateValue) return "-";
+          return new Date(dateValue).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+
+        return {
+          "Nama Lengkap": user.name || "-",
+          "Nomor HP": user.phoneNumber || "-",
+          "Email": user.email || "-",
+          "Gender": user.gender || "-",
+          "Tempat Lahir": user.birthPlace || "-",
+          "Tanggal Lahir": formatDate(user.birthDate),
+          "Pekerjaan": user.occupation || "-",
+          "Alamat": user.address || "-",
+          "Cabang": user.branch || "-",
+          "Cabang Sekunder": user.secondaryBranch || "-",
+          "Asal Info": user.discoverySource || "-",
+          "Kode Referral": user.referralCode || "-",
+          
+          // Enrollment Specific Data
+          "Program": user.activeProgram !== "-" ? user.activeProgram : "-",
+          "Durasi": user.durationOption || "-",
+          "Sesi / Batch": user.batchSchedule || user.programBatch || "-",
+          "Start Date": formatDate(user.startDate),
+          "End Date": formatDate(user.endDate),
+          "Ukuran Kaos": user.tshirtSize || "-",
+          "Status": user.enrollmentStatus || "-"
+        };
+      });
+
+      if (exportData.length === 0) {
+        throw new Error("Tidak ada data untuk diekspor sesuai filter saat ini.");
       }
 
-      const worksheet = XLSX.utils.json_to_sheet(res.data);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
 
       // Sizing columns for anti-dempet
       worksheet["!cols"] = [
-        { wch: 25 }, // Nomor Invoice
-        { wch: 15 }, // Status
         { wch: 25 }, // Nama Lengkap
+        { wch: 18 }, // Nomor HP
         { wch: 30 }, // Email
-        { wch: 18 }, // No. WA
-        { wch: 15 }, // Jenis Kelamin
-        { wch: 25 }, // TTL
-        { wch: 15 }, // Aktivitas
-        { wch: 20 }, // Tahu dari Mana
+        { wch: 15 }, // Gender
+        { wch: 20 }, // Tempat Lahir
+        { wch: 15 }, // Tanggal Lahir
+        { wch: 15 }, // Pekerjaan
+        { wch: 30 }, // Alamat
+        { wch: 15 }, // Cabang
+        { wch: 20 }, // Cabang Sekunder
+        { wch: 20 }, // Asal Info
+        { wch: 15 }, // Kode Referral
         { wch: 25 }, // Program
-        { wch: 25 }, // Detail Kelas
-        { wch: 18 }, // Jenis Pembayaran
-        { wch: 15 }, // Total Harga
-        { wch: 15 }, // Nominal Dibayar
-        { wch: 15 }, // Tanggal
+        { wch: 15 }, // Durasi
+        { wch: 20 }, // Sesi / Batch
+        { wch: 15 }, // Start Date
+        { wch: 15 }, // End Date
+        { wch: 15 }, // Ukuran Kaos
+        { wch: 15 }, // Status
       ];
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa");
       XLSX.writeFile(workbook, "Data_Siswa_KampungInggris.xlsx");
+      setIsDownloadModalOpen(false); // Close modal
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Gagal mengekspor data.");
@@ -538,7 +590,7 @@ export function UsersClientView({
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button 
-            onClick={handleExportExcel}
+            onClick={() => setIsDownloadModalOpen(true)}
             disabled={isExporting}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm disabled:opacity-50"
           >
@@ -972,6 +1024,59 @@ export function UsersClientView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Download Modal */}
+      {isDownloadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Download className="w-5 h-5 text-indigo-500" />
+                Download Data Siswa
+              </h2>
+              <button onClick={() => setIsDownloadModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Filter Program</label>
+              <select 
+                className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                value={downloadProgramFilter}
+                onChange={(e) => setDownloadProgramFilter(e.target.value)}
+              >
+                <option value="ALL">Semua Program (Yang tampil di tabel)</option>
+                <option value="Fullday">Fullday</option>
+                <option value="Holiday">Holiday Program</option>
+                <option value="Conversation">Conversation</option>
+                <option value="English for Kids">English for Kids</option>
+                <option value="Regular">Regular</option>
+                <option value="Asrama">Asrama</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-2">
+                Data yang didownload akan mengikuti pencarian dan tab filter yang sedang aktif, lalu disaring lagi berdasarkan program ini.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button 
+                onClick={() => setIsDownloadModalOpen(false)} 
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleExportExcel} 
+                disabled={isExporting}
+                className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isExporting ? <><Loader2 className="w-4 h-4 animate-spin"/> Mengekspor...</> : "Download Excel"}
+              </button>
+            </div>
           </div>
         </div>
       )}

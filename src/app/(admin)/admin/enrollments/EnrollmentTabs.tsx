@@ -5,6 +5,7 @@ import { Search, Loader2, X, RefreshCcw, User, Calendar, MapPin, Clock } from "l
 import Link from "next/link";
 import { renewStudent } from "../users/actions";
 import MedicalManifesto, { MedicalRecord } from "./MedicalManifesto";
+import { calculateInvoiceAmount } from "@/lib/utils/pricing";
 
 type InvoiceDP = {
   id: string;
@@ -79,17 +80,21 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
       alert("Harap pilih paket membership.");
       return;
     }
-    if (renewProgram !== "Membership" && (!renewDuration || !renewAmount)) {
-      alert("Harap lengkapi durasi dan nominal pembayaran.");
+    // Check if missing required fields for regular programs
+    if (renewProgram !== "Membership" && (!renewDuration)) {
+      alert("Harap lengkapi durasi.");
       return;
     }
 
     startTransition(async () => {
+      // Use dynamically calculated price
+      const basePrice = calculateInvoiceAmount(renewProgram, renewDuration);
+      
       const result = await renewStudent(renewingUser.id, {
         programType: renewProgram,
         startDate: new Date(renewStartDate),
         duration: renewProgram === "Membership" ? "" : renewDuration,
-        amount: renewProgram === "Membership" ? 0 : Number(renewAmount), // Pass raw base amount, backend handles deduction
+        amount: renewProgram === "Membership" ? 0 : basePrice, // Pass raw base amount, backend handles deduction
         paymentMethod: renewPaymentMethod,
         paymentType: paymentType,
         dpAmount: paymentType === "DP" ? Number(dpAmount) : undefined,
@@ -427,24 +432,32 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                 )}
 
                 {renewProgram !== "Membership" && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Harga Normal Program (Rp)</label>
-                    <input
-                      type="number"
-                      value={renewAmount}
-                      onChange={(e) => setRenewAmount(e.target.value ? Number(e.target.value) : "")}
-                      placeholder="Contoh: 500000"
-                      min={100000}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-                      required
-                    />
-                    {renewAmount !== "" && Number(renewAmount) >= 100000 && (
-                      <div className="mt-1 text-xs font-medium text-indigo-700 bg-indigo-50 p-2 rounded-lg border border-indigo-200">
-                        Total Tagihan Repeat Order: <strong>Rp {(Number(renewAmount) - 100000).toLocaleString("id-ID")}</strong> <br />
-                        <span className="text-indigo-600 opacity-80">(Otomatis dipotong biaya pendaftaran Rp 100.000)</span>
+                  (() => {
+                    const fullPrice = calculateInvoiceAmount(renewProgram, renewDuration);
+                    const isMembership = renewProgram.toLowerCase().includes("membership");
+                    const baseTuition = fullPrice > 0 && !isMembership ? fullPrice - 100000 : fullPrice;
+                    const finalCalculatedPrice = baseTuition;
+
+                    return baseTuition > 0 ? (
+                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                        <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Ringkasan Tagihan</h4>
+                        
+                        <div className="flex justify-between items-center text-sm text-gray-700 mb-1">
+                          <span>Biaya Program (Repeat Order):</span>
+                          <span>Rp {baseTuition.toLocaleString('id-ID')}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center pt-2 border-t border-blue-100 mt-2">
+                          <span className="font-bold text-slate-900 text-sm">Total Ditagihkan:</span>
+                          <span className="font-bold text-blue-700 text-lg">Rp {finalCalculatedPrice.toLocaleString('id-ID')}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    ) : (
+                      <div className="mt-4 text-sm text-amber-600 italic bg-amber-50 p-3 rounded-lg border border-amber-200">
+                        *Pilih Durasi untuk melihat total tagihan. Jika harga Rp 0, periksa pengaturan durasi program ini.
+                      </div>
+                    );
+                  })()
                 )}
 
                 <div className="flex flex-col gap-1.5">

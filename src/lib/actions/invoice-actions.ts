@@ -34,7 +34,25 @@ export async function createInvoice(
     const rnd = Math.floor(1000 + Math.random() * 9000);
     const invoiceNumber = `INV-${dateStr}-${rnd}`;
 
-    const totalAmount = calculateInvoiceAmount(programName, duration);
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { whatsapp: true }
+    });
+
+    if (!lead) return { error: "Lead tidak ditemukan." };
+
+    const existingUser = await prisma.user.findFirst({
+      where: { phoneNumber: lead.whatsapp, role: "STUDENT" }
+    });
+
+    let totalAmount = calculateInvoiceAmount(programName, duration);
+
+    const isMembership = programName.toLowerCase().includes("membership");
+    if (existingUser && !isMembership) {
+      totalAmount = totalAmount - 100000;
+      console.log(`[INFO] Repeat order detected for program ${programName}. Deducted 100.000 IDR registration fee.`);
+    }
+
     const paidAmount = paymentType === "FULL" ? totalAmount : dpAmount;
     const finalProgramName = duration ? `${programName} — ${duration}` : programName;
     const newAmountDue = totalAmount - paidAmount;

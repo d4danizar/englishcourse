@@ -33,18 +33,18 @@ export function calculateInvoiceAmount(
       basePrice = 1700000;
       break;
     case "Fullday":
-      if (duration === "1 Minggu") basePrice = 825000;
-      else if (duration === "2 Minggu") basePrice = 1500000;
-      else if (duration === "3 Minggu") basePrice = 1800000;
-      else if (duration === "1 Bulan") basePrice = 2100000;
-      else if (duration === "2 Bulan") basePrice = 3500000;
+      if (duration === "1 Minggu" || duration === "1_WEEK") basePrice = 825000;
+      else if (duration === "2 Minggu" || duration === "2_WEEKS") basePrice = 1500000;
+      else if (duration === "3 Minggu" || duration === "3_WEEKS") basePrice = 1800000;
+      else if (duration === "1 Bulan" || duration === "1_MONTH") basePrice = 2100000;
+      else if (duration === "2 Bulan" || duration === "2_MONTHS") basePrice = 3500000;
       break;
     case "Asrama":
-      if (duration === "1 Minggu") basePrice = 1000000;
-      else if (duration === "2 Minggu") basePrice = 1700000;
-      else if (duration === "3 Minggu") basePrice = 2200000;
-      else if (duration === "1 Bulan") basePrice = 2500000;
-      else if (duration === "2 Bulan") basePrice = 3950000;
+      if (duration === "1 Minggu" || duration === "1_WEEK") basePrice = 1000000;
+      else if (duration === "2 Minggu" || duration === "2_WEEKS") basePrice = 1700000;
+      else if (duration === "3 Minggu" || duration === "3_WEEKS") basePrice = 2200000;
+      else if (duration === "1 Bulan" || duration === "1_MONTH") basePrice = 2500000;
+      else if (duration === "2 Bulan" || duration === "2_MONTHS") basePrice = 3950000;
       break;
     case "Holiday Kids - Fullday":
     case "Holiday Teens - Fullday": {
