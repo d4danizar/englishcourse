@@ -13,6 +13,7 @@ type Invoice = {
   paidAmount?: number;
   status: string;
   paymentProof: string | null;
+  paymentMethod?: string | null;
   studentData?: any;
 };
 
