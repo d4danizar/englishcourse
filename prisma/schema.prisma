@@ -183,17 +183,18 @@ model Invoice {
 }
 
 model Cashflow {
-  id           String              @id @default(cuid())
-  type         TransactionType
-  category     TransactionCategory
-  amount       Int
-  description  String
-  date         DateTime            @default(now())
-  invoiceId    String?
-  recordedById String?
-  branch       BranchLocation      @default(KARTASURA)
-  invoice      Invoice?            @relation(fields: [invoiceId], references: [id])
-  recordedBy   User?               @relation(fields: [recordedById], references: [id])
+  id            String              @id @default(cuid())
+  type          TransactionType
+  category      TransactionCategory
+  amount        Int
+  description   String
+  date          DateTime            @default(now())
+  invoiceId     String?
+  recordedById  String?
+  branch        BranchLocation      @default(KARTASURA)
+  paymentMethod String?             // "CASH" or "TRANSFER" — immutable per transaction
+  invoice       Invoice?            @relation(fields: [invoiceId], references: [id])
+  recordedBy    User?               @relation(fields: [recordedById], references: [id])
 }
 
 model GlobalHoliday {

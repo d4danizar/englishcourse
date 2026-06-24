@@ -193,7 +193,7 @@ export function CheckoutForm({
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
 
-    let proofUrl = "CASH_PAYMENT";
+    let proofUrl: string | null = null; // null for cash — no fake string!
 
     if (paymentChannel === "TRANSFER") {
       const fileInput = document.getElementById("paymentProof") as HTMLInputElement;
@@ -244,7 +244,7 @@ export function CheckoutForm({
       })
     };
 
-    const res = await submitPaymentProof(invoiceId, studentData as any, proofUrl);
+    const res = await submitPaymentProof(invoiceId, studentData as any, proofUrl, paymentChannel);
     if (res?.success) {
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });

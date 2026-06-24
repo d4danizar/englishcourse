@@ -465,6 +465,7 @@ export async function renewStudent(
               invoiceId: invoice.id,
               branch: user.branch,
               recordedById: adminId,
+              paymentMethod: data.paymentMethod || "TRANSFER", // ✅ Preserve payment channel
             }
           });
         } else if (data.paymentType === "DP" && data.dpAmount) {
@@ -478,6 +479,7 @@ export async function renewStudent(
               invoiceId: invoice.id,
               branch: user.branch,
               recordedById: adminId,
+              paymentMethod: data.paymentMethod || "TRANSFER", // ✅ Preserve payment channel
             }
           });
         }

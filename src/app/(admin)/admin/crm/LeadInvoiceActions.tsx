@@ -117,9 +117,9 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
     });
   };
 
-  const handleApprove = (invoiceId: string) => {
+  const handleApprove = (invoiceId: string, paymentMethod: string) => {
     startTransition(async () => {
-      const res = await approvePayment(invoiceId);
+      const res = await approvePayment(invoiceId, paymentMethod);
       if (res.error) setError(res.error);
       else if (res.message) {
         setVerifyModalInv(null);
@@ -147,10 +147,20 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
     setApproveMsg(msg);
   };
 
-  const handleSettleOnSite = (invoiceId: string) => {
-    if (!confirm("Konfirmasi pelunasan tagihan secara on-site (Tunai/EDC)?")) return;
+  // Cash settlement — admin physically received cash. No prompt needed.
+  const handleSettleCash = (invoiceId: string) => {
+    if (!confirm("Konfirmasi: Admin telah menerima pembayaran TUNAI (Cash) dari siswa?")) return;
     startTransition(async () => {
-      const res = await settlePaymentOnSite(invoiceId);
+      const res = await settlePaymentOnSite(invoiceId, "CASH");
+      if (res.error) setError(res.error);
+    });
+  };
+
+  // Transfer settlement — admin confirms they received the transfer directly on-site.
+  const handleSettleTransfer = (invoiceId: string) => {
+    if (!confirm("Konfirmasi: Admin telah menerima pembayaran TRANSFER dari siswa?")) return;
+    startTransition(async () => {
+      const res = await settlePaymentOnSite(invoiceId, "TRANSFER");
       if (res.error) setError(res.error);
     });
   };
@@ -225,21 +235,40 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
 
             {/* If DP_PAID, show pelunasan actions */}
             {inv.status === "DP_PAID" && (
-              <div className="flex gap-2 pl-1 mt-1">
+              <div className="flex flex-wrap gap-2 pl-1 mt-1">
+                {/* 💵 CASH: Admin received cash directly — hardwired to CASH */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleSettleOnSite(inv.id);
+                    handleSettleCash(inv.id);
                   }}
                   disabled={isPending}
-                  className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 rounded-md text-[10px] font-semibold transition-colors disabled:opacity-50"
-                  title="Pelunasan On-Site / Tunai"
+                  className="flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-semibold transition-colors disabled:opacity-50"
+                  title="Pelunasan Tunai (Cash On-Site)"
                 >
-                  <Banknote className="w-3 h-3 text-emerald-600" />
-                  Lunas On-Site
+                  <Banknote className="w-3 h-3" />
+                  Lunas Cash
                 </button>
+
+                {/* 🏦 TRANSFER On-Site: Admin confirms they received a transfer directly — hardwired to TRANSFER */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSettleTransfer(inv.id);
+                  }}
+                  disabled={isPending}
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-md text-[10px] font-semibold transition-colors disabled:opacity-50"
+                  title="Pelunasan Transfer (Admin konfirmasi langsung)"
+                >
+                  <Link className="w-3 h-3" />
+                  Lunas Transfer
+                </button>
+
+                {/* 📋 Link Pelunasan: Sends student the form to upload their own transfer proof */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -250,9 +279,9 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                     alert("Link Pelunasan berhasil disalin!");
                   }}
                   className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 rounded-md text-[10px] font-semibold transition-colors"
-                  title="Copy link form pelunasan untuk ditransfer"
+                  title="Copy link form pelunasan untuk ditransfer (siswa upload sendiri)"
                 >
-                  <Link className="w-3 h-3 text-indigo-600" />
+                  <Copy className="w-3 h-3 text-indigo-500" />
                   Link Pelunasan
                 </button>
               </div>
@@ -591,7 +620,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
               </div>
 
               {/* Bukti Transfer / Pembayaran Tunai */}
-              {(verifyModalInv.studentData as any)?.paymentChannel === "CASH" ? (
+              {verifyModalInv.paymentMethod === "CASH" || (verifyModalInv.studentData as any)?.paymentChannel === "CASH" ? (
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4">
                   <h4 className="font-bold text-orange-800 mb-2">Pembayaran Tunai (Cash On-Site)</h4>
                   <label className="flex items-start gap-2 cursor-pointer">
@@ -623,7 +652,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                     )}
                   </h3>
                   <div className="bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center p-2 min-h-[200px]">
-                    {verifyModalInv.paymentProof && verifyModalInv.paymentProof !== "CASH_PAYMENT" ? (
+                    {verifyModalInv.paymentProof ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={verifyModalInv.paymentProof}
@@ -651,7 +680,10 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
               </button>
               <button
                 type="button"
-                onClick={() => handleApprove(verifyModalInv.id)}
+                onClick={() => {
+                  const method = (verifyModalInv.studentData as any)?.paymentChannel === "CASH" ? "CASH" : "TRANSFER";
+                  handleApprove(verifyModalInv.id, method);
+                }}
                 disabled={isPending || ((verifyModalInv.studentData as any)?.paymentChannel === "CASH" && !isCashConfirmed)}
                 className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm disabled:opacity-50 flex items-center gap-2"
               >

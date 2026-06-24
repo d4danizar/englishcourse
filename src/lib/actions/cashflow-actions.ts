@@ -51,10 +51,11 @@ export async function getFinanceStats(startDateStr: string, endDateStr: string) 
 
     const transactions = await (prisma as any).cashflow.findMany({
       where: { ...branchFilter, date: { gte: startDate, lte: endDate } },
+      take: 1000,
       orderBy: { date: "desc" },
       include: {
         recordedBy: { select: { name: true } },
-        invoice: { select: { invoiceNumber: true } }
+        invoice: { select: { invoiceNumber: true, paymentMethod: true } }
       },
     });
 

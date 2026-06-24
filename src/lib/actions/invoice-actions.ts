@@ -12,6 +12,21 @@ import { calculateEndDate } from "@/lib/offday-utils";
 
 const STAFF_ALLOWED = ["SUPER_ADMIN", "CS"];
 
+/**
+ * Normalizes any payment method string to strictly "CASH" or "TRANSFER".
+ * Prevents polluting the DB with values like "DP", "FULL", "CASH_ON_SITE", etc.
+ */
+function sanitizePaymentMethod(raw: string | null | undefined): "CASH" | "TRANSFER" {
+  const upper = String(raw || "").toUpperCase().trim();
+  if (upper.includes("CASH")) return "CASH";
+  if (upper.includes("TRANSFER")) return "TRANSFER";
+  // Log a warning if we receive an unexpected value
+  if (upper && !["CASH", "TRANSFER"].includes(upper)) {
+    console.warn(`[sanitizePaymentMethod] Unexpected value "${raw}" — falling back to TRANSFER.`);
+  }
+  return "TRANSFER"; // Safe default
+}
+
 // ── 1. Create Invoice (CS / SUPER_ADMIN) ─────────────────────────────────────
 export async function createInvoice(
   leadId: string,
@@ -68,8 +83,8 @@ export async function createInvoice(
         totalAmount,
         paidAmount,
         status: "PENDING",
-        paymentMethod: paymentType,
-        studentData: { paymentChannel },
+        paymentMethod: sanitizePaymentMethod(paymentChannel),
+        studentData: { paymentChannel, paymentType },
         branch: branchFilter.branch,
       },
     });
@@ -92,20 +107,33 @@ export async function submitPaymentProof(
     school: string;
     program: string;
   },
-  proofString: string
+  proofString: string | null,
+  paymentChannel: string = "TRANSFER"
 ) {
   try {
-    if (!invoiceId || !studentData.email || !studentData.whatsapp || !proofString) {
+    if (!invoiceId || !studentData.email || !studentData.whatsapp) {
       return { error: "Data tidak lengkap. Pastikan semua field wajib diisi." };
     }
 
-    // Update invoice: save student data + proof, change status
+    // Sanitize the payment channel — only "CASH" or "TRANSFER" allowed
+    const sanitizedMethod = sanitizePaymentMethod(paymentChannel);
+
+    // For TRANSFER: proof URL is required. For CASH: proof is null (no fake string).
+    if (sanitizedMethod === "TRANSFER" && !proofString) {
+      return { error: "Bukti transfer wajib diunggah untuk pembayaran Transfer." };
+    }
+
+    // Update invoice: save student data + proof, change status, and correctly record paymentMethod
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: {
         status: "WAITING_CONFIRMATION",
-        studentData: studentData as any,
-        paymentProof: proofString,
+        studentData: {
+          ...(studentData as any),
+          paymentChannel: sanitizedMethod, // also store inside JSON for reference
+        },
+        paymentMethod: sanitizedMethod,       // ✅ Clean CASH or TRANSFER in the column
+        paymentProof: sanitizedMethod === "TRANSFER" ? proofString : null, // ✅ null for cash, URL for transfer
         // Update programName from what student selected, if it differs
         programName: studentData.program || undefined,
       },
@@ -122,7 +150,7 @@ export async function submitPaymentProof(
 //    Transaction: Invoice → PAID + create Student User + Lead → CLOSED_WON
 // ── 3. Approve Payment (CS/SUPER_ADMIN) ──────────────────────────────────────
 //    Transaction: Invoice → PAID/DP_PAID + create Student User + Lead → CLOSED_WON
-export async function approvePayment(invoiceId: string) {
+export async function approvePayment(invoiceId: string, paymentMethod: string = "TRANSFER") {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Sesi tidak valid." };
@@ -153,10 +181,17 @@ export async function approvePayment(invoiceId: string) {
     const cashflowCount = await prisma.cashflow.count({ where: { invoiceId: invoice.id } });
     const isPelunasanVerify = cashflowCount > 0 && invoice.paidAmount < invoice.totalAmount;
 
-    let newStatus = invoice.paymentMethod === "DP" ? "DP_PAID" : "PAID";
+    // Parse the existing studentData JSON early
+    let studentDataObj: any = typeof invoice.studentData === 'string' 
+      ? JSON.parse(invoice.studentData as string) 
+      : invoice.studentData || {};
+
+    const isDP = studentDataObj.paymentType === "DP" || (invoice.paidAmount > 0 && invoice.paidAmount < invoice.totalAmount);
+
+    let newStatus = isDP ? "DP_PAID" : "PAID";
     let amountToLog = invoice.paidAmount;
     let finalPaidAmount = invoice.paidAmount;
-    let paymentLabel = invoice.paymentMethod === "DP" ? "Pembayaran DP" : "Pelunasan";
+    let paymentLabel = isDP ? "Pembayaran DP" : "Pelunasan";
 
     if (isPelunasanVerify) {
       newStatus = "PAID";
@@ -166,9 +201,27 @@ export async function approvePayment(invoiceId: string) {
     }
 
     // Tentukan kategori cashflow secara dinamis
-    let cashflowCategory = invoice.paymentMethod === "DP" ? "DP" : "PELUNASAN";
+    let cashflowCategory = isDP ? "DP" : "PELUNASAN";
     if (isPelunasanVerify) {
       cashflowCategory = "PELUNASAN";
+    }
+
+    const oldMethod = invoice.paymentMethod;
+    // Sanitize: ensure we only ever write "CASH" or "TRANSFER" to the DB
+    const newMethod = sanitizePaymentMethod(paymentMethod);
+
+    if (isPelunasanVerify && oldMethod && oldMethod !== newMethod) {
+      const mixNote = `DP via ${oldMethod}, Pelunasan via ${newMethod}`;
+      const existingNotes = studentDataObj.notes || "";
+      if (!existingNotes.includes(mixNote)) {
+        studentDataObj.notes = existingNotes ? `${existingNotes} | ${mixNote}` : mixNote;
+      }
+    } else if (invoice.paidAmount === 0 && !isPelunasanVerify) {
+      const mixNote = `Pembayaran via ${newMethod}`;
+      const existingNotes = studentDataObj.notes || "";
+      if (!existingNotes.includes(mixNote)) {
+        studentDataObj.notes = existingNotes ? `${existingNotes} | ${mixNote}` : mixNote;
+      }
     }
 
     // Atomic transaction: 4 operations
@@ -179,7 +232,8 @@ export async function approvePayment(invoiceId: string) {
         data: {
           status: newStatus as any,
           paidAmount: finalPaidAmount,
-          paymentMethod: invoice.paymentMethod ?? "MANUAL_TRANSFER",
+          paymentMethod: newMethod,
+          studentData: studentDataObj,
         },
       });
 
@@ -193,6 +247,7 @@ export async function approvePayment(invoiceId: string) {
           invoiceId: invoice.id,
           recordedById: (session.user as any)?.id || null,
           branch: invoice.branch,
+          paymentMethod: newMethod, // ✅ Permanently records CASH or TRANSFER at time of transaction
         } as any
       });
 
@@ -401,7 +456,7 @@ export async function approvePayment(invoiceId: string) {
 }
 
 // ── 4. Settle Payment On-Site (CS) ───────────────────────────────────────────
-export async function settlePaymentOnSite(invoiceId: string) {
+export async function settlePaymentOnSite(invoiceId: string, settlePaymentChannel: string = "CASH") {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Sesi tidak valid." };
@@ -425,13 +480,37 @@ export async function settlePaymentOnSite(invoiceId: string) {
     const { name: parsedName = "Siswa Baru" } = dataPayload;
     const studentName = invoice.lead?.name || (invoice as any).user?.name || parsedName || "Siswa";
 
+    const oldMethod = invoice.paymentMethod;
+    // Sanitize the incoming payment channel — "Lunas On-Site" can be CASH or TRANSFER
+    const newMethod = sanitizePaymentMethod(settlePaymentChannel);
+
+    // Parse the existing studentData JSON
+    let studentDataObj: any = typeof invoice.studentData === 'string' 
+      ? JSON.parse(invoice.studentData as string) 
+      : invoice.studentData || {};
+
+    if (invoice.paidAmount > 0 && oldMethod && oldMethod !== newMethod) {
+      const mixNote = `DP via ${oldMethod}, Pelunasan via ${newMethod}`;
+      const existingNotes = studentDataObj.notes || "";
+      if (!existingNotes.includes(mixNote)) {
+        studentDataObj.notes = existingNotes ? `${existingNotes} | ${mixNote}` : mixNote;
+      }
+    } else if (invoice.paidAmount === 0) {
+      const mixNote = `Pembayaran via ${newMethod}`;
+      const existingNotes = studentDataObj.notes || "";
+      if (!existingNotes.includes(mixNote)) {
+        studentDataObj.notes = existingNotes ? `${existingNotes} | ${mixNote}` : mixNote;
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.invoice.update({
         where: { id: invoiceId },
         data: {
           status: "PAID",
-          paymentMethod: "CASH_ON_SITE",
+          paymentMethod: newMethod,
           paidAmount: invoice.totalAmount, // Fully paid
+          studentData: studentDataObj,
         },
       });
 
@@ -444,6 +523,7 @@ export async function settlePaymentOnSite(invoiceId: string) {
           invoiceId: invoice.id,
           recordedById: (session.user as any)?.id || null,
           branch: invoice.branch,
+          paymentMethod: newMethod, // ✅ Permanently records CASH at time of settlement
         } as any
       });
     });
@@ -457,10 +537,14 @@ export async function settlePaymentOnSite(invoiceId: string) {
 }
 
 // ── 5. Submit Pelunasan Proof (Public) ───────────────────────────────────────
+// Public pelunasan form is ALWAYS a bank transfer (student uploads proof image).
 export async function submitPelunasanProof(invoiceId: string, proofUrl: string) {
   try {
     const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) return { error: "Invoice tidak ditemukan." };
+
+    // Public pelunasan = always TRANSFER (student uploads bank transfer proof)
+    const pelunasanMethod = "TRANSFER";
 
     // Set to WAITING_CONFIRMATION so CS can verify the pelunasan transfer
     await prisma.invoice.update({
@@ -468,6 +552,7 @@ export async function submitPelunasanProof(invoiceId: string, proofUrl: string) 
       data: {
         status: "WAITING_CONFIRMATION",
         paymentProof: proofUrl,
+        paymentMethod: pelunasanMethod, // ✅ Stamp TRANSFER — public form is always bank transfer
       },
     });
 

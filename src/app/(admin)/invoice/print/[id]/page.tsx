@@ -108,10 +108,6 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   } else if ((invoice.studentData as any)?.paymentChannel === "CASH") {
     paymentMethodText = "CASH";
   }
-  
-  if (isPelunasan && invoice.paymentProof && invoice.paymentMethod !== "CASH_ON_SITE") {
-    paymentMethodText = "TRANSFER";
-  }
 
   return (
     <div id="printable-invoice" className="p-8 w-full max-w-none mx-auto bg-white text-slate-800 font-sans relative print:p-8 print:m-0">

@@ -77,11 +77,15 @@ export default async function ScheduleManagementPage() {
   });
 
   // 2. Fetch all sessions with tutor info (Active Sessions, excluding null dates)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
   const sessions = await prisma.session.findMany({
     where: { 
       ...branchFilter,
-      date: { not: null } 
+      date: { not: null, gte: sixMonthsAgo } 
     },
+    take: 500,
     include: {
       tutor: { select: { name: true } },
       _count: { select: { attendances: true } },

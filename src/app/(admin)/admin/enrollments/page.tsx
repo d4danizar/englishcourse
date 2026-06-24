@@ -19,7 +19,16 @@ export default async function EnrollmentsPage() {
   // 1. Fetch DP Invoices
   const dpInvoicesRaw = await prisma.invoice.findMany({
     where: { status: "DP_PAID", ...branchFilter },
-    orderBy: { createdAt: "desc" }
+    take: 100,
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      programName: true,
+      totalAmount: true,
+      paidAmount: true,
+      studentData: true,
+    }
   });
 
   const dpInvoices = dpInvoicesRaw.map(inv => ({
@@ -38,9 +47,22 @@ export default async function EnrollmentsPage() {
   // 2. Fetch all students
   const rawUsers = await prisma.user.findMany({
     where: { role: "STUDENT", ...branchFilter },
-    include: {
+    take: 500,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      branch: true,
+      createdAt: true,
       enrollments: {
         orderBy: { startDate: "desc" },
+        take: 1,
+        select: {
+          programType: true,
+          status: true,
+          endDate: true,
+        }
       }
     },
     orderBy: { createdAt: "desc" }

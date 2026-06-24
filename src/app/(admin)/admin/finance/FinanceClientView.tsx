@@ -296,10 +296,30 @@ export function FinanceClientView() {
                       <td className="p-4 text-sm font-medium text-slate-700 whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
                       </td>
-                      <td className="p-4 text-xs font-bold whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded tracking-wide uppercase ${tx.type === "INCOME" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                          {tx.category.replace(/_/g, " ")}
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-1.5 items-start">
+                          {/* 1. ORIGINAL CATEGORY BADGE (Ensuring Sans-Serif font) */}
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold font-sans tracking-wide bg-emerald-100 text-emerald-800 uppercase">
+                            {tx.category || "UNKNOWN"}
+                          </span>
+
+                          {/* 2. DYNAMIC PAYMENT METHOD LABEL — own column first, invoice fallback for legacy */}
+                          {(() => {
+                            const methodString = (tx.paymentMethod || tx.invoice?.paymentMethod)?.toUpperCase();
+                            if (!methodString) return null;
+                            return (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-sans uppercase border ${
+                                methodString === 'CASH' 
+                                  ? 'bg-green-50 text-green-700 border-green-200' 
+                                  : methodString === 'TRANSFER'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-gray-50 text-gray-700 border-gray-200'
+                              }`}>
+                                {methodString === 'CASH' ? '💵 CASH' : methodString === 'TRANSFER' ? '🏦 TRANSFER' : methodString}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
                       <td className="p-4 text-sm font-medium text-slate-500">
                         {tx.invoice?.invoiceNumber ? (

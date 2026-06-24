@@ -36,7 +36,7 @@ export function TutorSidebar({
   return (
     <>
       {/* Mobile Top Navbar (Hamburger) */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+      <div className="lg:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-40 shadow-md">
         <div className="flex flex-col justify-center">
           <h1 className="text-white font-extrabold text-base tracking-wider leading-tight m-0">
             KAMPUNG INGGRIS
@@ -57,14 +57,14 @@ export function TutorSidebar({
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden animate-in fade-in"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden animate-in fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 min-w-[256px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:overflow-y-auto md:translate-x-0 border-r border-slate-800 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 min-w-[256px] bg-slate-900 text-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:translate-x-0 border-r border-slate-800 ${
           isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
@@ -83,7 +83,7 @@ export function TutorSidebar({
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="md:hidden p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg transition-colors"
             aria-label="Close Menu"
           >
             <X className="w-5 h-5" />

@@ -28,6 +28,7 @@ export default async function CRMPage({
 
   const leads = await prisma.lead.findMany({
     where: statusStr ? { status: statusStr as any, ...branchFilter } : { ...branchFilter },
+    take: 200,
     include: {
       invoices: {
         select: {
@@ -43,6 +44,7 @@ export default async function CRMPage({
           cashflows: { select: { id: true } },
         },
         orderBy: { createdAt: "desc" },
+        take: 5,
       },
     },
     orderBy: { createdAt: "desc" },
