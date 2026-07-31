@@ -46,17 +46,22 @@ export default async function TutorDashboardPage() {
     },
   });
 
-  // 2. Fetch upcoming sessions for this tutor (7 days)
-  const nextWeek = new Date(todayStart);
-  nextWeek.setDate(todayStart.getDate() + 7);
-  nextWeek.setHours(23, 59, 59, 999);
+  // 2. Fetch sessions for a wide window: 4 weeks back → 4 weeks ahead.
+  //    This gives the client-side weekly navigator enough data to scroll
+  //    backwards and forwards without an extra server round-trip.
+  const fourWeeksAgo = new Date(todayStart);
+  fourWeeksAgo.setDate(todayStart.getDate() - 28);
+
+  const fourWeeksAhead = new Date(todayStart);
+  fourWeeksAhead.setDate(todayStart.getDate() + 28);
+  fourWeeksAhead.setHours(23, 59, 59, 999);
 
   const upcomingSessionsRaw = await prisma.session.findMany({
     where: {
       tutorId,
       date: {
-        gte: todayStart,
-        lte: nextWeek,
+        gte: fourWeeksAgo,
+        lte: fourWeeksAhead,
       },
     },
     orderBy: [

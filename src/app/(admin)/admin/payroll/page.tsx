@@ -3,93 +3,133 @@ import { PayrollClientView } from "./PayrollClientView";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
+import { startOfMonth, endOfMonth } from "date-fns";
 
-export default async function AdminPayrollPage() {
-  await getServerSession(authOptions); // Ensure access
+type SearchParams = { [key: string]: string | string[] | undefined };
 
-  // --- PRISMA QUERY LOGIC FOR FLAT RATE PAYROLL & REFERRALS ---
-  // 1. Get start and end of current month
+export default async function AdminPayrollPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  await getServerSession(authOptions);
+
+  // ── 1. Parse month & year from URL — fallback to current month/year ─────────
+  const resolvedParams = await searchParams;
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+  const rawMonth = resolvedParams?.month;
+  const rawYear  = resolvedParams?.year;
+
+  const selectedMonth = rawMonth
+    ? Math.min(12, Math.max(1, parseInt(String(rawMonth), 10)))
+    : now.getMonth() + 1;
+
+  const selectedYear = rawYear
+    ? parseInt(String(rawYear), 10)
+    : now.getFullYear();
+
+  const referenceDate = new Date(selectedYear, selectedMonth - 1, 1);
+  const periodStart   = startOfMonth(referenceDate);
+  const periodEnd     = endOfMonth(referenceDate);
+
+  // ── 2. Branch filter ────────────────────────────────────────────────────────
   const branchFilter = await getBranchFilter();
 
-  // 2. Query: Get all staff eligible for teaching or referral bonuses
+  // ── 3. Query: all staff + their completed sessions in the selected period ────
   const rawStaff = await prisma.user.findMany({
-    where: { 
-      role: { in: ["TUTOR", "CS", "MARKETING", "MANAGER", "SUPER_ADMIN"] }, 
+    where: {
+      role: { in: ["TUTOR", "CS", "MARKETING", "MANAGER", "SUPER_ADMIN"] },
       OR: [
         { ...branchFilter },
-        { secondaryBranch: branchFilter.branch }
-      ]
+        { secondaryBranch: branchFilter.branch },
+      ],
     },
     include: {
       sessionsTaught: {
         where: {
           isCompleted: true,
           date: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        }
-      }
-    }
+            gte: periodStart,
+            lte: periodEnd,
+          },
+        },
+        // Select only the fields we need — avoids over-fetching
+        select: {
+          id: true,
+          date: true,
+          timeSlot: true,
+          title: true,
+          programType: true,
+        },
+        orderBy: { date: "asc" },
+      },
+    },
   });
 
-  // 3. Calculate FLAT RATE payroll and REFERRAL Bonus
-  const PAY_PER_SESSION = 30000;
+  // ── 4. Calculate FLAT RATE payroll and REFERRAL Bonus ──────────────────────
+  const PAY_PER_SESSION  = 30000;
   const PAY_PER_REFERRAL = 50000;
 
-  const payrollDataUnsorted = await Promise.all(rawStaff.map(async (staff) => {
-    // Teaching Pay Calculation
-    const totalSessions = staff.sessionsTaught.length;
-    const teachingPay = totalSessions * PAY_PER_SESSION;
-    
-    // Referral Bonus Calculation
-    let referralCount = 0;
-    if (staff.referralCode) {
-      referralCount = await prisma.enrollment.count({
-        where: {
-          referralCodeUsed: staff.referralCode,
-          programType: { contains: "Membership", mode: "insensitive" },
-          createdAt: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        }
-      });
-    }
-    const referralBonus = referralCount * PAY_PER_REFERRAL;
-    
-    // Grand Total
-    const grandTotal = teachingPay + referralBonus;
+  const payrollDataUnsorted = await Promise.all(
+    rawStaff.map(async (staff) => {
+      // Teaching Pay Calculation
+      const totalSessions = staff.sessionsTaught.length;
+      const teachingPay   = totalSessions * PAY_PER_SESSION;
 
-    // Status logic (If grandTotal > 0, it's Pending. Otherwise No Pay)
-    const status = grandTotal === 0 ? "No Pay" : "Pending";
+      // Referral Bonus Calculation
+      let referralCount = 0;
+      if (staff.referralCode) {
+        referralCount = await prisma.enrollment.count({
+          where: {
+            referralCodeUsed: staff.referralCode,
+            programType: { contains: "Membership", mode: "insensitive" },
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+        });
+      }
+      const referralBonus = referralCount * PAY_PER_REFERRAL;
 
-    return {
-      id: staff.id,
-      name: staff.name,
-      role: staff.role,
-      totalSessions,
-      teachingPay,
-      referralCount,
-      referralBonus,
-      grandTotal,
-      status
-    };
-  }));
+      const grandTotal = teachingPay + referralBonus;
+      const status     = grandTotal === 0 ? "No Pay" : "Pending";
 
-  // Filter out people who have 0 sessions AND 0 referrals so they don't clutter the UI
-  // Unless you want everyone to show up. It's usually better to only show people who earn something
-  // Or show everyone. Let's show everyone who has at least some activity or is a TUTOR
-  const payrollDataFiltered = payrollDataUnsorted.filter(
-    (item) => item.grandTotal > 0 || item.role === "TUTOR"
+      // Serialize Date → ISO string so the Client Component receives plain objects
+      const sessionDetails = staff.sessionsTaught.map((s) => ({
+        id:          s.id,
+        date:        s.date ? s.date.toISOString() : null,
+        timeSlot:    s.timeSlot ?? "",
+        title:       s.title,
+        programType: s.programType,
+      }));
+
+      return {
+        id: staff.id,
+        name: staff.name,
+        role: staff.role,
+        totalSessions,
+        teachingPay,
+        referralCount,
+        referralBonus,
+        grandTotal,
+        status,
+        sessionDetails, // ← new: array of completed sessions for this staff member
+      };
+    })
   );
 
-  // Sort descending by highest grand total
-  payrollDataFiltered.sort((a, b) => b.grandTotal - a.grandTotal);
+  // ── 5. Filter & sort ────────────────────────────────────────────────────────
+  const payrollDataFiltered = payrollDataUnsorted
+    .filter((item) => item.grandTotal > 0 || item.role === "TUTOR")
+    .sort((a, b) => b.grandTotal - a.grandTotal);
 
-  return <PayrollClientView payrollData={payrollDataFiltered} />;
+  return (
+    <PayrollClientView
+      payrollData={payrollDataFiltered}
+      selectedMonth={selectedMonth}
+      selectedYear={selectedYear}
+    />
+  );
 }
