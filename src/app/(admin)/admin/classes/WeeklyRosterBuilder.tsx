@@ -21,27 +21,17 @@ type TutorOption = {
   name: string;
 };
 
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
+
 const TIME_SLOTS = [
-  { time: "08:00 - 09:30", program: "Conversation" },
-  { time: "10:00 - 11:30", program: "Conversation" },
-  { time: "12:30 - 14:00", program: "Conversation" },
-  { time: "14:30 - 16:00", program: "Conversation" },
-  { time: "18:30 - 20:00", program: "Conversation" },
+  ...CLASS_TIME_SLOTS.map(time => ({ time, program: "Conversation" })),
   { time: "14:30 - 16:00", program: "EFK" },
   { time: "16:30 - 18:00", program: "EFK" },
   { time: "14:30 - 16:00", program: "EFT" },
   { time: "16:30 - 18:00", program: "EFT" },
-  { time: "08:00 - 09:30", program: "Holiday Kids" },
-  { time: "10:00 - 11:30", program: "Holiday Kids" },
-  { time: "12:30 - 14:00", program: "Holiday Kids" },
-  { time: "14:30 - 16:00", program: "Holiday Kids" },
-  { time: "18:30 - 20:00", program: "Holiday Kids" },
-  { time: "08:00 - 09:30", program: "Holiday Teens" },
-  { time: "10:00 - 11:30", program: "Holiday Teens" },
-  { time: "12:30 - 14:00", program: "Holiday Teens" },
-  { time: "14:30 - 16:00", program: "Holiday Teens" },
-  { time: "18:30 - 20:00", program: "Holiday Teens" },
-] as const;
+  ...CLASS_TIME_SLOTS.map(time => ({ time, program: "Holiday Kids" })),
+  ...CLASS_TIME_SLOTS.map(time => ({ time, program: "Holiday Teens" })),
+];
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ROOM_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];

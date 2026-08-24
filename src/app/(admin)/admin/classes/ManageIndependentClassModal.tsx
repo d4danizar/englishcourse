@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { X, Loader2, CalendarClock, Edit2, Check, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { updateSessionSchedule } from "./actions";
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
 
 type SessionOption = {
   id: string;
@@ -108,16 +109,9 @@ export function ManageIndependentClassModal({ isOpen, onClose, classGroup }: Pro
                           onChange={(e) => setEditTimeSlot(e.target.value)}
                           className="p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
-                          <option value="06:00 - 07:30">06:00 - 07:30</option>
-                          <option value="08:00 - 09:30">08:00 - 09:30</option>
-                          <option value="10:00 - 11:30">10:00 - 11:30</option>
-                          <option value="12:30 - 14:00">12:30 - 14:00</option>
-                          <option value="13:00 - 14:30">13:00 - 14:30</option>
-                          <option value="14:30 - 16:00">14:30 - 16:00</option>
-                          <option value="15:00 - 16:30">15:00 - 16:30</option>
-                          <option value="16:30 - 18:00">16:30 - 18:00</option>
-                          <option value="18:30 - 20:00">18:30 - 20:00</option>
-                          <option value="19:00 - 20:30">19:00 - 20:30</option>
+                          {CLASS_TIME_SLOTS.map(time => (
+                            <option key={time} value={time}>{time}</option>
+                          ))}
                         </select>
                       </div>
                     </div>

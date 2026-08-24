@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { createUser, editUser, resetPassword, deleteUser, renewStudent } from "./actions";
 import { ActionDropdown } from "../../../../components/ui/ActionDropdown";
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
 import { calculateExtendedEndDate } from "@/lib/utils/academic-calendar";
 import { calculateEndDate as calculateEndDateServer } from "@/lib/offday-utils";
 import { CollapsibleBulkImport } from "./CollapsibleBulkImport";
@@ -470,11 +471,9 @@ export function UsersClientView({
             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
           >
             <option value="">Select session...</option>
-            <option value="08:00 - 09:30">08:00 - 09:30</option>
-            <option value="10:00 - 11:30">10:00 - 11:30</option>
-            <option value="12:30 - 14:00">12:30 - 14:00</option>
-            <option value="14:30 - 16:00">14:30 - 16:00</option>
-            <option value="18:30 - 20:00">18:30 - 20:00</option>
+            {CLASS_TIME_SLOTS.map((time) => (
+              <option key={time} value={time}>{time}</option>
+            ))}
           </select>
         </div>
       )}

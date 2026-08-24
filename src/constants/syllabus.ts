@@ -43,10 +43,11 @@ export const TOPIC_DISCUSSION_2 = [
 // Helper maps
 export const TIMESLOT_TO_SESSION: Record<string, number> = {
   "08:00 - 09:30": 1,
-  "09:30 - 11:00": 2,
-  "13:00 - 14:30": 3,
+  "10:00 - 11:30": 2,
+  "12:30 - 14:00": 3,
   "14:30 - 16:00": 4,
-  "16:00 - 17:30": 5, // Mengulang Modul 1
+  "16:30 - 18:00": 5, // Mengulang Modul 1
+  "18:30 - 20:00": 6,
 };
 
 export const SESSION_MODULE_MAP: Record<number, { name: string, shortName: string, data: string[] }> = {
@@ -55,4 +56,5 @@ export const SESSION_MODULE_MAP: Record<number, { name: string, shortName: strin
   3: { name: "Telling Picture", shortName: "TP", data: TELLING_PICTURE },
   4: { name: "Topic Discussion 2", shortName: "TD2", data: TOPIC_DISCUSSION_2 },
   5: { name: "Topic Discussion 1", shortName: "TD1", data: TOPIC_DISCUSSION_1 },
+  6: { name: "Listening", shortName: "LST", data: LISTENING },
 };

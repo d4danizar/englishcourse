@@ -19,14 +19,8 @@ type SessionData = {
 
 type TutorOption = { id: string; name: string };
 
-const TIME_SLOTS = [
-  "08:00 - 09:30",
-  "10:00 - 11:30",
-  "12:30 - 14:00",
-  "14:30 - 16:00",
-  "16:30 - 18:00",
-  "18:30 - 20:00",
-];
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
+const TIME_SLOTS = CLASS_TIME_SLOTS;
 
 const PROGRAM_TYPES = [
   "Conversation", "EFK", "EFT", "Private", "TOEFL Prep", "English on Saturday",

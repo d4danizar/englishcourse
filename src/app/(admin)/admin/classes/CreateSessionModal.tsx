@@ -9,14 +9,8 @@ type TutorOption = {
   name: string;
 };
 
-const TIME_SLOTS = [
-  "06:00 - 07:30",
-  "08:00 - 09:30",
-  "10:00 - 11:30",
-  "13:00 - 14:30",
-  "15:00 - 16:30",
-  "19:00 - 20:30",
-];
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
+const TIME_SLOTS = CLASS_TIME_SLOTS;
 
 const PROGRAM_TYPES = [
   "Conversation",

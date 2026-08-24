@@ -24,13 +24,8 @@ const PROGRAMS = [
   "Holiday Teens - Camp",
 ] as const;
 
-const SESSION_OPTIONS = [
-  "08:00 - 09:30",
-  "10:00 - 11:30",
-  "12:30 - 14:00",
-  "14:30 - 16:00",
-  "18:30 - 20:00",
-];
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
+const TIME_SLOTS = CLASS_TIME_SLOTS;
 
 const DURATION_OPTIONS = ["1 Minggu", "2 Minggu", "3 Minggu", "1 Bulan", "2 Bulan"];
 const NEEDS_DETAIL = ["Regular", "Fullday", "Asrama"];
@@ -386,7 +381,7 @@ export function CheckoutForm({
             <FieldWrap label="Pilih Sesi" required error={errors.programDetail?.message}>
               <select {...register("programDetail")} className={inputCls}>
                 <option value="">-- Pilih sesi --</option>
-                {SESSION_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                {TIME_SLOTS.map((s) => <option key={s}>{s}</option>)}
               </select>
             </FieldWrap>
           )}

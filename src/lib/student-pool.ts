@@ -136,10 +136,10 @@ export async function getEligibleStudentsForSession(session: {
         return normTime.includes(normBatch) || normBatch.includes(normTime);
       }
       if (prog === "fullday") {
-        return session.timeSlot.trim().toLowerCase() !== "18:30 - 20:00";
+        return true; // Fullday can access any session now
       }
       if (prog === "asrama") {
-        return true;
+        return session.timeSlot.trim().toLowerCase() !== "16:30 - 18:00"; // Mandatory break in Sesi 5
       }
       return false;
     }
@@ -206,22 +206,22 @@ export async function getGlobalPoolForSession({
   if (normType === "CONVERSATION") {
     // Determine the nature of the timeslot
     const safeTimeSlot = timeSlot || "";
-    const isSesi1to4 = ["08:00 - 09:30", "10:00 - 11:30", "12:30 - 14:00", "14:30 - 16:00"].includes(
-      safeTimeSlot.trim()
-    );
-
+    
     // Convert timeslot to standard session name for Regular students
     let currentSessionName = "Sesi 1";
     if (safeTimeSlot.includes("10:00")) currentSessionName = "Sesi 2";
     if (safeTimeSlot.includes("12:30")) currentSessionName = "Sesi 3";
     if (safeTimeSlot.includes("14:30")) currentSessionName = "Sesi 4";
-    if (safeTimeSlot.includes("18:30")) currentSessionName = "Sesi 5";
+    if (safeTimeSlot.includes("16:30")) currentSessionName = "Sesi 5";
+    if (safeTimeSlot.includes("18:30")) currentSessionName = "Sesi 6";
 
     // Allowed Batches config
-    const allowedBatches = ["ASRAMA", currentSessionName]; // Everyone gets Asrama + their specific session
+    // Fullday gets access to ALL sessions.
+    const allowedBatches = ["FULLDAY", currentSessionName]; 
 
-    if (isSesi1to4) {
-      allowedBatches.push("FULLDAY"); // Fullday gets access to Sesi 1-4, but not Sesi 5
+    // Asrama MUST NOT be scheduled in Sesi 5 (mandatory break time)
+    if (currentSessionName !== "Sesi 5") {
+      allowedBatches.push("ASRAMA"); 
     }
 
     baseQuery.programBatch = { in: allowedBatches };

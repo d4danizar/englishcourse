@@ -36,18 +36,8 @@ const programStyles: Record<string, string> = {
 };
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // 1-6 mapping (0 is Sun)
-const TIME_SLOTS = [
-  "06:00 - 07:30",
-  "08:00 - 09:30",
-  "10:00 - 11:30",
-  "12:30 - 14:00",
-  "13:00 - 14:30",
-  "14:30 - 16:00",
-  "15:00 - 16:30",
-  "16:30 - 18:00",
-  "18:30 - 20:00",
-  "19:00 - 20:30",
-];
+import { CLASS_TIME_SLOTS } from "@/constants/schedules";
+const TIME_SLOTS = CLASS_TIME_SLOTS;
 
 export function ActiveSessionsView({
   sessions,

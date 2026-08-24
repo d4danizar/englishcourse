@@ -94,10 +94,10 @@ export async function getStudentUpcomingSchedules(studentId: string) {
         return normTime.includes(normBatch) || normBatch.includes(normTime);
       }
       if (prog === "fullday") {
-        return session.timeSlot.trim().toLowerCase() !== "18:30 - 20:00";
+        return true; // Fullday can access any session now
       }
       if (prog === "asrama") {
-        return true;
+        return session.timeSlot.trim().toLowerCase() !== "16:30 - 18:00"; // Mandatory break in Sesi 5
       }
       return false; // Not one of the above, can't see Conversation
     }
