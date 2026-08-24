@@ -6,6 +6,7 @@ import { addMarketingSource, updateLeadSource } from "@/lib/actions/lead-source-
 import { Plus, Download, Loader2, Search, BarChart2 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 type Lead = {
@@ -26,13 +27,27 @@ type MarketingSource = {
 export default function LeadSourceClient({
   initialLeads,
   initialSources,
+  currentPage,
+  totalPages,
 }: {
   initialLeads: Lead[];
   initialSources: MarketingSource[];
+  currentPage: number;
+  totalPages: number;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [sources, setSources] = useState<MarketingSource[]>(initialSources);
   const [isPending, startTransition] = useTransition();
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -294,8 +309,34 @@ export default function LeadSourceClient({
             </tbody>
           </table>
         </div>
-        <div className="bg-slate-50/80 p-4 border-t border-slate-200 text-xs font-medium text-slate-500 text-center sm:text-left">
-          Menampilkan {filteredLeads.length} lead
+        <div className="bg-slate-50/80 p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-xs font-medium text-slate-500">
+            Menampilkan {filteredLeads.length} lead di halaman ini
+          </span>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500 font-medium">
+                Halaman <span className="font-bold text-slate-700">{currentPage}</span> dari <span className="font-bold text-slate-700">{totalPages}</span>
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Sebelumnya
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

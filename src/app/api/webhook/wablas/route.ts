@@ -30,10 +30,16 @@ export async function POST(req: Request) {
       return ok();
     }
 
+    // ── Step 3: Validation & Delivery Report Filtering ─────────────────────────
+    // If it's a delivery report or an outbound message ping, drop it immediately.
+    if (body.status || body.is_outbound) {
+      console.log("⏭️  [Wablas v2] Skipped — outbound message or delivery report.");
+      return ok();
+    }
+
     const sender  = body.phone || body.sender || body.viewer;
     const message = (body.message || body.text || "").toString().trim();
 
-    // ── Step 3: Validation — drop silently on missing sender or empty message ─
     if (!sender || !message) {
       console.log("⏭️  [Wablas v2] Skipped — no sender or no message.");
       return ok();
@@ -50,9 +56,9 @@ export async function POST(req: Request) {
 
     // ── Step 5: Phone sanitisation ────────────────────────────────────────────
     const cleanPhoneNumber = senderStr.replace(/\D/g, "");
-    if (cleanPhoneNumber.length < 10) {
-      console.log(`⏭️  [Wablas v2] Skipped — invalid phone number: "${cleanPhoneNumber}"`);
-      return ok();
+    if (cleanPhoneNumber.length < 10 || cleanPhoneNumber.length > 14) {
+      console.log(`⏭️  [Wablas v2] Skipped — invalid phone number length (likely a system ID): "${cleanPhoneNumber}"`);
+      return NextResponse.json({ success: true, message: "Ignored: Invalid phone number length (likely a system ID)" }, { status: 200 });
     }
 
     // ── Step 6: Check for existing lead ──────────────────────────────────────

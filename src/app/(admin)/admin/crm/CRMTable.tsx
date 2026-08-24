@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lead, LeadStatus } from "@prisma/client";
 import { updateLeadStatus, deleteLead, createLead, updateLeadInfo } from "./actions";
 import { Plus, Trash2, Phone, MessageSquare, Filter, Pencil, Search } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { LeadInvoiceActions } from "./LeadInvoiceActions";
@@ -25,6 +25,7 @@ type LeadWithInvoices = Lead & {
 
 const STATUS_FILTERS = [
   { id: "ALL", label: "Semua Lead" },
+  { id: "WAITING_CONFIRMATION", label: "🚨 Butuh Verifikasi" },
   { id: "NEW", label: "Baru" },
   { id: "FOLLOW_UP", label: "Follow Up" },
   { id: "NEGOTIATION", label: "Negosiasi" },
@@ -32,20 +33,46 @@ const STATUS_FILTERS = [
   { id: "CLOSED_LOST", label: "Gagal (Lost)" },
 ];
 
-export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWithInvoices[], currentFilter: string }) {
+export function CRMTable({ 
+  initialLeads, 
+  currentFilter, 
+  currentPage, 
+  totalPages 
+}: { 
+  initialLeads: LeadWithInvoices[], 
+  currentFilter: string,
+  currentPage: number,
+  totalPages: number
+}) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
 
-  const filteredLeads = initialLeads.filter((lead) => {
-    if (!searchTerm) return true;
-    const lowerSearch = searchTerm.toLowerCase();
-    return (
-      lead.name.toLowerCase().includes(lowerSearch) ||
-      lead.whatsapp.includes(lowerSearch)
-    );
-  });
+  useEffect(() => {
+    const currentQ = searchParams.get("q") || "";
+    // Only push if the typed searchTerm differs from what's already in the URL
+    if (searchTerm === currentQ) return;
+
+    const delayDebounceFn = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchTerm) {
+        params.set("q", searchTerm);
+      } else {
+        params.delete("q");
+      }
+      params.delete("page"); // Reset to page 1 on new search
+      router.push(`${pathname}?${params.toString()}`);
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, pathname, router, searchParams]);
+
+  // Use initialLeads directly since filtering is now done on the server
+  const filteredLeads = initialLeads;
 
   // Form State
   const [name, setName] = useState("");
@@ -99,11 +126,23 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
   };
 
   const handleFilterClick = (statusFilter: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    // Reset to page 1 when changing filters
+    params.delete("page");
+    
     if (statusFilter === "ALL") {
-      router.push("/admin/crm");
+      params.delete("status");
     } else {
-      router.push(`/admin/crm?status=${statusFilter}`);
+      params.set("status", statusFilter);
     }
+    
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -183,7 +222,14 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
                     {format(new Date(lead.createdAt), "dd MMM yyyy, HH:mm", { locale: idLocale })}
                   </td>
                   <td className="py-4 px-6 font-medium text-slate-800 max-w-[200px] sm:max-w-[300px] truncate" title={lead.name}>
-                    {lead.name}
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">{lead.name}</span>
+                      {lead.invoices?.some(inv => inv.status === "WAITING_CONFIRMATION") && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 whitespace-nowrap border border-red-200">
+                          Butuh Verifikasi
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 px-6 font-medium whitespace-nowrap">
                     <a
@@ -253,6 +299,31 @@ export function CRMTable({ initialLeads, currentFilter }: { initialLeads: LeadWi
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/50 rounded-b-2xl">
+          <p className="text-sm text-slate-500 font-medium">
+            Halaman <span className="font-bold text-slate-700">{currentPage}</span> dari <span className="font-bold text-slate-700">{totalPages}</span>
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Sebelumnya
+            </button>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal Tambah Lead */}
       {isModalOpen && (
