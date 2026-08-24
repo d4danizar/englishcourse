@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Role, BranchLocation } from "@prisma/client";
 import { sanitizePhoneNumber, calculateLeaveQuota } from "@/lib/formatters";
 import { calculateEndDate } from "@/lib/offday-utils";
+import { calculateFinalPrice, getMembershipPackageDetails, REFERRAL_DISCOUNT } from "@/lib/utils/pricing";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -280,10 +281,10 @@ export async function validateReferralCode(code: string) {
       return { valid: false, error: "Kode promo tidak ditemukan." };
     }
 
-    // Assuming only STAFF/ADMIN/TUTOR have codes
+    // Discount amount is driven by the central pricing constant
     return { 
       valid: true, 
-      discount: 100000, 
+      discount: REFERRAL_DISCOUNT,
       ownerName: userWithCode.name 
     };
   } catch (error) {
@@ -309,6 +310,10 @@ export async function renewStudent(
   const adminId = (session?.user as any)?.id || null;
 
   try {
+    // ── Price Calculation (Single Source of Truth) ──────────────────────────
+    // For non-Membership programs the admin passes `data.amount` directly from
+    // the UI (which itself was calculated by the pricing engine on the client).
+    // For Membership, calculateFinalPrice handles package lookup + referral here.
     let finalAmount = data.amount || 0;
     let finalDuration = data.duration;
 
@@ -321,32 +326,17 @@ export async function renewStudent(
         throw new Error("Pendaftaran ditolak: Hanya alumni yang sudah lulus yang dapat mengambil program Membership.");
       }
 
-      switch (data.membershipPackage) {
-        case "1_Bulan": 
-          finalAmount = 750000; 
-          finalDuration = "1_MONTH"; 
-          break;
-        case "3_Plus_1_Bulan": 
-          finalAmount = 1250000; 
-          finalDuration = "4_MONTHS"; 
-          break;
-        case "6_Plus_1_Bulan": 
-          finalAmount = 1950000; 
-          finalDuration = "7_MONTHS"; 
-          break;
-        case "12_Plus_1_Bulan": 
-          finalAmount = 3100000; 
-          finalDuration = "13_MONTHS"; 
-          break;
-        default: 
-          throw new Error("Paket Membership tidak valid.");
-      }
+      const hasReferral = !!(data.referralCode && data.referralCode.trim() !== "");
 
-      if (data.referralCode && data.referralCode.trim() !== "") {
-        // Apply the exact 100,000 discount if a code is provided
-        const discountAmount = 100000;
-        finalAmount = finalAmount - discountAmount;
-      }
+      const { totalAmount: computedAmount, resolvedDuration } = calculateFinalPrice({
+        programName: data.programType,
+        membershipPackage: data.membershipPackage,
+        isRepeatOrder: true,    // Membership is always repeat — no registration fee
+        hasReferral,
+      });
+
+      finalAmount = computedAmount;
+      finalDuration = resolvedDuration;
     }
 
     const offDays = await prisma.offDay.findMany();

@@ -5,7 +5,7 @@ import { authOptions } from "../auth";
 import { prisma } from "../prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { calculateInvoiceAmount } from "../utils/pricing";
+import { calculateFinalPrice } from "../utils/pricing";
 import { nextMonday, addWeeks, addMonths } from "date-fns";
 import { getBranchFilter } from "@/lib/actions/branch-actions";
 import { calculateEndDate } from "@/lib/offday-utils";
@@ -60,13 +60,19 @@ export async function createInvoice(
       where: { phoneNumber: lead.whatsapp, role: "STUDENT" }
     });
 
-    let totalAmount = calculateInvoiceAmount(programName, duration);
-
     const isMembership = programName.toLowerCase().includes("membership");
-    if (existingUser && !isMembership) {
-      totalAmount = totalAmount - 100000;
-      console.log(`[INFO] Repeat order detected for program ${programName}. Deducted 100.000 IDR registration fee.`);
+    const isRepeatOrder = !!(existingUser && !isMembership);
+
+    const { totalAmount } = calculateFinalPrice({
+      programName,
+      duration,
+      isRepeatOrder,
+    });
+
+    if (isRepeatOrder) {
+      console.log(`[INFO] Repeat order detected for program "${programName}". Registration fee waived.`);
     }
+
 
     const paidAmount = paymentType === "FULL" ? totalAmount : dpAmount;
     const finalProgramName = duration ? `${programName} — ${duration}` : programName;

@@ -5,7 +5,7 @@ import { Search, Loader2, X, RefreshCcw, User, Calendar, MapPin, Clock } from "l
 import Link from "next/link";
 import { renewStudent } from "../users/actions";
 import MedicalManifesto, { MedicalRecord } from "./MedicalManifesto";
-import { calculateInvoiceAmount } from "@/lib/utils/pricing";
+import { calculateFinalPrice, REFERRAL_DISCOUNT } from "@/lib/utils/pricing";
 
 type InvoiceDP = {
   id: string;
@@ -85,16 +85,20 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
       alert("Harap lengkapi durasi.");
       return;
     }
-
     startTransition(async () => {
-      // Use dynamically calculated price
-      const basePrice = calculateInvoiceAmount(renewProgram, renewDuration);
-      
+      // Calculate the correct repeat-order price via the central pricing engine.
+      // isRepeatOrder: true → REGISTRATION_FEE is NOT added (alumni re-enrolling).
+      const { totalAmount: repeatOrderAmount } = calculateFinalPrice({
+        programName: renewProgram,
+        duration: renewDuration,
+        isRepeatOrder: true,
+      });
+
       const result = await renewStudent(renewingUser.id, {
         programType: renewProgram,
         startDate: new Date(renewStartDate),
         duration: renewProgram === "Membership" ? "" : renewDuration,
-        amount: renewProgram === "Membership" ? 0 : basePrice, // Pass raw base amount, backend handles deduction
+        amount: renewProgram === "Membership" ? 0 : repeatOrderAmount, // Membership amount calculated on server
         paymentMethod: renewPaymentMethod,
         paymentType: paymentType,
         dpAmount: paymentType === "DP" ? Number(dpAmount) : undefined,
@@ -383,16 +387,17 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                       {membershipPackage && (
                         <div className="mt-4 text-xs font-medium text-indigo-700 bg-indigo-100 p-3 rounded-lg border border-indigo-200">
                           Total Tagihan Membership: <strong>Rp {(() => {
-                            let basePrice = 0;
-                            if (membershipPackage === "1_Bulan") basePrice = 750000;
-                            else if (membershipPackage === "3_Plus_1_Bulan") basePrice = 1250000;
-                            else if (membershipPackage === "6_Plus_1_Bulan") basePrice = 1950000;
-                            else if (membershipPackage === "12_Plus_1_Bulan") basePrice = 3100000;
-                            
-                            if (renewReferralCode && renewReferralCode.trim().length > 0) {
-                              return (basePrice - 100000).toLocaleString("id-ID") + " (Diskon 100Rb)";
-                            }
-                            return basePrice.toLocaleString("id-ID");
+                            const hasReferral = renewReferralCode.trim().length > 0;
+                            const { totalAmount: previewTotal } = calculateFinalPrice({
+                              programName: "Membership",
+                              membershipPackage,
+                              isRepeatOrder: true,
+                              hasReferral,
+                            });
+                            const discountLabel = hasReferral
+                              ? ` (Diskon Rp ${REFERRAL_DISCOUNT.toLocaleString("id-ID")})`
+                              : "";
+                            return previewTotal.toLocaleString("id-ID") + discountLabel;
                           })()}</strong>
                         </div>
                       )}
@@ -433,18 +438,19 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
 
                 {renewProgram !== "Membership" && (
                   (() => {
-                    const fullPrice = calculateInvoiceAmount(renewProgram, renewDuration);
-                    const isMembership = renewProgram.toLowerCase().includes("membership");
-                    const baseTuition = fullPrice > 0 && !isMembership ? fullPrice - 100000 : fullPrice;
-                    const finalCalculatedPrice = baseTuition;
+                    const { totalAmount: finalCalculatedPrice } = calculateFinalPrice({
+                      programName: renewProgram,
+                      duration: renewDuration,
+                      isRepeatOrder: true,
+                    });
 
-                    return baseTuition > 0 ? (
+                    return finalCalculatedPrice > 0 ? (
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
                         <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Ringkasan Tagihan</h4>
                         
                         <div className="flex justify-between items-center text-sm text-gray-700 mb-1">
                           <span>Biaya Program (Repeat Order):</span>
-                          <span>Rp {baseTuition.toLocaleString('id-ID')}</span>
+                          <span>Rp {finalCalculatedPrice.toLocaleString('id-ID')}</span>
                         </div>
                         
                         <div className="flex justify-between items-center pt-2 border-t border-blue-100 mt-2">

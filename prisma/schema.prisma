@@ -19,11 +19,11 @@ model User {
   dashboardLayout    Json?
   classGroupId       String?
   branch             BranchLocation          @default(KARTASURA)
-  gender             String?
-  birthPlace         String?
   birthDate          DateTime?
-  occupation         String?
+  birthPlace         String?
   discoverySource    String?
+  gender             String?
+  occupation         String?
   address            String?
   secondaryBranch    BranchLocation?
   referralCode       String?                 @unique
@@ -42,21 +42,21 @@ model User {
 }
 
 model DescriptiveEvaluation {
-  id            String   @id @default(cuid())
-  fluency       String
-  pronunciation String
-  vocabulary    String
-  notes         String?
-  finalScore    Int?
+  id             String   @id @default(cuid())
+  fluency        String
+  pronunciation  String
+  vocabulary     String
+  notes          String?
+  studentId      String
+  tutorId        String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  finalScore     Int?
   listeningScore Int?
-  readingScore  Int?
-  writingScore  Int?
-  studentId     String
-  tutorId       String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  student       User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor         User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
+  readingScore   Int?
+  writingScore   Int?
+  student        User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor          User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -80,11 +80,11 @@ model ClassGroup {
   id            String         @id @default(cuid())
   name          String
   program       String
-  classType     String         @default("REGULAR")
-  totalSessions Int?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   branch        BranchLocation @default(KARTASURA)
+  classType     String         @default("REGULAR")
+  totalSessions Int?
   sessions      Session[]
   students      User[]
 }
@@ -117,19 +117,19 @@ model Announcement {
 }
 
 model Lead {
-  id         String         @id @default(cuid())
-  name       String
-  whatsapp   String
-  status     LeadStatus     @default(NEW)
-  notes      String?
-  tshirtSize String?
-  assigneeId String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  branch     BranchLocation @default(KARTASURA)
-  invoices   Invoice[]
-  assignee   User?          @relation("UserLeads", fields: [assigneeId], references: [id])
+  id              String         @id @default(cuid())
+  name            String
+  whatsapp        String
+  status          LeadStatus     @default(NEW)
+  notes           String?
+  assigneeId      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  branch          BranchLocation @default(KARTASURA)
+  tshirtSize      String?
   discoverySource String?
+  invoices        Invoice[]
+  assignee        User?          @relation("UserLeads", fields: [assigneeId], references: [id])
 }
 
 model MarketingSource {
@@ -192,7 +192,7 @@ model Cashflow {
   invoiceId     String?
   recordedById  String?
   branch        BranchLocation      @default(KARTASURA)
-  paymentMethod String?             // "CASH" or "TRANSFER" — immutable per transaction
+  paymentMethod String?
   invoice       Invoice?            @relation(fields: [invoiceId], references: [id])
   recordedBy    User?               @relation(fields: [recordedById], references: [id])
 }
@@ -206,28 +206,28 @@ model GlobalHoliday {
 }
 
 model Enrollment {
-  id               String    @id @default(cuid())
-  userId           String
-  programType      String
-  durationOption   String?
-  programBatch     String?
-  batchSchedule    String?
-  programStartDate DateTime?
-  startDate        DateTime
-  endDate          DateTime?
+  id                    String    @id @default(cuid())
+  userId                String
+  programType           String
+  durationOption        String?
+  programBatch          String?
+  batchSchedule         String?
+  programStartDate      DateTime?
+  startDate             DateTime
+  endDate               DateTime?
   leaveQuota            Int       @default(0)
   leaveUsed             Int       @default(0)
   totalLeaves           Int       @default(0)
   status                String    @default("ACTIVE")
-  referralCodeUsed      String?
-  tshirtSize            String?
-  finalVideoLink        String?
-  certificateScore      Float?
-  isCertificateApproved Boolean   @default(false)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Payment          Payment[]
+  referralCodeUsed      String?
+  certificateScore      Float?
+  finalVideoLink        String?
+  isCertificateApproved Boolean   @default(false)
+  tshirtSize            String?
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Payment               Payment[]
 }
 
 model DailyHomework {
@@ -255,15 +255,31 @@ model Payment {
   User          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model OffDay {
+  id          String   @id @default(cuid())
+  description String
+  endDate     DateTime
+  startDate   DateTime
+}
+
+model BonusTier {
+  id         String   @id @default(cuid())
+  minOmzet   Float
+  maxOmzet   Float?
+  percentage Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 enum Role {
   SUPER_ADMIN
   MANAGER
   CS
   MARKETING
   CREATOR
-  HEAD_TUTOR
   TUTOR
   STUDENT
+  HEAD_TUTOR
 }
 
 enum LeadStatus {
@@ -315,20 +331,4 @@ enum BranchLocation {
   KARTASURA
   CABANG_2
   CABANG_3
-}
-
-model OffDay {
-  id          String   @id @default(cuid())
-  description String
-  startDate   DateTime
-  endDate     DateTime
-}
-
-model BonusTier {
-  id         String   @id @default(cuid())
-  minOmzet   Float
-  maxOmzet   Float?
-  percentage Float
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 }
