@@ -55,44 +55,43 @@ export async function POST(req: Request) {
       return ok();
     }
 
-    // ── Step 6: Fetch existing notes (needed for atomic append) ───────────────
-    // A single lightweight SELECT by the unique `whatsapp` field.
-    // This read + the upsert below cannot race on *create* because the DB
-    // unique constraint on `whatsapp` ensures only one row is ever created.
-    const existing = await prisma.lead.findUnique({
+    // ── Step 6: Check for existing lead ──────────────────────────────────────
+    // `whatsapp` is not @unique in the schema so we use findFirst (not
+    // findUnique / upsert). The update targets the PK `id`, which is always
+    // unique, so there is no ambiguity on the update path.
+    const existingLead = await prisma.lead.findFirst({
       where:  { whatsapp: cleanPhoneNumber },
-      select: { notes: true },
+      select: { id: true, notes: true },
     });
 
     // ── Step 7: Build note strings ────────────────────────────────────────────
     const timestamp = new Date().toLocaleString("id-ID");
 
-    const createNotes = `[Pesan Awal - ${timestamp}]: ${message}`;
+    // ── Step 8: Create or update ──────────────────────────────────────────────
+    // UPDATE: only `notes` is written — `name`, `status`, and `branch` are
+    //         intentionally left untouched to preserve any admin edits.
+    // CREATE: sets a safe placeholder name; admin can rename from the CRM.
+    if (existingLead) {
+      const appendedNotes =
+        `${existingLead.notes ?? ""}\n\n[Pesan Baru - ${timestamp}]: ${message}`.trim();
 
-    const appendedNotes = existing
-      ? `${existing.notes ?? ""}\n\n[Pesan Baru - ${timestamp}]: ${message}`.trim()
-      : createNotes;
+      await prisma.lead.update({
+        where: { id: existingLead.id },
+        data:  { notes: appendedNotes },
+      });
+    } else {
+      await prisma.lead.create({
+        data: {
+          name:     `Lead WA - ${cleanPhoneNumber}`,
+          whatsapp: cleanPhoneNumber,
+          status:   "NEW",
+          branch:   validBranch,
+          notes:    `[Pesan Awal - ${timestamp}]: ${message}`,
+        },
+      });
+    }
 
-    // ── Step 8: Atomic upsert ─────────────────────────────────────────────────
-    // CREATE  → triggered when no lead with this whatsapp exists.
-    // UPDATE  → triggered when the lead already exists.
-    //           Only `notes` is updated; `name`, `status`, and `branch` are
-    //           intentionally preserved to avoid overwriting admin edits.
-    await prisma.lead.upsert({
-      where: { whatsapp: cleanPhoneNumber },
-      create: {
-        name:     `Lead WA - ${cleanPhoneNumber}`,
-        whatsapp: cleanPhoneNumber,
-        status:   "NEW",
-        branch:   validBranch,
-        notes:    createNotes,
-      },
-      update: {
-        notes: appendedNotes,
-      },
-    });
-
-    const action = existing ? "♻️  LEAD DIPERBARUI" : "🚀 LEAD BARU";
+    const action = existingLead ? "♻️  LEAD DIPERBARUI" : "🚀 LEAD BARU";
     console.log(`${action} [${validBranch}]: ${cleanPhoneNumber} — "${message.slice(0, 60)}"`);
 
     return ok();
