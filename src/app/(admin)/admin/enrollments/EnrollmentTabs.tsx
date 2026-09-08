@@ -92,6 +92,8 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
         programName: renewProgram,
         duration: renewDuration,
         isRepeatOrder: true,
+        membershipPackage: renewProgram === "Membership" ? membershipPackage : undefined,
+        hasReferral: renewProgram === "Membership" && (renewReferralCode?.trim().length > 0),
       });
 
       const result = await renewStudent(renewingUser.id, {
