@@ -81,7 +81,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
       return;
     }
     // Check if missing required fields for regular programs
-    if (renewProgram !== "Membership" && (!renewDuration)) {
+    if (renewProgram !== "Membership" && renewProgram !== "English on Saturday" && (!renewDuration)) {
       alert("Harap lengkapi durasi.");
       return;
     }
@@ -357,7 +357,14 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                     <option value="Holiday Teens - Camp">Holiday Teens - Camp</option>
                     <option value="Membership">Membership (Khusus Alumni - Max 14 Hari Pasca Lulus)</option>
                     <option value="TOEFL">TOEFL</option>
+                    <option value="English on Saturday">English on Saturday</option>
                   </select>
+
+                  {renewProgram === "English on Saturday" && (
+                    <div className="text-xs text-indigo-600 mt-1 italic">
+                      * Durasi otomatis diset untuk 8 pertemuan
+                    </div>
+                  )}
 
                   {renewProgram === "Membership" && (
                     <div className="mt-3 p-4 border border-blue-200 bg-blue-50 rounded-lg">
@@ -418,7 +425,7 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                   />
                 </div>
 
-                {renewProgram !== "Membership" && (
+                {renewProgram !== "Membership" && renewProgram !== "English on Saturday" && (
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Durasi</label>
                     <select
