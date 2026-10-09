@@ -17,6 +17,9 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
   });
   const tutorBranch = tutor?.branch;
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const students = await prisma.user.findMany({
     where: {
       role: "STUDENT",
@@ -24,7 +27,7 @@ export async function getStudentsForEvaluation(group: EvaluationGroup, tutorId: 
       enrollments: {
         some: {
           OR: [
-            { endDate: { gte: new Date() } },
+            { endDate: { gte: thirtyDaysAgo } },
             { endDate: null }
           ],
           ...(group === "EFK" || group === "EFT" || group === "Private"
@@ -67,36 +70,39 @@ export async function submitDescriptiveEvaluation(formData: FormData) {
   try {
     const tutorId = formData.get("tutorId") as string;
     const studentId = formData.get("studentId") as string;
-    const fluency = formData.get("fluency") as string;
-    const pronunciation = formData.get("pronunciation") as string;
-    const vocabulary = formData.get("vocabulary") as string;
-    const notes = formData.get("notes") as string;
-    const finalScoreStr = formData.get("finalScore") as string;
-    const finalScore = finalScoreStr ? parseInt(finalScoreStr) : null;
-    const listeningScoreStr = formData.get("listeningScore") as string;
-    const listeningScore = listeningScoreStr ? parseInt(listeningScoreStr) : null;
-    const readingScoreStr = formData.get("readingScore") as string;
-    const readingScore = readingScoreStr ? parseInt(readingScoreStr) : null;
-    const writingScoreStr = formData.get("writingScore") as string;
-    const writingScore = writingScoreStr ? parseInt(writingScoreStr) : null;
 
-    if (!tutorId || !studentId || !fluency || !pronunciation || !vocabulary) {
-      return { error: "Semua indikator penilaian wajid diisi." };
+    const parseScore = (key: string) => {
+      const val = formData.get(key) as string;
+      return val ? parseFloat(val) : null;
+    };
+
+    const data = {
+      tutorId,
+      studentId,
+      listeningScore: parseScore("listeningScore"),
+      speakingScore: parseScore("speakingScore"),
+      readingScore: parseScore("readingScore"),
+      pronunciationScore: parseScore("pronunciationScore"),
+      vocabularyScore: parseScore("vocabularyScore"),
+      
+      listeningNote: (formData.get("listeningNote") as string) || null,
+      speakingNote: (formData.get("speakingNote") as string) || null,
+      readingNote: (formData.get("readingNote") as string) || null,
+      pronunciationNote: (formData.get("pronunciationNote") as string) || null,
+      vocabularyNote: (formData.get("vocabularyNote") as string) || null,
+
+      strengths: (formData.get("strengths") as string) || null,
+      improvements: (formData.get("improvements") as string) || null,
+      nextTarget: (formData.get("nextTarget") as string) || null,
+      tutorNote: (formData.get("tutorNote") as string) || null,
+    };
+
+    if (!tutorId || !studentId) {
+      return { error: "Data tutor atau siswa tidak lengkap." };
     }
 
     await prisma.descriptiveEvaluation.create({
-      data: {
-        tutorId,
-        studentId,
-        fluency,
-        pronunciation,
-        vocabulary,
-        notes: notes || null,
-        finalScore,
-        listeningScore,
-        readingScore,
-        writingScore,
-      }
+      data: data
     });
 
     revalidatePath("/tutor/evaluations");

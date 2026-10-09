@@ -22,7 +22,10 @@ export default async function EvaluationsPage() {
       </div>
 
       {/* Main Content (Interactive Client) */}
-      <EvaluationsClient tutorId={sessionUser.user.id} />
+      <EvaluationsClient 
+        tutorId={sessionUser.user.id} 
+        tutorName={sessionUser.user.name || "Tutor"} 
+      />
     </div>
   );
 }

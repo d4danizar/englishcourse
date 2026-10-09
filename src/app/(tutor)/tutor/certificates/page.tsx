@@ -32,7 +32,11 @@ export default async function CertificateVerificationPage() {
           email: true,
           StudentEvaluations: {
             select: {
-              finalScore: true
+              listeningScore: true,
+              speakingScore: true,
+              readingScore: true,
+              pronunciationScore: true,
+              vocabularyScore: true
             }
           }
         }

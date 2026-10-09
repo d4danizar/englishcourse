@@ -75,34 +75,34 @@ export default async function StudentEvaluationsPage() {
                     <div className="flex flex-col gap-5 md:w-2/3 border-t md:border-t-0 md:border-l border-slate-100 pt-5 md:pt-0 md:pl-8">
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"/> Fluency
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"/> Speaking / Fluency ({ev.speakingScore || "-"})
                         </span>
                         <p className="text-sm text-slate-700 font-medium leading-relaxed pl-3 border-l-2 border-indigo-100">
-                          {ev.fluency}
+                          {ev.speakingNote || "-"}
                         </p>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/> Pronunciation
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"/> Pronunciation ({ev.pronunciationScore || "-"})
                         </span>
                         <p className="text-sm text-slate-700 font-medium leading-relaxed pl-3 border-l-2 border-emerald-100">
-                          {ev.pronunciation}
+                          {ev.pronunciationNote || "-"}
                         </p>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"/> Vocabulary
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"/> Vocabulary ({ev.vocabularyScore || "-"})
                         </span>
                         <p className="text-sm text-slate-700 font-medium leading-relaxed pl-3 border-l-2 border-cyan-100">
-                          {ev.vocabulary}
+                          {ev.vocabularyNote || "-"}
                         </p>
                       </div>
                       
-                      {ev.notes && (
+                      {ev.tutorNote && (
                         <div className="mt-2 text-sm text-slate-600 font-medium bg-slate-50 p-5 rounded-2xl border border-slate-100 relative">
                           <FileText className="w-4 h-4 text-slate-300 absolute top-4 right-4" />
                           <span className="font-bold text-slate-700 mb-1 block">Tutor Notes:</span>
-                          <p className="italic leading-relaxed">&quot;{ev.notes}&quot;</p>
+                          <p className="italic leading-relaxed">&quot;{ev.tutorNote}&quot;</p>
                         </div>
                       )}
                     </div>

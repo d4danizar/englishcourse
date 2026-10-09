@@ -12,7 +12,11 @@ type PendingCertificate = {
     name: string;
     email: string;
     StudentEvaluations: {
-      finalScore: number | null;
+      listeningScore: number | null;
+      speakingScore: number | null;
+      readingScore: number | null;
+      pronunciationScore: number | null;
+      vocabularyScore: number | null;
     }[];
   };
 };
@@ -59,11 +63,27 @@ export default function CertificatesClient({ pendingCertificates }: { pendingCer
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {pendingCertificates.map((cert) => {
         // Calculate average exam score from descriptive evaluations
-        const evals = cert.user.StudentEvaluations.filter(e => e.finalScore !== null);
+        const evals = cert.user.StudentEvaluations;
         let avgScore = 0;
+        let validEvals = 0;
+
         if (evals.length > 0) {
-          const total = evals.reduce((sum, e) => sum + (e.finalScore || 0), 0);
-          avgScore = Math.round(total / evals.length);
+          const sum = evals.reduce((acc, e) => {
+             const s1 = e.listeningScore || 0;
+             const s2 = e.speakingScore || 0;
+             const s3 = e.readingScore || 0;
+             const s4 = e.pronunciationScore || 0;
+             const s5 = e.vocabularyScore || 0;
+             const eTotal = (s1+s2+s3+s4+s5);
+             if(eTotal > 0) validEvals++;
+             return acc + eTotal;
+          }, 0);
+          if (validEvals > 0) {
+             // 5 skills, out of 5 each? Wait, if they are 1-5, sum is out of 25.
+             // If we need a 0-100 score, maybe sum / 25 * 100?
+             // Let's just do average out of 100.
+             avgScore = Math.round((sum / (validEvals * 25)) * 100);
+          }
         }
 
         return (

@@ -42,21 +42,34 @@ model User {
 }
 
 model DescriptiveEvaluation {
-  id             String   @id @default(cuid())
-  fluency        String
-  pronunciation  String
-  vocabulary     String
-  notes          String?
-  studentId      String
-  tutorId        String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  finalScore     Int?
-  listeningScore Int?
-  readingScore   Int?
-  writingScore   Int?
-  student        User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
-  tutor          User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  studentId          String
+  tutorId            String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  // Scores (Float to allow 3.5, 4.5, etc.)
+  listeningScore     Float?
+  speakingScore      Float?
+  readingScore       Float?
+  pronunciationScore Float?
+  vocabularyScore    Float?
+  
+  // Specific Notes
+  listeningNote      String? @db.Text
+  speakingNote       String? @db.Text
+  readingNote        String? @db.Text
+  pronunciationNote  String? @db.Text
+  vocabularyNote     String? @db.Text
+  
+  // Summary Sections
+  strengths          String? @db.Text
+  improvements       String? @db.Text
+  nextTarget         String? @db.Text
+  tutorNote          String? @db.Text
+
+  student            User     @relation("StudentEvaluations", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor              User     @relation("TutorEvaluations", fields: [tutorId], references: [id], onDelete: Cascade)
 }
 
 model Session {
