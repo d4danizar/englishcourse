@@ -239,8 +239,25 @@ model Enrollment {
   finalVideoLink        String?
   isCertificateApproved Boolean   @default(false)
   tshirtSize            String?
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   Payment               Payment[]
+  certificate           Certificate?
+}
+
+model Certificate {
+  id                 String     @id @default(cuid())
+  certificateNumber  String     @unique
+  fluencyScore       Float?
+  pronunciationScore Float?
+  vocabularyScore    Float?
+  finalScore         Float
+  issuedAt           DateTime   @default(now())
+  
+  // Relations
+  enrollmentId       String     @unique
+  enrollment         Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
 }
 
 model DailyHomework {

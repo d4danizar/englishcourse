@@ -6,9 +6,33 @@ import { CheckCircle, Clock, Link as LinkIcon, Download, Loader2 } from "lucide-
 export default function FinalTaskSubmission({ enrollment }: { enrollment: any }) {
   const [link, setLink] = useState(enrollment?.finalVideoLink || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Jika tidak ada enrollment yang dilempar, jangan render
   if (!enrollment) return null;
+
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+      const response = await fetch(`/api/certificate?enrollmentId=${enrollment.id}`);
+      if (!response.ok) throw new Error("Gagal mengunduh sertifikat");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Sertifikat_Kampung_Inggris_Solo.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Sertifikat belum tersedia atau terjadi kesalahan.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -40,14 +64,14 @@ export default function FinalTaskSubmission({ enrollment }: { enrollment: any })
           </div>
         </div>
         <div className="mt-4 flex gap-3">
-          <a 
-            href="/api/certificate"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm"
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
           >
-            <Download className="w-4 h-4" /> Download Sertifikat
-          </a>
+            {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {isDownloading ? "Mengunduh..." : "Download Sertifikat"}
+          </button>
         </div>
       </div>
     );

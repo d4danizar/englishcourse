@@ -1,102 +1,161 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { generateCertificateData } from "@/app/(student)/student/certificate/actions";
+import { prisma } from "@/lib/prisma";
 
-const BRANCH_CODES: Record<string, string> = {
-  'Kartasura': '01',
-  'Serengan': '02',
-  'Nusukan': '03',
-};
+function formatScore(score: number) {
+  return Number.isInteger(score) ? score.toString() : score.toFixed(1).replace('.', ',');
+}
 
-const PROGRAM_CODES: Record<string, string> = {
-  'Conversation Regular Class': '01',
-  'Conversation Fullday Class': '02',
-  'English Camp Programme': '03',
-  'English Camp': '03',
-  'Camp': '03',
-  'Asrama': '03',
-  'English On Saturday': '04',
-  'TOEFL Preparation': '11',
-  'English Private Class': '12',
-  'English For Kids': '21',
-  'EFK': '21',
-  'English For Teens': '22',
-  'EFT': '22',
-  'Gapyear Program 6 bulan': '31',
-  'English Camp 1 Tahun': '32',
-  'English Holiday': '41',
-  'English Workshop': '42',
-  'English Fun Day': '99',
-  'TOEFL Test': '88'
-};
+function convertScore(tutorScore: number) {
+  if (tutorScore > 10) {
+    const score10 = Math.round((tutorScore / 10) * 10) / 10;
+    let grade = "E";
+    if (tutorScore >= 85) grade = "A";
+    else if (tutorScore >= 70) grade = "B";
+    else if (tutorScore >= 55) grade = "C";
+    else if (tutorScore >= 40) grade = "D";
+    return { score: score10, grade };
+  }
+  const roundedScore = Math.round(tutorScore);
+  switch (roundedScore) {
+    case 5: return { score: 9, grade: 'A' };
+    case 4: return { score: 7, grade: 'B' };
+    case 3: return { score: 5, grade: 'C' };
+    case 2: return { score: 3, grade: 'D' };
+    case 1: return { score: 1, grade: 'E' };
+    default: return { score: 0, grade: '-' };
+  }
+}
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized. Harap login kembali.", { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const enrollmentIdParam = searchParams.get("enrollmentId");
+
     // =====================================================================
-    // 1. DYNAMIC DATA FETCH
+    // 1. FETCH CERTIFICATE & ENROLLMENT FROM DATABASE
     // =====================================================================
-    const data = await generateCertificateData(session.user.id);
+    let certificate = await prisma.certificate.findFirst({
+      where: enrollmentIdParam
+        ? { enrollmentId: enrollmentIdParam }
+        : { enrollment: { userId: session.user.id } },
+      orderBy: { issuedAt: "desc" },
+      include: {
+        enrollment: {
+          include: {
+            user: {
+              include: {
+                attendances: {
+                  where: { status: "PRESENT" },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (!data.isEligible) {
-      return new NextResponse("E-Certificate belum tersedia untuk Anda.", { status: 403 });
-    }
+    // Fallback: if enrollment was approved before Certificate table existed, auto-create the Certificate record
+    if (!certificate) {
+      const approvedEnrollment = await prisma.enrollment.findFirst({
+        where: enrollmentIdParam
+          ? { id: enrollmentIdParam, isCertificateApproved: true }
+          : { userId: session.user.id, isCertificateApproved: true },
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            include: {
+              attendances: {
+                where: { status: "PRESENT" },
+              },
+            },
+          },
+        },
+      });
 
-    const { student, scores } = data;
-
-    function formatScore(score: number) {
-      return Number.isInteger(score) ? score.toString() : score.toFixed(1).replace('.', ',');
-    }
-
-    function convertScore(tutorScore: number) {
-      const roundedScore = Math.round(tutorScore);
-      switch (roundedScore) {
-        case 5: return { score: 9, grade: 'A' };
-        case 4: return { score: 7, grade: 'B' };
-        case 3: return { score: 5, grade: 'C' };
-        case 2: return { score: 3, grade: 'D' };
-        case 1: return { score: 1, grade: 'E' };
-        default: return { score: 0, grade: '-' };
+      if (!approvedEnrollment) {
+        return new NextResponse("E-Certificate belum tersedia untuk Anda.", { status: 403 });
       }
+
+      const branchName = (approvedEnrollment.user?.branch || "KARTASURA").toUpperCase().substring(0, 3);
+      const dateStr = new Date().toISOString().slice(2, 7).replace('-', '');
+      const count = (await prisma.certificate.count()) + 1;
+      const certNumber = `KIS/${branchName}/${dateStr}/${count.toString().padStart(4, '0')}`;
+
+      certificate = await prisma.certificate.create({
+        data: {
+          enrollmentId: approvedEnrollment.id,
+          certificateNumber: certNumber,
+          finalScore: approvedEnrollment.certificateScore ?? 0,
+        },
+        include: {
+          enrollment: {
+            include: {
+              user: {
+                include: {
+                  attendances: {
+                    where: { status: "PRESENT" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    const enrollment = certificate.enrollment;
+    const student = enrollment.user;
+
+    // Security check: if user is a STUDENT, ensure they own this certificate
+    if (session.user.role === "STUDENT" && enrollment.userId !== session.user.id) {
+      return new NextResponse("Forbidden.", { status: 403 });
     }
 
     // =====================================================================
-    // 2. DYNAMIC CERTIFICATE NUMBER GENERATOR
+    // 2. CALCULATE COMPONENT SCORES & GRADES
     // =====================================================================
-    const certDate = new Date(student.endDate || new Date());
-    const dd = String(certDate.getDate()).padStart(2, '0');
-    const mm = String(certDate.getMonth() + 1).padStart(2, '0');
-    const yy = String(certDate.getFullYear()).slice(-2);
+    let sumFluency = 0;
+    let sumPronunciation = 0;
+    let sumVocabulary = 0;
+    let validEvaluationCount = 0;
 
-    const rawBranch = student.branch || "KARTASURA";
-    const rawProgram = student.activeProgram || "";
+    student.attendances.forEach((att) => {
+      const hasScores =
+        (att.fluency && att.fluency > 0) ||
+        (att.pronunciation && att.pronunciation > 0) ||
+        (att.vocabulary && att.vocabulary > 0);
 
-    // Normalize branch from enum (e.g. KARTASURA -> Kartasura)
-    const formattedBranch = rawBranch.charAt(0).toUpperCase() + rawBranch.slice(1).toLowerCase();
-    const branchCode = BRANCH_CODES[formattedBranch] || '00';
-
-    let programCode = '00';
-    for (const [key, code] of Object.entries(PROGRAM_CODES)) {
-      if (rawProgram.toLowerCase().includes(key.toLowerCase())) {
-        programCode = code;
-        break;
+      if (hasScores) {
+        sumFluency += att.fluency || 0;
+        sumPronunciation += att.pronunciation || 0;
+        sumVocabulary += att.vocabulary || 0;
+        validEvaluationCount++;
       }
-    }
+    });
 
-    const sequence = String(student.id.replace(/\D/g, '').slice(-4)).padStart(4, '0');
-    const certificateNumber = `${dd}${mm}${yy}${branchCode}${programCode}${sequence}`;
+    const avgFluency =
+      certificate.fluencyScore ??
+      (validEvaluationCount > 0 ? sumFluency / validEvaluationCount : 0);
+    const avgPronunciation =
+      certificate.pronunciationScore ??
+      (validEvaluationCount > 0 ? sumPronunciation / validEvaluationCount : 0);
+    const avgVocab =
+      certificate.vocabularyScore ??
+      (validEvaluationCount > 0 ? sumVocabulary / validEvaluationCount : 0);
 
     // =====================================================================
-    // 2. LOAD PDF TEMPLATE
+    // 3. LOAD PDF TEMPLATE & FONTS
     // =====================================================================
     const templatePath = path.join(
       process.cwd(),
@@ -105,7 +164,7 @@ export async function GET() {
       "certificate-template.pdf"
     );
 
-    let pdfDoc: any;
+    let pdfDoc: PDFDocument;
 
     if (fs.existsSync(templatePath)) {
       const existingPdfBytes = fs.readFileSync(templatePath);
@@ -129,18 +188,27 @@ export async function GET() {
     const page = pdfDoc.getPages()[0];
     const { width: pageWidth } = page.getSize();
 
-    const drawCenter = (text: string, centerX: number, y: number, size: number, textFont: any, textColor = rgb(0, 0, 0)) => {
+    const drawCenter = (
+      text: string,
+      centerX: number,
+      y: number,
+      size: number,
+      textFont: any,
+      textColor = rgb(0, 0, 0)
+    ) => {
       const textWidth = textFont.widthOfTextAtSize(text, size);
-      page.drawText(text, { x: centerX - (textWidth / 2), y, size, font: textFont, color: textColor });
+      page.drawText(text, { x: centerX - textWidth / 2, y, size, font: textFont, color: textColor });
     };
 
     // =====================================================================
-    // 3. DRAW STUDENT INFO
+    // 4. DRAW STUDENT INFO — A4 Portrait (595 x 842)
     // =====================================================================
+
+    // 1. NAMA MURID
     drawCenter(student.name, pageWidth / 2, 590, 24, font);
 
-    // ID REGISTRASI
-    page.drawText(certificateNumber, {
+    // 2. NOMOR REGISTRASI / SERTIFIKAT
+    page.drawText(certificate.certificateNumber, {
       x: 268,
       y: 551,
       size: 12,
@@ -148,95 +216,106 @@ export async function GET() {
       color: rgb(0, 0, 0),
     });
 
-    // --- PROGRAM MAPPER ---
-    const rawProgramName = student.activeProgram || "General Program";
-    const displayProgramName = rawProgramName.toLowerCase() === "asrama"
-      ? "English Camp"
-      : rawProgramName;
+    // 3. NAMA PROGRAM
+    const rawProgramName = enrollment.programType || "General Program";
+    const displayProgramName =
+      rawProgramName.toLowerCase() === "asrama" ? "English Camp" : rawProgramName;
 
     drawCenter(displayProgramName, pageWidth / 2, 495, 22, font);
 
     // =====================================================================
-    // 4. DRAW SCORE TABLE 
+    // 5. DRAW SCORE TABLE
     // =====================================================================
     const colScoreCenterX = 270;
     const scoreSize = 15;
 
-    // === SCORE RADAR (remove after debugging) ===
-    console.log("=== 🎯 CERT SCORE RADAR ===", {
-      rawPronunciation: scores.pronunciation,
-      rawVocabulary: scores.vocabulary,
-      rawFluency: scores.fluency,
-      rawOverall: scores.overall,
-      rawPredicate: scores.predicate,
-      typeCheck: typeof scores.pronunciation,
-    });
-
-    const safePronunciation = Number(scores.pronunciation) || 0;
-    const safeVocabulary = Number(scores.vocabulary) || 0;
-    const safeFluency = Number(scores.fluency) || 0;
-
-    const prog = (student.activeProgram || "").toUpperCase();
+    const prog = rawProgramName.toUpperCase();
     const isExamScale = prog.includes("EFK") || prog.includes("EFT");
 
-    let pronScore, vocabScore, fluencyScore, rawTotal, totalGrade;
+    let pronDisplay: string;
+    let vocabDisplay: string;
+    let fluencyDisplay: string;
+    let totalDisplay: string;
 
     if (isExamScale) {
       const getExamGrade = (score: number) => {
-        if (score >= 90) return 'A';
-        if (score >= 80) return 'B';
-        if (score >= 70) return 'C';
-        if (score >= 60) return 'D';
-        return 'E';
+        if (score >= 90) return "A";
+        if (score >= 80) return "B";
+        if (score >= 70) return "C";
+        if (score >= 60) return "D";
+        return "E";
       };
-      
-      pronScore = { score: Math.round(safePronunciation), grade: getExamGrade(safePronunciation) };
-      vocabScore = { score: Math.round(safeVocabulary), grade: getExamGrade(safeVocabulary) };
-      fluencyScore = { score: Math.round(safeFluency), grade: getExamGrade(safeFluency) };
-      rawTotal = Math.round(scores.overall || 0);
-      totalGrade = scores.predicate || 'E';
+
+      const pScore = Math.round(avgPronunciation || certificate.finalScore);
+      const vScore = Math.round(avgVocab || certificate.finalScore);
+      const fScore = Math.round(avgFluency || certificate.finalScore);
+      const totalVal = certificate.finalScore > 0 ? Math.round(certificate.finalScore) : Math.round((pScore + vScore + fScore) / 3);
+
+      pronDisplay = `${formatScore(pScore)} / ${getExamGrade(pScore)}`;
+      vocabDisplay = `${formatScore(vScore)} / ${getExamGrade(vScore)}`;
+      fluencyDisplay = `${formatScore(fScore)} / ${getExamGrade(fScore)}`;
+      totalDisplay = `${formatScore(totalVal)} / ${getExamGrade(totalVal)}`;
     } else {
-      pronScore = convertScore(safePronunciation);
-      vocabScore = convertScore(safeVocabulary);
-      fluencyScore = convertScore(safeFluency);
-      rawTotal = Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3);
-      totalGrade = 'E';
-      if (rawTotal >= 8) totalGrade = 'A';
-      else if (rawTotal >= 6) totalGrade = 'B';
-      else if (rawTotal >= 4) totalGrade = 'C';
-      else if (rawTotal > 0) totalGrade = 'D';
+      const pronScore = convertScore(avgPronunciation);
+      const vocabScore = convertScore(avgVocab);
+      const fluencyScore = convertScore(avgFluency);
+
+      const getGrade10 = (score: number) => {
+        if (score >= 8) return "A";
+        if (score >= 6) return "B";
+        if (score >= 4) return "C";
+        if (score > 0) return "D";
+        return "E";
+      };
+
+      const totalConverted =
+        certificate.finalScore && certificate.finalScore >= 1 && certificate.finalScore <= 5
+          ? convertScore(certificate.finalScore)
+          : {
+              score: Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3),
+              grade: getGrade10(Math.round((pronScore.score + vocabScore.score + fluencyScore.score) / 3)),
+            };
+
+      pronDisplay = `${formatScore(pronScore.score)} / ${pronScore.grade}`;
+      vocabDisplay = `${formatScore(vocabScore.score)} / ${vocabScore.grade}`;
+      fluencyDisplay = `${formatScore(fluencyScore.score)} / ${fluencyScore.grade}`;
+      totalDisplay = `${formatScore(totalConverted.score)} / ${totalConverted.grade}`;
     }
 
-    drawCenter(`${pronScore.score} / ${pronScore.grade}`, colScoreCenterX, 400, scoreSize, font);
-    drawCenter(`${vocabScore.score} / ${vocabScore.grade}`, colScoreCenterX, 362, scoreSize, font);
-    drawCenter(`${fluencyScore.score} / ${fluencyScore.grade}`, colScoreCenterX, 325, scoreSize, font);
+    drawCenter(pronDisplay, colScoreCenterX, 400, scoreSize, font);
+    drawCenter(vocabDisplay, colScoreCenterX, 362, scoreSize, font);
+    drawCenter(fluencyDisplay, colScoreCenterX, 325, scoreSize, font);
 
-    // Total Score (using newly mapped 1-9 scale)
-    drawCenter(`${rawTotal} / ${totalGrade}`, colScoreCenterX, 287, scoreSize, font, rgb(1, 1, 1));
+    // Total Score (White text inside dark badge)
+    drawCenter(totalDisplay, colScoreCenterX, 287, scoreSize, font, rgb(1, 1, 1));
 
     // =====================================================================
-    // 5. PRINT DATE
+    // 6. TANGGAL CETAK (ISSUED AT)
     // =====================================================================
-    const completionDate = student.endDate ? new Date(student.endDate) : new Date();
-    const printDate = new Intl.DateTimeFormat('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(completionDate).replace(',', '');
+    const issueDate = certificate.issuedAt ? new Date(certificate.issuedAt) : new Date();
+    const printDate = new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(issueDate);
 
     page.drawText(printDate, {
-      x: 286, y: 232.3, size: 12, font, color: rgb(0, 0, 0),
+      x: 286,
+      y: 232.3,
+      size: 12,
+      font,
+      color: rgb(0, 0, 0),
     });
 
     // =====================================================================
-    // 6. SERIALIZE & RETURN
+    // 7. SERIALIZE & RETURN BUFFER
     // =====================================================================
     const pdfBytes = await pdfDoc.save();
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="e-certificate-${student.name.replace(/\s+/g, '-')}.pdf"`,
+        "Content-Disposition": `attachment; filename="Sertifikat_${student.name.replace(/\s+/g, "_")}.pdf"`,
       },
     });
   } catch (error) {

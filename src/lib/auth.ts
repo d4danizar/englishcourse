@@ -13,31 +13,40 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("LOGIN ATTEMPT:", (credentials as any)?.username, credentials?.email);
+
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user) {
-          throw new Error("Invalid credentials");
+          if (!user) {
+            console.error("🔥 AUTH ERROR: User not found for email:", credentials.email);
+            throw new Error("Invalid credentials");
+          }
+
+          // Proper bcrypt comparison for hashed passwords
+          const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+          if (!isValid) {
+            console.error("🔥 AUTH ERROR: Password mismatch for email:", credentials.email);
+            throw new Error("Invalid credentials");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            branch: user.branch,
+          };
+        } catch (error) {
+          console.error("🔥 AUTH PRISMA ERROR:", error);
+          throw error;
         }
-
-        // Proper bcrypt comparison for hashed passwords
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!isValid) {
-          throw new Error("Invalid credentials");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          branch: user.branch,
-        };
       },
     }),
   ],
