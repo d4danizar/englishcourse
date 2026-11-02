@@ -130,19 +130,37 @@ model Announcement {
 }
 
 model Lead {
-  id              String         @id @default(cuid())
-  name            String
-  whatsapp        String
-  status          LeadStatus     @default(NEW)
-  notes           String?
-  assigneeId      String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  branch          BranchLocation @default(KARTASURA)
-  tshirtSize      String?
-  discoverySource String?
-  invoices        Invoice[]
-  assignee        User?          @relation("UserLeads", fields: [assigneeId], references: [id])
+  id               String         @id @default(cuid())
+  name             String
+  whatsapp         String
+  phone            String?        @unique
+  source           LeadSource     @default(ORGANIC)
+  status           LeadStatus     @default(NEW)
+  currentStage     Int            @default(0) // Tracks which follow-up stage they are on (0 to 8)
+  nextReminderDate DateTime?      // When the CS/CRM needs to contact them again
+  notes            String?
+  assigneeId       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  branch           BranchLocation @default(KARTASURA)
+  tshirtSize       String?
+  discoverySource  String?
+  invoices         Invoice[]
+  assignee         User?          @relation("UserLeads", fields: [assigneeId], references: [id])
+  followUps        FollowUp[]
+}
+
+model FollowUp {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  stage       Int      // 1 through 8
+  note        String   @db.Text
+  contactedAt DateTime @default(now()) // When this specific follow-up happened
+  handledBy   String   // Name or ID of the CS/CRM staff who did this
+
+  @@unique([leadId, stage]) // Prevent duplicate stages for the same lead
 }
 
 model MarketingSource {
@@ -316,8 +334,16 @@ enum LeadStatus {
   NEW
   FOLLOW_UP
   NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
+  CS_FOLLOW_UP    // Currently in stage 1-3
+  CRM_FOLLOW_UP   // Escalated to stage 4-8
+  CLOSED_WON      // Registered/Paid (DO NOT FOLLOW UP)
+  CLOSED_LOST     // Dead lead / Refused permanently
+}
+
+enum LeadSource {
+  META_ADS
+  WEBSITE
+  ORGANIC
 }
 
 enum InvoiceStatus {
