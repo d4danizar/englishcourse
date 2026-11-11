@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { addMarketingSource, updateLeadSource } from "@/lib/actions/lead-source-actions";
 import { Plus, Download, Loader2, Search, BarChart2 } from "lucide-react";
@@ -29,11 +29,15 @@ export default function LeadSourceClient({
   initialSources,
   currentPage,
   totalPages,
+  currentMonth,
+  currentYear,
 }: {
   initialLeads: Lead[];
   initialSources: MarketingSource[];
   currentPage: number;
   totalPages: number;
+  currentMonth?: number;
+  currentYear?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -43,17 +47,41 @@ export default function LeadSourceClient({
   const [sources, setSources] = useState<MarketingSource[]>(initialSources);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
+
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", newPage.toString());
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  const handleMonthYearChange = (newMonth: number, newYear: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", String(newMonth));
+    params.set("year", String(newYear));
+    params.delete("startDate");
+    params.delete("endDate");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [showChart, setShowChart] = useState(false);
+
+  const handleDateFilterChange = (newStart: string, newEnd: string) => {
+    setStartDate(newStart);
+    setEndDate(newEnd);
+    const params = new URLSearchParams(searchParams.toString());
+    if (newStart) params.set("startDate", newStart);
+    else params.delete("startDate");
+    if (newEnd) params.set("endDate", newEnd);
+    else params.delete("endDate");
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Apply filters
   const filteredLeads = leads.filter(lead => {
@@ -209,19 +237,44 @@ export default function LeadSourceClient({
           />
         </div>
         
-        {/* Date Range Inputs */}
+        {/* Month/Year & Date Range Inputs */}
         <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {currentMonth && currentYear && (
+            <>
+              <select
+                value={currentMonth}
+                onChange={(e) => handleMonthYearChange(Number(e.target.value), currentYear)}
+                className="w-full sm:w-auto p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
+              >
+                {[
+                  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                ].map((name, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={currentYear}
+                onChange={(e) => handleMonthYearChange(currentMonth, Number(e.target.value))}
+                className="w-full sm:w-auto p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
+              >
+                {[currentYear - 1, currentYear, currentYear + 1].map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+            </>
+          )}
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => handleDateFilterChange(e.target.value, endDate)}
             className="w-full sm:w-auto p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
           />
           <span className="text-slate-400 font-medium hidden sm:block">-</span>
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => handleDateFilterChange(startDate, e.target.value)}
             className="w-full sm:w-auto p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
           />
         </div>

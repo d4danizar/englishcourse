@@ -57,25 +57,38 @@ export async function updateLeadSource(leadId: string, sourceName: string) {
   }
 }
 
-export async function getLeadsForTracking(skip: number = 0, take: number = 100) {
+export async function getLeadsForTracking(startDate?: Date, endDate?: Date) {
   try {
+    // Default to current month if no dates are provided
+    const now = new Date();
+    const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const defaultEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const queryStart = startDate || defaultStart;
+    const queryEnd = endDate || defaultEnd;
+
     const [totalCount, leads] = await Promise.all([
-      prisma.lead.count(),
+      prisma.lead.count({
+        where: { createdAt: { gte: queryStart, lte: queryEnd } },
+      }),
       prisma.lead.findMany({
+        where: { createdAt: { gte: queryStart, lte: queryEnd } },
         select: {
           id: true,
           name: true,
           whatsapp: true,
+          phone: true,
+          source: true,
+          status: true,
           createdAt: true,
           discoverySource: true,
           notes: true,
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take,
-      })
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
-    return { leads, totalCount };
+
+    return { totalCount, leads };
   } catch (error) {
     console.error("Error fetching leads for tracking:", error);
     return { leads: [], totalCount: 0 };
