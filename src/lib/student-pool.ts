@@ -6,7 +6,19 @@ function getEligiblePrograms(programType: string): string[] {
   const normType = programType.trim().toLowerCase();
   switch (normType) {
     case "conversation":
-      return ["Regular", "Fullday", "Asrama"];
+      return [
+        "Regular",
+        "Conversation Regular Class",
+        "Fullday",
+        "Conversation Fullday Class",
+        "Asrama",
+        "Camp",
+        "English Camp",
+        "English Camp Programme",
+        "English on Saturday",
+        "English On Saturday",
+        "EOS",
+      ];
     case "efk":
       return ["EFK"];
     case "eft":
@@ -17,7 +29,7 @@ function getEligiblePrograms(programType: string): string[] {
     case "toefl":
       return ["TOEFL", "TOEFL Prep"];
     case "english on saturday":
-      return ["English on Saturday"];
+      return ["English on Saturday", "English On Saturday", "EOS"];
     default:
       return [programType];
   }
@@ -129,17 +141,20 @@ export async function getEligibleStudentsForSession(session: {
 
     // --- CONVERSATION RULES ---
     if (sessionProgType === "conversation") {
-      if (prog === "regular") {
+      if (prog.includes("regular")) {
         if (!latestEnrollment.programBatch) return false;
         const normBatch = latestEnrollment.programBatch.trim().toLowerCase();
         const normTime = session.timeSlot.trim().toLowerCase();
         return normTime.includes(normBatch) || normBatch.includes(normTime);
       }
-      if (prog === "fullday") {
+      if (prog.includes("fullday") || prog.includes("full day")) {
         return true; // Fullday can access any session now
       }
-      if (prog === "asrama") {
+      if (prog.includes("asrama") || prog.includes("camp")) {
         return session.timeSlot.trim().toLowerCase() !== "16:30 - 18:00"; // Mandatory break in Sesi 5
+      }
+      if (prog.includes("saturday") || prog === "eos") {
+        return sessionDay === 6; // English on Saturday attends Saturday sessions
       }
       return false;
     }

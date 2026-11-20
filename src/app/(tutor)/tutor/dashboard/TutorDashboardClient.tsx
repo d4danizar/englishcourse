@@ -7,6 +7,7 @@ import {
   Users,
   CheckCircle,
   ChevronRight,
+  ChevronDown,
   BookOpen,
   AlertCircle,
   Award,
@@ -75,6 +76,30 @@ const DAYS = [
 ];
 
 export type StudentSearchItem = { id: string; name: string; activeProgram: string | null };
+
+export type ProgramGroupKey = "REGULAR" | "FULLDAY" | "CAMP" | "EOS" | "OTHER";
+export type ProgramTabKey = "ALL" | ProgramGroupKey;
+
+export const PROGRAM_GROUP_META: {
+  key: ProgramGroupKey;
+  label: string;
+}[] = [
+  { key: "REGULAR", label: "Regular" },
+  { key: "FULLDAY", label: "Fullday" },
+  { key: "CAMP", label: "Camp / Asrama" },
+  { key: "EOS", label: "EOS" },
+  { key: "OTHER", label: "Lainnya" },
+];
+
+export function classifyProgramGroup(programName?: string | null): ProgramGroupKey {
+  const norm = (programName || "").trim().toLowerCase();
+  if (!norm) return "OTHER";
+  if (norm.includes("regular")) return "REGULAR";
+  if (norm.includes("fullday") || norm.includes("full day")) return "FULLDAY";
+  if (norm.includes("asrama") || norm.includes("camp")) return "CAMP";
+  if (norm.includes("saturday") || norm === "eos" || norm.includes("eos")) return "EOS";
+  return "OTHER";
+}
 
 // --- MAIN CLIENT COMPONENT ---
 export function TutorDashboardClient({
@@ -156,6 +181,7 @@ export function TutorDashboardClient({
   const [modalStudents, setModalStudents] = useState<EligibleStudent[]>([]);
   const [searchResults, setSearchResults] = useState<StudentSearchItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [activeProgramTab, setActiveProgramTab] = useState<ProgramTabKey>("ALL");
 
   // Skenario Mayoritas: Live dynamic fetching populating officially tracked students initially, plus explicit external searches.
   useEffect(() => {
@@ -196,6 +222,12 @@ export function TutorDashboardClient({
     const initialStudentsToGrade = task.students;
     setModalStudents(initialStudentsToGrade);
 
+    // Default activeProgramTab to the first group with >=1 student, or "ALL"
+    const firstNonEmptyGroup = PROGRAM_GROUP_META.find((g) =>
+      initialStudentsToGrade.some((s) => classifyProgramGroup(s.activeProgram) === g.key)
+    );
+    setActiveProgramTab(firstNonEmptyGroup ? firstNonEmptyGroup.key : "ALL");
+
     // Initialize evals from existing attendance data or defaults
     const initialEvals: typeof studentEvals = {};
     initialStudentsToGrade.forEach((s) => {
@@ -233,6 +265,10 @@ export function TutorDashboardClient({
       ...prev,
       [studentToClaim.id]: { status: "PRESENT", pronunciation: 3, fluency: 3, vocabulary: 3 },
     }));
+    const claimedGroup = classifyProgramGroup(studentToClaim.activeProgram);
+    if (activeProgramTab !== "ALL" && activeProgramTab !== claimedGroup) {
+      setActiveProgramTab(claimedGroup);
+    }
     setSearchQuery("");
   };
 
@@ -669,123 +705,255 @@ export function TutorDashboardClient({
                 </p>
               </div>
 
-              {/* Per-Student Attendance & Evaluation */}
+              {/* Per-Student Attendance & Evaluation (Horizontal Program Tabs) */}
               {modalStudents.length === 0 ? (
                 <div className="text-center text-sm text-slate-500 py-8 font-medium">
                   Belum ada siswa yang diklaim. Silakan cari nama siswa di atas.
                 </div>
               ) : (
-                modalStudents.map((student) => {
-                  const eval_ = studentEvals[student.id] || { status: "PRESENT", pronunciation: 3, fluency: 3, vocabulary: 3 };
+                (() => {
+                  const counts: Record<ProgramGroupKey, number> = {
+                    REGULAR: 0,
+                    FULLDAY: 0,
+                    CAMP: 0,
+                    EOS: 0,
+                    OTHER: 0,
+                  };
+                  modalStudents.forEach((s) => {
+                    counts[classifyProgramGroup(s.activeProgram)]++;
+                  });
+
+                  const visibleStudents =
+                    activeProgramTab === "ALL"
+                      ? modalStudents
+                      : modalStudents.filter(
+                          (s) => classifyProgramGroup(s.activeProgram) === activeProgramTab
+                        );
+
                   return (
-                    <div key={student.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
-                      {/* Student Name & Program Badge */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
-                            {student.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-sm font-bold text-slate-900">{student.name}</p>
-                              {(student.alergi || student.penyakit) && (
-                                <div className="group relative flex items-center">
-                                  <AlertCircle className="w-4 h-4 text-amber-500 cursor-help" />
-                                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
-                                    {student.alergi && <p><strong>Alergi:</strong> {student.alergi}</p>}
-                                    {student.penyakit && <p><strong>Penyakit:</strong> {student.penyakit}</p>}
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    <div className="flex flex-col gap-3">
+                      {/* Horizontal Pill Tabs */}
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        {PROGRAM_GROUP_META.map((group) => {
+                          const count = counts[group.key];
+                          if (group.key === "OTHER" && count === 0) return null;
+                          const isActive = activeProgramTab === group.key;
+
+                          return (
+                            <button
+                              key={group.key}
+                              type="button"
+                              onClick={() => setActiveProgramTab(group.key)}
+                              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                isActive
+                                  ? "bg-indigo-600 text-white shadow-sm"
+                                  : count === 0
+                                  ? "bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+                              }`}
+                            >
+                              <span>{group.label}</span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                                  isActive
+                                    ? "bg-white/20 text-white"
+                                    : "bg-white text-gray-600 border border-gray-200/80"
+                                }`}
+                              >
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveProgramTab("ALL")}
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                            activeProgramTab === "ALL"
+                              ? "bg-indigo-600 text-white shadow-sm"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+                          }`}
+                        >
+                          <span>Semua</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                              activeProgramTab === "ALL"
+                                ? "bg-white/20 text-white"
+                                : "bg-white text-gray-600 border border-gray-200/80"
+                            }`}
+                          >
+                            {modalStudents.length}
+                          </span>
+                        </button>
+                      </div>
+
+                      {visibleStudents.length === 0 ? (
+                        <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                          Tidak ada peserta pada kategori program ini.
+                        </div>
+                      ) : (
+                        visibleStudents.map((student) => {
+                          const eval_ = studentEvals[student.id] || {
+                            status: "PRESENT",
+                            pronunciation: 3,
+                            fluency: 3,
+                            vocabulary: 3,
+                          };
+                          return (
+                            <div
+                              key={student.id}
+                              className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col gap-3"
+                            >
+                              {/* Student Name & Program Badge */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold shrink-0">
+                                    {student.name.charAt(0).toUpperCase()}
                                   </div>
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="text-sm font-bold text-slate-900">
+                                        {student.name}
+                                      </p>
+                                      {(student.alergi || student.penyakit) && (
+                                        <div className="group relative flex items-center">
+                                          <AlertCircle className="w-4 h-4 text-amber-500 cursor-help" />
+                                          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                            {student.alergi && (
+                                              <p>
+                                                <strong>Alergi:</strong> {student.alergi}
+                                              </p>
+                                            )}
+                                            {student.penyakit && (
+                                              <p>
+                                                <strong>Penyakit:</strong> {student.penyakit}
+                                              </p>
+                                            )}
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                      {student.activeProgram || "No Program"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStudent(student.id)}
+                                    className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Batalkan Klaim"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Attendance Status Buttons */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {ATTENDANCE_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => updateStudentEval(student.id, "status", opt)}
+                                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-150 ${
+                                      eval_.status === opt
+                                        ? opt === "ABSENT" || opt === "SICK"
+                                          ? "bg-red-50 border-red-200 text-red-700"
+                                          : opt === "EXCUSED"
+                                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                                          : "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Evaluation Sliders — ONLY on Evaluation Days AND only if PRESENT */}
+                              {isEvalDay && eval_.status === "PRESENT" && (
+                                <div className="flex flex-col gap-3 pt-2 border-t border-slate-200">
+                                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
+                                    📝 Evaluation
+                                  </span>
+                                  {(["pronunciation", "fluency", "vocabulary"] as const).map(
+                                    (metric) => {
+                                      const { isExamScale, maxScore } = getProgramGradingScale(
+                                        student.activeProgram
+                                      );
+                                      const currentValue =
+                                        eval_[metric] ?? (isExamScale ? 80 : 4);
+
+                                      return (
+                                        <div key={metric} className="flex flex-col gap-1">
+                                          <div className="flex justify-between text-xs font-medium mb-1">
+                                            <span className="text-slate-600 capitalize">
+                                              {metric}
+                                            </span>
+                                            {isExamScale ? null : (
+                                              <span className="text-indigo-600 font-bold">
+                                                {currentValue}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {isExamScale ? (
+                                            <div className="flex items-center gap-2">
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                max={maxScore}
+                                                value={currentValue}
+                                                onChange={(e) =>
+                                                  updateStudentEval(
+                                                    student.id,
+                                                    metric,
+                                                    parseInt(e.target.value) || 0
+                                                  )
+                                                }
+                                                className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
+                                              />
+                                              <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                                                (Max: {maxScore})
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-2">
+                                              <input
+                                                type="range"
+                                                min="1"
+                                                max={maxScore}
+                                                value={currentValue}
+                                                onChange={(e) =>
+                                                  updateStudentEval(
+                                                    student.id,
+                                                    metric,
+                                                    parseInt(e.target.value)
+                                                  )
+                                                }
+                                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                              />
+                                              <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">
+                                                (Max: {maxScore})
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  )}
                                 </div>
                               )}
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                              {student.activeProgram || "No Program"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStudent(student.id)}
-                            className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Batalkan Klaim"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Attendance Status Buttons */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {ATTENDANCE_OPTIONS.map((opt) => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => updateStudentEval(student.id, "status", opt)}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-150 ${eval_.status === opt
-                                ? opt === "ABSENT" || opt === "SICK"
-                                  ? "bg-red-50 border-red-200 text-red-700"
-                                  : opt === "EXCUSED"
-                                    ? "bg-amber-50 border-amber-200 text-amber-700"
-                                    : "bg-indigo-50 border-indigo-200 text-indigo-700"
-                                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-                              }`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Evaluation Sliders — ONLY on Evaluation Days AND only if PRESENT */}
-                      {isEvalDay && eval_.status === "PRESENT" && (
-                        <div className="flex flex-col gap-3 pt-2 border-t border-slate-200">
-                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-1.5">
-                            📝 Evaluation
-                          </span>
-                          {(["pronunciation", "fluency", "vocabulary"] as const).map((metric) => {
-                            const { isExamScale, maxScore } = getProgramGradingScale(student.activeProgram);
-                            const currentValue = eval_[metric] ?? (isExamScale ? 80 : 4);
-
-                            return (
-                              <div key={metric} className="flex flex-col gap-1">
-                                <div className="flex justify-between text-xs font-medium mb-1">
-                                  <span className="text-slate-600 capitalize">{metric}</span>
-                                  {isExamScale ? null : <span className="text-indigo-600 font-bold">{currentValue}</span>}
-                                </div>
-                                {isExamScale ? (
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max={maxScore}
-                                      value={currentValue}
-                                      onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value) || 0)}
-                                      className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
-                                    />
-                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="range"
-                                      min="1"
-                                      max={maxScore}
-                                      value={currentValue}
-                                      onChange={(e) => updateStudentEval(student.id, metric, parseInt(e.target.value))}
-                                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                                    />
-                                    <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
+                          );
+                        })
                       )}
                     </div>
                   );
-                })
+                })()
               )}
 
               {/* Tutor Notes */}

@@ -29,6 +29,30 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 
 const STATUSES = ["PRESENT", "ABSENT", "EXCUSED", "SICK"] as const;
 
+type ProgramGroupKey = "REGULAR" | "FULLDAY" | "CAMP" | "EOS" | "OTHER";
+type ProgramTabKey = "ALL" | ProgramGroupKey;
+
+const PROGRAM_GROUP_META: {
+  key: ProgramGroupKey;
+  label: string;
+}[] = [
+  { key: "REGULAR", label: "Regular" },
+  { key: "FULLDAY", label: "Fullday" },
+  { key: "CAMP", label: "Camp / Asrama" },
+  { key: "EOS", label: "EOS" },
+  { key: "OTHER", label: "Lainnya" },
+];
+
+function classifyProgramGroup(programName?: string | null): ProgramGroupKey {
+  const norm = (programName || "").trim().toLowerCase();
+  if (!norm) return "OTHER";
+  if (norm.includes("regular")) return "REGULAR";
+  if (norm.includes("fullday") || norm.includes("full day")) return "FULLDAY";
+  if (norm.includes("asrama") || norm.includes("camp")) return "CAMP";
+  if (norm.includes("saturday") || norm === "eos" || norm.includes("eos")) return "EOS";
+  return "OTHER";
+}
+
 export function SessionDetailModal({
   sessionId,
   onClose,
@@ -52,12 +76,23 @@ export function SessionDetailModal({
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [addSearch, setAddSearch] = useState("");
   const [manualStudents, setManualStudents] = useState<{ id: string; name: string; activeProgram: string | null }[]>([]);
+  const [activeProgramTab, setActiveProgramTab] = useState<ProgramTabKey>("ALL");
 
   useEffect(() => {
     setLoading(true);
     getSessionDetail(sessionId).then((result) => {
       setData(result);
       setLoading(false);
+      if (result) {
+        const sourcePrograms =
+          result.attendances.length > 0
+            ? result.attendances.map((a) => a.studentProgram)
+            : result.eligibleStudents.map((s) => s.activeProgram);
+        const firstGroup = PROGRAM_GROUP_META.find((g) =>
+          sourcePrograms.some((p) => classifyProgramGroup(p) === g.key)
+        );
+        setActiveProgramTab(firstGroup ? firstGroup.key : "ALL");
+      }
       if (result && result.attendances.length > 0) {
         // Pre-fill edit state from existing data
         const statuses: Record<string, string> = {};
@@ -110,7 +145,81 @@ export function SessionDetailModal({
     setEditPronunciations((prev) => ({ ...prev, [student.id]: 7 }));
     setEditFluencies((prev) => ({ ...prev, [student.id]: 7 }));
     setEditVocabularies((prev) => ({ ...prev, [student.id]: 7 }));
+    const addedGroup = classifyProgramGroup(student.activeProgram);
+    if (activeProgramTab !== "ALL" && activeProgramTab !== addedGroup) {
+      setActiveProgramTab(addedGroup);
+    }
     setAddSearch("");
+  };
+
+  const renderProgramTabs = (programs: (string | null | undefined)[]) => {
+    const counts: Record<ProgramGroupKey, number> = {
+      REGULAR: 0,
+      FULLDAY: 0,
+      CAMP: 0,
+      EOS: 0,
+      OTHER: 0,
+    };
+    programs.forEach((p) => {
+      counts[classifyProgramGroup(p)]++;
+    });
+
+    return (
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        {PROGRAM_GROUP_META.map((group) => {
+          const count = counts[group.key];
+          if (group.key === "OTHER" && count === 0) return null;
+          const isActive = activeProgramTab === group.key;
+
+          return (
+            <button
+              key={group.key}
+              type="button"
+              onClick={() => setActiveProgramTab(group.key)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                isActive
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : count === 0
+                  ? "bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              <span>{group.label}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600 border border-gray-200/80"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setActiveProgramTab("ALL")}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            activeProgramTab === "ALL"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+          }`}
+        >
+          <span>Semua</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+              activeProgramTab === "ALL"
+                ? "bg-white/20 text-white"
+                : "bg-white text-gray-600 border border-gray-200/80"
+            }`}
+          >
+            {programs.length}
+          </span>
+        </button>
+      </div>
+    );
   };
 
   const handleSaveEdit = () => {
@@ -271,93 +380,113 @@ export function SessionDetailModal({
                     </div>
                   )}
 
-                  {/* Editable student rows */}
-                  {editStudentList.map((student) => {
-                    const status = editStatuses[student.id] || "PRESENT";
-                    return (
-                      <div key={student.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                              {student.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-bold text-slate-900">{student.name}</p>
-                                {/* Edit Mode doesn't need the badge necessarily, but let's add it for consistency or leave it. Wait, the user said "Class/Roster UI". Let's add it here too. */}
-                                {(student as any).alergi || (student as any).penyakit ? (
-                                  <div className="group relative flex items-center">
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
-                                      {(student as any).alergi && <p><strong>Alergi:</strong> {(student as any).alergi}</p>}
-                                      {(student as any).penyakit && <p><strong>Penyakit:</strong> {(student as any).penyakit}</p>}
-                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
-                              <p className="text-[10px] text-slate-400 font-medium uppercase">{student.activeProgram || "—"}</p>
-                            </div>
-                          </div>
-                          {/* Status selector */}
-                          <select
-                            value={status}
-                            onChange={(e) => setEditStatuses((prev) => ({ ...prev, [student.id]: e.target.value }))}
-                            className={`text-xs font-bold rounded-lg px-2.5 py-1.5 border outline-none cursor-pointer ${STATUS_CONFIG[status]?.bg || ""} ${STATUS_CONFIG[status]?.color || ""} ${STATUS_CONFIG[status]?.border || ""}`}
-                          >
-                            {STATUSES.map((s) => (
-                              <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
-                            ))}
-                          </select>
-                        </div>
+                  {/* Editable student rows filtered by Horizontal Program Tabs */}
+                  {renderProgramTabs(editStudentList.map((s) => s.activeProgram))}
 
-                        {/* Evaluation sliders — only on Friday/Saturday */}
-                        {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && status === "PRESENT" && (
-                          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4 pt-1">
-                            {([
-                              ["Pronunciation", editPronunciations, setEditPronunciations],
-                              ["Fluency", editFluencies, setEditFluencies],
-                              ["Vocabulary", editVocabularies, setEditVocabularies],
-                            ] as const).map(([label, stateObj, setter]) => {
-                              const { isExamScale, maxScore } = getProgramGradingScale(data.programType);
-                              const currentValue = (stateObj as Record<string, number>)[student.id] ?? (isExamScale ? 80 : 4);
-                              
-                              return (
-                                <div key={label} className="flex flex-col gap-1 sm:flex-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
-                                  {isExamScale ? (
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={maxScore}
-                                        value={currentValue}
-                                        onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) || 0 }))}
-                                        className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
-                                      />
-                                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="range"
-                                        min={1}
-                                        max={maxScore}
-                                        value={currentValue}
-                                        onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) }))}
-                                        className="w-full accent-indigo-600"
-                                      />
-                                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const visibleEditStudents =
+                        activeProgramTab === "ALL"
+                          ? editStudentList
+                          : editStudentList.filter(
+                              (s) => classifyProgramGroup(s.activeProgram) === activeProgramTab
+                            );
+
+                      if (visibleEditStudents.length === 0) {
+                        return (
+                          <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                            Tidak ada peserta pada kategori program ini.
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      }
+
+                      return visibleEditStudents.map((student) => {
+                        const status = editStatuses[student.id] || "PRESENT";
+                        return (
+                          <div key={student.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                  {student.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-bold text-slate-900">{student.name}</p>
+                                    {(student as any).alergi || (student as any).penyakit ? (
+                                      <div className="group relative flex items-center">
+                                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                          {(student as any).alergi && <p><strong>Alergi:</strong> {(student as any).alergi}</p>}
+                                          {(student as any).penyakit && <p><strong>Penyakit:</strong> {(student as any).penyakit}</p>}
+                                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-medium uppercase">{student.activeProgram || "—"}</p>
+                                </div>
+                              </div>
+                              {/* Status selector */}
+                              <select
+                                value={status}
+                                onChange={(e) => setEditStatuses((prev) => ({ ...prev, [student.id]: e.target.value }))}
+                                className={`text-xs font-bold rounded-lg px-2.5 py-1.5 border outline-none cursor-pointer ${STATUS_CONFIG[status]?.bg || ""} ${STATUS_CONFIG[status]?.color || ""} ${STATUS_CONFIG[status]?.border || ""}`}
+                              >
+                                {STATUSES.map((s) => (
+                                  <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Evaluation sliders — only on Friday/Saturday */}
+                            {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && status === "PRESENT" && (
+                              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4 pt-1">
+                                {([
+                                  ["Pronunciation", editPronunciations, setEditPronunciations],
+                                  ["Fluency", editFluencies, setEditFluencies],
+                                  ["Vocabulary", editVocabularies, setEditVocabularies],
+                                ] as const).map(([label, stateObj, setter]) => {
+                                  const { isExamScale, maxScore } = getProgramGradingScale(data.programType);
+                                  const currentValue = (stateObj as Record<string, number>)[student.id] ?? (isExamScale ? 80 : 4);
+                                  
+                                  return (
+                                    <div key={label} className="flex flex-col gap-1 sm:flex-1">
+                                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</label>
+                                      {isExamScale ? (
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="number"
+                                            min={0}
+                                            max={maxScore}
+                                            value={currentValue}
+                                            onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) || 0 }))}
+                                            className="w-full text-sm p-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white"
+                                          />
+                                          <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="range"
+                                            min={1}
+                                            max={maxScore}
+                                            value={currentValue}
+                                            onChange={(e) => (setter as React.Dispatch<React.SetStateAction<Record<string, number>>>)((prev) => ({ ...prev, [student.id]: parseInt(e.target.value) }))}
+                                            className="w-full accent-indigo-600"
+                                          />
+                                          <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">(Max: {maxScore})</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
 
                   {/* Tutor Notes */}
                   <div className="flex flex-col gap-1.5">
@@ -387,66 +516,87 @@ export function SessionDetailModal({
                     </button>
                   </div>
 
-                  {data.attendances.map((a) => {
-                    const cfg = STATUS_CONFIG[a.status] || STATUS_CONFIG.PRESENT;
-                    return (
-                      <div key={a.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                              {a.studentName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
-                                {(a.alergi || a.penyakit) && (
-                                  <div className="group relative flex items-center">
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
-                                      {a.alergi && <p><strong>Alergi:</strong> {a.alergi}</p>}
-                                      {a.penyakit && <p><strong>Penyakit:</strong> {a.penyakit}</p>}
-                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-slate-400 font-medium uppercase">{a.studentProgram || "—"}</p>
-                            </div>
-                          </div>
-                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                            {cfg.label}
-                          </span>
-                        </div>
+                  {renderProgramTabs(data.attendances.map((a) => a.studentProgram))}
 
-                        {/* Evaluations — only visible for Friday/Saturday sessions */}
-                        {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && (a.pronunciation || a.fluency || a.vocabulary) && (
-                          <div className="mt-3 pt-3 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
-                            {[
-                              { label: "Pronunciation", val: a.pronunciation },
-                              { label: "Fluency", val: a.fluency },
-                              { label: "Vocabulary", val: a.vocabulary },
-                            ].map((ev) => (
-                              <div key={ev.label} className="flex flex-col gap-1 sm:flex-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{ev.label}</p>
-                                <div className="flex items-center gap-1.5">
-                                  <ScoreDots value={ev.val} />
-                                  <span className="text-xs font-bold text-slate-600">{ev.val || "—"}/5</span>
+                  <div className="flex flex-col gap-3">
+                    {(() => {
+                      const visibleAttendances =
+                        activeProgramTab === "ALL"
+                          ? data.attendances
+                          : data.attendances.filter(
+                              (a) => classifyProgramGroup(a.studentProgram) === activeProgramTab
+                            );
+
+                      if (visibleAttendances.length === 0) {
+                        return (
+                          <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                            Tidak ada peserta pada kategori program ini.
+                          </div>
+                        );
+                      }
+
+                      return visibleAttendances.map((a) => {
+                        const cfg = STATUS_CONFIG[a.status] || STATUS_CONFIG.PRESENT;
+                        return (
+                          <div key={a.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                  {a.studentName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
+                                    {(a.alergi || a.penyakit) && (
+                                      <div className="group relative flex items-center">
+                                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                          {a.alergi && <p><strong>Alergi:</strong> {a.alergi}</p>}
+                                          {a.penyakit && <p><strong>Penyakit:</strong> {a.penyakit}</p>}
+                                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-medium uppercase">{a.studentProgram || "—"}</p>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                                {cfg.label}
+                              </span>
+                            </div>
 
-                        {/* Tutor Notes */}
-                        {a.tutorNotes && (
-                          <div className="mt-3 pt-3 border-t border-slate-200">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
-                            <p className="text-xs text-slate-600 leading-relaxed">{a.tutorNotes}</p>
+                            {/* Evaluations — only visible for Friday/Saturday sessions */}
+                            {(() => { const d = new Date(data.date); const day = d.getDay(); return day === 5 || day === 6; })() && (a.pronunciation || a.fluency || a.vocabulary) && (
+                              <div className="mt-3 pt-3 border-t border-slate-200 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+                                {[
+                                  { label: "Pronunciation", val: a.pronunciation },
+                                  { label: "Fluency", val: a.fluency },
+                                  { label: "Vocabulary", val: a.vocabulary },
+                                ].map((ev) => (
+                                  <div key={ev.label} className="flex flex-col gap-1 sm:flex-1">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{ev.label}</p>
+                                    <div className="flex items-center gap-1.5">
+                                      <ScoreDots value={ev.val} />
+                                      <span className="text-xs font-bold text-slate-600">{ev.val || "—"}/5</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Tutor Notes */}
+                            {a.tutorNotes && (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                                <p className="text-xs text-slate-600 leading-relaxed">{a.tutorNotes}</p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               ) : (
                 /* ========== PRE-CLASS: Expected Students ========== */
@@ -461,29 +611,52 @@ export function SessionDetailModal({
                       No eligible students for this session.
                     </div>
                   ) : (
-                    data.eligibleStudents.map((s) => (
-                      <div key={s.id} className="flex items-center gap-2.5 bg-slate-50 rounded-xl border border-slate-200 p-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                          {s.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-semibold text-slate-900">{s.name}</p>
-                            {(s.alergi || s.penyakit) && (
-                              <div className="group relative flex items-center">
-                                <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
-                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
-                                  {s.alergi && <p><strong>Alergi:</strong> {s.alergi}</p>}
-                                  {s.penyakit && <p><strong>Penyakit:</strong> {s.penyakit}</p>}
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                                </div>
+                    <>
+                      {renderProgramTabs(data.eligibleStudents.map((s) => s.activeProgram))}
+
+                      <div className="flex flex-col gap-2.5">
+                        {(() => {
+                          const visibleEligible =
+                            activeProgramTab === "ALL"
+                              ? data.eligibleStudents
+                              : data.eligibleStudents.filter(
+                                  (s) => classifyProgramGroup(s.activeProgram) === activeProgramTab
+                                );
+
+                          if (visibleEligible.length === 0) {
+                            return (
+                              <div className="text-center text-xs text-slate-400 py-8 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                                Tidak ada peserta pada kategori program ini.
                               </div>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">{s.activeProgram || "—"}</p>
-                        </div>
+                            );
+                          }
+
+                          return visibleEligible.map((s) => (
+                            <div key={s.id} className="flex items-center gap-2.5 bg-slate-50 rounded-xl border border-slate-200 p-3">
+                              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                {s.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-semibold text-slate-900">{s.name}</p>
+                                  {(s.alergi || s.penyakit) && (
+                                    <div className="group relative flex items-center">
+                                      <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                                      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-max max-w-xs bg-slate-800 text-white text-[10px] rounded py-1 px-2 z-10 shadow-lg">
+                                        {s.alergi && <p><strong>Alergi:</strong> {s.alergi}</p>}
+                                        {s.penyakit && <p><strong>Penyakit:</strong> {s.penyakit}</p>}
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium uppercase">{s.activeProgram || "—"}</p>
+                              </div>
+                            </div>
+                          ));
+                        })()}
                       </div>
-                    ))
+                    </>
                   )}
                 </div>
               )}
