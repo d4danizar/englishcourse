@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { approveCertificate } from "./actions";
-import { CheckCircle, ExternalLink, GraduationCap, Loader2 } from "lucide-react";
+import { CheckCircle, ExternalLink, GraduationCap, Loader2, Search, X } from "lucide-react";
 
 type PendingCertificate = {
   id: string;
@@ -32,6 +32,7 @@ export default function CertificatesClient({
   pendingCertificates: PendingCertificate[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const [searchQuery, setSearchQuery] = useState("");
   const [scores, setScores] = useState<Record<string, ScoreInputs>>(() => {
     const initial: Record<string, ScoreInputs> = {};
     pendingCertificates.forEach((cert) => {
@@ -125,9 +126,68 @@ export default function CertificatesClient({
     );
   }
 
+  const query = searchQuery.trim().toLowerCase();
+  const filteredEnrollments = pendingCertificates.filter((cert) => {
+    if (!query) return true;
+    const nameMatch = cert.user?.name?.toLowerCase().includes(query);
+    const emailMatch = cert.user?.email?.toLowerCase().includes(query);
+    const programMatch = cert.programType?.toLowerCase().includes(query);
+    return nameMatch || emailMatch || programMatch;
+  });
+
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {pendingCertificates.map((cert) => {
+    <div className="flex flex-col gap-6">
+      {/* Search Bar & Count Indicator */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div className="relative flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="🔍 Cari nama murid, email, atau program..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-4 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              title="Reset pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs sm:text-sm font-medium text-slate-500">
+          Menampilkan <span className="font-bold text-slate-800">{filteredEnrollments.length}</span> dari{" "}
+          <span className="font-bold text-slate-800">{pendingCertificates.length}</span> pengajuan
+        </div>
+      </div>
+
+      {/* Empty Search State or Cards Grid */}
+      {filteredEnrollments.length === 0 ? (
+        <div className="bg-white p-10 rounded-2xl shadow-sm border border-slate-200 text-center text-slate-500">
+          <div className="flex justify-center mb-3">
+            <Search className="w-10 h-10 text-slate-300" />
+          </div>
+          <p className="font-semibold text-slate-800 text-base">
+            Tidak ada murid yang cocok dengan pencarian &ldquo;{searchQuery}&rdquo;
+          </p>
+          <p className="text-sm text-slate-500 mt-1">
+            Coba gunakan kata kunci nama, email, atau program yang lain.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="mt-4 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold text-xs rounded-xl transition-colors"
+          >
+            Reset Pencarian
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredEnrollments.map((cert) => {
         const currentScores = scores[cert.id] || {
           fluency: "",
           pronunciation: "",
@@ -244,6 +304,8 @@ export default function CertificatesClient({
           </div>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }
