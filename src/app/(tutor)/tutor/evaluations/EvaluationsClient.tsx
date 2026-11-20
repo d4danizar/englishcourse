@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
-import { Loader2, Users, FileText, CheckCircle, Search, Star, Download } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { Loader2, Users, FileText, CheckCircle, Search, Star } from "lucide-react";
 import { getStudentsForEvaluation, submitDescriptiveEvaluation, type EvaluationGroup } from "./actions";
-import { type PdfData } from "./EvaluationPdfTemplate";
+import {
+  SCORE_OPTIONS,
+  getRubricDescription,
+  getGeneralGrade,
+  type EvaluationAspect,
+} from "@/lib/evaluation-rubric";
 import dynamic from "next/dynamic";
 
 const PdfDownloadButton = dynamic(() => import("./PdfDownloadButton"), {
@@ -78,6 +83,34 @@ export function EvaluationsClient({ tutorId, tutorName }: { tutorId: string; tut
     setIsModalOpen(false);
     setSelectedStudent(null);
   };
+
+  const handleAspectScoreChange = (aspect: EvaluationAspect, scoreStr: string) => {
+    const scoreNum = parseFloat(scoreStr);
+    const autoDescription = !isNaN(scoreNum) ? getRubricDescription(aspect, scoreNum) : "";
+    setFormData((prev) => ({
+      ...prev,
+      [`${aspect}Score`]: scoreStr,
+      [`${aspect}Note`]: autoDescription || (prev as any)[`${aspect}Note`],
+    }));
+  };
+
+  const ASPECTS: EvaluationAspect[] = [
+    "listening",
+    "speaking",
+    "reading",
+    "pronunciation",
+    "vocabulary",
+  ];
+
+  const validScores = ASPECTS.map((a) => parseFloat((formData as any)[`${a}Score`])).filter(
+    (n) => !isNaN(n) && n >= 1 && n <= 5
+  );
+  const rawAverage =
+    validScores.length > 0
+      ? validScores.reduce((sum, val) => sum + val, 0) / validScores.length
+      : null;
+  const roundedAverage = rawAverage !== null ? Math.round(rawAverage * 2) / 2 : null;
+  const generalGrade = roundedAverage !== null ? getGeneralGrade(roundedAverage) : null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,29 +254,86 @@ export function EvaluationsClient({ tutorId, tutorName }: { tutorId: string; tut
             <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex flex-col gap-6">
               
               <div className="grid grid-cols-1 gap-4 border-b pb-6">
-                <h4 className="font-bold text-slate-800">1. Aspek Penilaian (Skor 1-5 & Catatan)</h4>
-                
-                {['listening', 'speaking', 'reading', 'pronunciation', 'vocabulary'].map((skill) => (
-                  <div key={skill} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold text-slate-700 uppercase tracking-widest capitalize">{skill}</label>
-                      <input
-                        type="number" step="0.5" min="1" max="5" required
-                        placeholder="1-5"
-                        value={(formData as any)[`${skill}Score`]}
-                        onChange={(e) => setFormData({ ...formData, [`${skill}Score`]: e.target.value })}
-                        className="w-20 text-sm p-1.5 rounded-lg border border-slate-300 text-center"
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h4 className="font-bold text-slate-800">1. Aspek Penilaian (Skor 1.0 - 5.0 & Rubrik Otomatis)</h4>
+                  {roundedAverage !== null && generalGrade && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold">
+                      <span>Rata-rata: {roundedAverage.toFixed(1)}</span>
+                      <span>•</span>
+                      <span>{generalGrade.label}</span>
+                    </div>
+                  )}
+                </div>
+
+                {roundedAverage !== null && generalGrade?.description && (
+                  <div className="p-3 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs text-indigo-900">
+                    <span className="font-bold">Predikat ({roundedAverage.toFixed(1)} - {generalGrade.label}): </span>
+                    {generalGrade.description}
+                  </div>
+                )}
+
+                {ASPECTS.map((skill) => {
+                  const currentScore = (formData as any)[`${skill}Score`];
+                  return (
+                    <div key={skill} className="flex flex-col gap-2.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-widest capitalize">
+                          {skill}
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <select
+                            required
+                            value={currentScore}
+                            onChange={(e) => handleAspectScoreChange(skill, e.target.value)}
+                            className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                          >
+                            <option value="" disabled>Pilih Skor (1.0 - 5.0)</option>
+                            {SCORE_OPTIONS.map((scoreOpt) => {
+                              const formatted = scoreOpt.toFixed(1);
+                              return (
+                                <option key={formatted} value={formatted}>
+                                  {formatted} — {getGeneralGrade(scoreOpt).label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {SCORE_OPTIONS.map((scoreOpt) => {
+                          const formatted = scoreOpt.toFixed(1);
+                          const isSelected =
+                            currentScore !== "" &&
+                            parseFloat(currentScore).toFixed(1) === formatted;
+                          return (
+                            <button
+                              key={formatted}
+                              type="button"
+                              onClick={() => handleAspectScoreChange(skill, formatted)}
+                              className={`px-2 py-1 rounded-md text-xs font-bold transition-colors border ${
+                                isSelected
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700"
+                              }`}
+                            >
+                              {formatted}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder={`Deskripsi perkembangan ${skill} (terisi otomatis saat skor dipilih)...`}
+                        value={(formData as any)[`${skill}Note`]}
+                        onChange={(e) => setFormData({ ...formData, [`${skill}Note`]: e.target.value })}
+                        className="w-full text-sm p-2.5 rounded-lg border border-slate-300 bg-white"
                       />
                     </div>
-                    <textarea
-                      required rows={2}
-                      placeholder={`Catatan perkembangan ${skill}...`}
-                      value={(formData as any)[`${skill}Note`]}
-                      onChange={(e) => setFormData({ ...formData, [`${skill}Note`]: e.target.value })}
-                      className="w-full text-sm p-2 rounded-lg border border-slate-300"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="flex flex-col gap-4 border-b pb-6">
@@ -264,9 +354,19 @@ export function EvaluationsClient({ tutorId, tutorName }: { tutorId: string; tut
                 <textarea required rows={2} value={formData.nextTarget} onChange={(e) => setFormData({ ...formData, nextTarget: e.target.value })} className="w-full text-sm p-3 rounded-xl border border-slate-200" />
               </div>
 
-              <div className="flex flex-col gap-4">
-                <h4 className="font-bold text-slate-800">4. Catatan Khusus Tentor</h4>
-                <textarea required rows={2} value={formData.tutorNote} onChange={(e) => setFormData({ ...formData, tutorNote: e.target.value })} className="w-full text-sm p-3 rounded-xl border border-slate-200" />
+              <div className="flex flex-col gap-2">
+                <label className="font-bold text-slate-800">4. Catatan Tutor (Manual)</label>
+                <p className="text-xs text-slate-500">
+                  Catatan personal, sikap selama di kelas, atau masukan khusus dari tutor (tidak tertimpa otomatis oleh rubrik).
+                </p>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Tulis catatan manual tutor untuk siswa ini..."
+                  value={formData.tutorNote}
+                  onChange={(e) => setFormData({ ...formData, tutorNote: e.target.value })}
+                  className="w-full text-sm p-3 rounded-xl border border-slate-200"
+                />
               </div>
 
               <div className="sticky bottom-0 -mx-5 -mb-5 p-5 bg-white border-t border-slate-100 flex justify-end gap-3 items-center">

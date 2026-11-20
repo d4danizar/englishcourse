@@ -14,6 +14,10 @@ export default function CrmDashboardClient({ initialLeads, currentMonth, current
   const [nextReminder, setNextReminder] = useState("");
   const [isClosedWon, setIsClosedWon] = useState(false);
 
+  // Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reminderDateFilter, setReminderDateFilter] = useState("");
+
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     router.push(`/admin/follow-up?month=${e.target.value}&year=${currentYear}`);
   };
@@ -55,18 +59,79 @@ export default function CrmDashboardClient({ initialLeads, currentMonth, current
     return new Date(dateString) <= new Date();
   };
 
+  const filteredLeads = initialLeads.filter((lead: any) => {
+    // 1. Search Query Match
+    const query = searchQuery.toLowerCase();
+    const phoneStr = lead.phone || lead.whatsapp || "";
+    const matchesSearch =
+      !searchQuery ||
+      lead.name?.toLowerCase().includes(query) ||
+      phoneStr.includes(query);
+
+    // 2. Reminder Date Match
+    // Extract YYYY-MM-DD directly from the ISO string to prevent WIB/UTC timezone offsets from shifting the day
+    let leadReminderDate = "";
+    if (lead.nextReminderDate) {
+      try {
+        // Handle both Date objects and stringified dates gracefully
+        const dateObj = new Date(lead.nextReminderDate);
+        leadReminderDate = dateObj.toISOString().split('T')[0];
+      } catch (e) {
+        console.error("Invalid date format", lead.nextReminderDate);
+      }
+    }
+    
+    const matchesDate = !reminderDateFilter || leadReminderDate === reminderDateFilter;
+
+    return matchesSearch && matchesDate;
+  });
+
   return (
     <div>
-      {/* Filters */}
-      <div className="mb-6 flex gap-4">
-        <select value={currentMonth} onChange={handleMonthChange} className="border p-2 rounded font-medium text-gray-700">
-          {[
-            "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
-            "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-          ].map((monthName, index) => (
-            <option key={index + 1} value={index + 1}>{monthName}</option>
-          ))}
-        </select>
+      {/* Filters & Search */}
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
+          <select 
+            value={currentMonth} 
+            onChange={handleMonthChange} 
+            className="border border-gray-300 p-2 rounded-md font-medium text-gray-700"
+          >
+            {[
+              "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+              "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            ].map((monthName, index) => (
+              <option key={index + 1} value={index + 1}>{monthName}</option>
+            ))}
+          </select>
+          
+          <div className="flex items-center gap-2">
+            <input 
+              type="date" 
+              value={reminderDateFilter}
+              onChange={(e) => setReminderDateFilter(e.target.value)}
+              className="border border-gray-300 p-2 rounded-md text-sm"
+              title="Filter by Reminder Date"
+            />
+            {reminderDateFilter && (
+              <button 
+                onClick={() => setReminderDateFilter("")} 
+                className="text-xs font-semibold text-red-500 hover:text-red-700"
+              >
+                Reset Tanggal
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="w-full md:w-1/3">
+          <input 
+            type="text" 
+            placeholder="🔍 Cari Nama atau No. WA..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
       </div>
 
       {/* Leads Table */}
@@ -82,7 +147,7 @@ export default function CrmDashboardClient({ initialLeads, currentMonth, current
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {initialLeads.map((lead: any) => (
+            {filteredLeads.map((lead: any) => (
               <tr key={lead.id} className={lead.status === "CLOSED_WON" ? "bg-green-50 opacity-70" : ""}>
                 <td className="px-6 py-4">
                   <div className="font-medium text-gray-900">{lead.name}</div>
