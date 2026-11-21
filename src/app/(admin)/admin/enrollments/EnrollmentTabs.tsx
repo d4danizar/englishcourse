@@ -414,6 +414,33 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                   )}
                 </div>
 
+                {renewProgram.includes("Holiday") && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+                      Pilih Periode & Batch (Otomatis Set Tanggal Mulai)
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) setRenewStartDate(e.target.value);
+                      }}
+                      defaultValue=""
+                      className="w-full p-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none text-slate-800"
+                    >
+                      <option value="">-- Pilih Batch Holiday --</option>
+                      <optgroup label="Periode Juni–Juli 2026 (4 Minggu / 4 Batch)">
+                        <option value="2026-06-15">Batch 1 — Juni–Juli (15 Juni – 20 Juni 2026)</option>
+                        <option value="2026-06-22">Batch 2 — Juni–Juli (22 Juni – 27 Juni 2026)</option>
+                        <option value="2026-06-29">Batch 3 — Juni–Juli (29 Juni – 4 Juli 2026)</option>
+                        <option value="2026-07-06">Batch 4 — Juni–Juli (6 Juli – 11 Juli 2026)</option>
+                      </optgroup>
+                      <optgroup label="Periode Desember–Januari 2026/2027 (2 Minggu / 2 Batch)">
+                        <option value="2026-12-21">Batch 1 — Desember (21 Desember – 26 Desember 2026)</option>
+                        <option value="2026-12-28">Batch 2 — Desember–Januari (28 Desember 2026 – 2 Januari 2027)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tanggal Mulai</label>
                   <input
@@ -438,6 +465,9 @@ export default function EnrollmentTabs({ dpInvoices, activeStudents, expiredStud
                       <option value="1_WEEK">1 Minggu</option>
                       <option value="2_WEEKS">2 Minggu</option>
                       <option value="3_WEEKS">3 Minggu</option>
+                      {renewProgram.includes("Holiday") && (
+                        <option value="4_WEEKS">4 Minggu</option>
+                      )}
                       <option value="1_MONTH">1 Bulan</option>
                       <option value="2_MONTHS">2 Bulan</option>
                       <option value="6_MONTHS">6 Bulan</option>

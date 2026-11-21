@@ -292,6 +292,8 @@ export async function approvePayment(invoiceId: string, paymentMethod: string = 
       if (!finalBatch) {
         if (finalActiveProgram === "Regular") {
           finalBatch = dataPayload.session || "Unspecified";
+        } else if (finalActiveProgram.includes("Holiday")) {
+          finalBatch = dataPayload.gelombang || dataPayload.programBatch || dataPayload.durationOption || dataPayload.duration || "Unspecified";
         } else {
           // Untuk Non-Regular, gunakan duration sebagai batch agar tidak kosong di data admin
           finalBatch = dataPayload.durationOption || dataPayload.duration || dataPayload.session || "Unspecified";
@@ -314,6 +316,14 @@ export async function approvePayment(invoiceId: string, paymentMethod: string = 
         finalDurationOption = "6_MONTHS";
       } else if (finalActiveProgram === "Fullday" || finalActiveProgram === "Asrama") {
         finalDurationOption = durationOption || "1_MONTH"; // Fallback aman
+      } else if (finalActiveProgram.includes("Holiday")) {
+        const rawHolidayDur = String(
+          durationOption || dataPayload.program || invoice.programName || "1_WEEK"
+        ).toLowerCase();
+        if (rawHolidayDur.includes("4")) finalDurationOption = "4_WEEKS";
+        else if (rawHolidayDur.includes("3")) finalDurationOption = "3_WEEKS";
+        else if (rawHolidayDur.includes("2")) finalDurationOption = "2_WEEKS";
+        else finalDurationOption = "1_WEEK";
       }
 
       const offDays = await tx.offDay.findMany();

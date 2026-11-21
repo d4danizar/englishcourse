@@ -83,6 +83,19 @@ function calculateEndDate(program: string, startDate: string, duration: string):
     case "EFT":
     case "EFK":
       return addMonths(start, 6);
+    case "Holiday Kids - Fullday":
+    case "Holiday Kids - Camp":
+    case "Holiday Teens - Fullday":
+    case "Holiday Teens - Camp": {
+      if (!duration) return addDays(start, 5);
+      switch (duration) {
+        case "1_WEEK":  return addDays(start, 5);
+        case "2_WEEKS": return addDays(start, 12);
+        case "3_WEEKS": return addDays(start, 19);
+        case "4_WEEKS": return addDays(start, 26);
+        default:        return addDays(start, 5);
+      }
+    }
     default:
       return null;
   }
@@ -478,8 +491,8 @@ export function UsersClientView({
         </div>
       )}
 
-      {/* Duration — Fullday/Asrama only */}
-      {(program === "Fullday" || program === "Asrama") && (
+      {/* Duration — Fullday/Asrama/Holiday */}
+      {(program === "Fullday" || program === "Asrama" || program?.includes("Holiday")) && (
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Duration</label>
           <select
@@ -488,11 +501,69 @@ export function UsersClientView({
             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
           >
             <option value="">Select duration...</option>
-            <option value="1_WEEK">1 Week</option>
-            <option value="2_WEEKS">2 Weeks</option>
-            <option value="3_WEEKS">3 Weeks</option>
-            <option value="1_MONTH">1 Month</option>
-            <option value="2_MONTHS">2 Months</option>
+            <option value="1_WEEK">1 Week (1 Batch)</option>
+            <option value="2_WEEKS">2 Weeks (2 Batches)</option>
+            <option value="3_WEEKS">3 Weeks (3 Batches)</option>
+            {program?.includes("Holiday") ? (
+              <option value="4_WEEKS">4 Weeks (4 Batches)</option>
+            ) : (
+              <>
+                <option value="1_MONTH">1 Month</option>
+                <option value="2_MONTHS">2 Months</option>
+              </>
+            )}
+          </select>
+        </div>
+      )}
+
+      {/* Holiday Period & Batch Selector */}
+      {program?.includes("Holiday") && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">
+            Periode & Gelombang (Holiday Batch)
+          </label>
+          <select
+            value={programBatch}
+            onChange={(e) => {
+              const val = e.target.value;
+              setProgramBatch(val);
+              const batchStartMap: Record<string, string> = {
+                "Periode Juni-Juli: Batch 1 (15 Juni - 20 Juni 2026)": "2026-06-15",
+                "Periode Juni-Juli: Batch 2 (22 Juni - 27 Juni 2026)": "2026-06-22",
+                "Periode Juni-Juli: Batch 3 (29 Juni - 4 Juli 2026)": "2026-06-29",
+                "Periode Juni-Juli: Batch 4 (6 Juli - 11 Juli 2026)": "2026-07-06",
+                "Periode Des-Jan: Batch 1 (21 Desember - 26 Desember 2026)": "2026-12-21",
+                "Periode Des-Jan: Batch 2 (28 Desember 2026 - 2 Januari 2027)": "2026-12-28",
+              };
+              if (batchStartMap[val]) {
+                setStartDate(batchStartMap[val]);
+              }
+            }}
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none font-medium text-slate-700"
+          >
+            <option value="">-- Pilih Periode & Batch --</option>
+            <optgroup label="Periode Juni–Juli 2026 (4 Minggu / 4 Batch)">
+              <option value="Periode Juni-Juli: Batch 1 (15 Juni - 20 Juni 2026)">
+                Batch 1 — Juni–Juli (15 Juni – 20 Juni 2026)
+              </option>
+              <option value="Periode Juni-Juli: Batch 2 (22 Juni - 27 Juni 2026)">
+                Batch 2 — Juni–Juli (22 Juni – 27 Juni 2026)
+              </option>
+              <option value="Periode Juni-Juli: Batch 3 (29 Juni - 4 Juli 2026)">
+                Batch 3 — Juni–Juli (29 Juni – 4 Juli 2026)
+              </option>
+              <option value="Periode Juni-Juli: Batch 4 (6 Juli - 11 Juli 2026)">
+                Batch 4 — Juni–Juli (6 Juli – 11 Juli 2026)
+              </option>
+            </optgroup>
+            <optgroup label="Periode Desember–Januari 2026/2027 (2 Minggu / 2 Batch)">
+              <option value="Periode Des-Jan: Batch 1 (21 Desember - 26 Desember 2026)">
+                Batch 1 — Desember (21 Desember – 26 Desember 2026)
+              </option>
+              <option value="Periode Des-Jan: Batch 2 (28 Desember 2026 - 2 Januari 2027)">
+                Batch 2 — Desember–Januari (28 Desember 2026 – 2 Januari 2027)
+              </option>
+            </optgroup>
           </select>
         </div>
       )}

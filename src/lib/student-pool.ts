@@ -30,6 +30,14 @@ function getEligiblePrograms(programType: string): string[] {
       return ["TOEFL", "TOEFL Prep"];
     case "english on saturday":
       return ["English on Saturday", "English On Saturday", "EOS"];
+    case "holiday kids":
+    case "holiday kids - fullday":
+    case "holiday kids - camp":
+      return ["Holiday Kids", "Holiday Kids - Fullday", "Holiday Kids - Camp"];
+    case "holiday teens":
+    case "holiday teens - fullday":
+    case "holiday teens - camp":
+      return ["Holiday Teens", "Holiday Teens - Fullday", "Holiday Teens - Camp"];
     default:
       return [programType];
   }
@@ -190,7 +198,12 @@ export async function getEligibleStudentsForSession(session: {
       return isAssigned && prog === sessionProgType;
     }
 
-    // --- OTHER ---
+    // --- OTHER (including Holiday Kids / Holiday Teens) ---
+    if (sessionProgType.includes("holiday")) {
+      const targetGroup = sessionProgType.includes("kids") ? "holiday kids" : "holiday teens";
+      return prog.includes(targetGroup);
+    }
+
     return prog === sessionProgType;
   }).map((s) => ({ id: s.id, name: s.name, activeProgram: s.enrollments?.[0]?.programType || null }));
 }

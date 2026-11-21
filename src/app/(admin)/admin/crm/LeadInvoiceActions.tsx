@@ -466,6 +466,7 @@ export function LeadInvoiceActions({ lead }: { lead: Lead }) {
                           <option>1 Minggu</option>
                           <option>2 Minggu</option>
                           <option>3 Minggu</option>
+                          <option>4 Minggu</option>
                         </>
                       )}
                     </select>

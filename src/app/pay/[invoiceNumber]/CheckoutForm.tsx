@@ -28,7 +28,57 @@ import { CLASS_TIME_SLOTS } from "@/constants/schedules";
 const TIME_SLOTS = CLASS_TIME_SLOTS;
 
 const DURATION_OPTIONS = ["1 Minggu", "2 Minggu", "3 Minggu", "1 Bulan", "2 Bulan"];
+const HOLIDAY_DURATION_OPTIONS = ["1 Minggu", "2 Minggu", "3 Minggu", "4 Minggu"];
 const NEEDS_DETAIL = ["Regular", "Fullday", "Asrama"];
+
+export const HOLIDAY_BATCH_PERIODS = [
+  {
+    periodLabel: "Periode Juni–Juli 2026 (4 Minggu / 4 Batch)",
+    batches: [
+      {
+        label: "Batch 1 — Juni–Juli (15 Juni – 20 Juni 2026)",
+        value: "Periode Juni-Juli: Batch 1 (15 Juni - 20 Juni 2026)",
+        startDate: "2026-06-15",
+        endDate: "2026-06-20",
+      },
+      {
+        label: "Batch 2 — Juni–Juli (22 Juni – 27 Juni 2026)",
+        value: "Periode Juni-Juli: Batch 2 (22 Juni - 27 Juni 2026)",
+        startDate: "2026-06-22",
+        endDate: "2026-06-27",
+      },
+      {
+        label: "Batch 3 — Juni–Juli (29 Juni – 4 Juli 2026)",
+        value: "Periode Juni-Juli: Batch 3 (29 Juni - 4 Juli 2026)",
+        startDate: "2026-06-29",
+        endDate: "2026-07-04",
+      },
+      {
+        label: "Batch 4 — Juni–Juli (6 Juli – 11 Juli 2026)",
+        value: "Periode Juni-Juli: Batch 4 (6 Juli - 11 Juli 2026)",
+        startDate: "2026-07-06",
+        endDate: "2026-07-11",
+      },
+    ],
+  },
+  {
+    periodLabel: "Periode Desember–Januari 2026/2027 (2 Minggu / 2 Batch)",
+    batches: [
+      {
+        label: "Batch 1 — Desember (21 Desember – 26 Desember 2026)",
+        value: "Periode Des-Jan: Batch 1 (21 Desember - 26 Desember 2026)",
+        startDate: "2026-12-21",
+        endDate: "2026-12-26",
+      },
+      {
+        label: "Batch 2 — Desember–Januari (28 Desember 2026 – 2 Januari 2027)",
+        value: "Periode Des-Jan: Batch 2 (28 Desember 2026 - 2 Januari 2027)",
+        startDate: "2026-12-28",
+        endDate: "2027-01-02",
+      },
+    ],
+  },
+] as const;
 
 const formSchema = z
   .object({
@@ -137,6 +187,7 @@ export function CheckoutForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -219,8 +270,16 @@ export function CheckoutForm({
       program: programFull,
       // Admin Sync Fields
       activeProgram: values.program,
-      programBatch: values.program === "Regular" ? values.programDetail : undefined,
-      durationOption: ["Fullday", "Asrama"].includes(values.program) ? values.programDetail : undefined,
+      programBatch:
+        values.program === "Regular"
+          ? values.programDetail
+          : isHolidayProgram
+          ? gelombang || values.programDetail
+          : undefined,
+      durationOption:
+        ["Fullday", "Asrama"].includes(values.program) || isHolidayProgram
+          ? values.programDetail
+          : undefined,
       batchSchedule: ["EFK", "EFT"].includes(values.program) ? values.programDetail : undefined,
       startDate: values.startDate,
       // Default Info
@@ -391,7 +450,9 @@ export function CheckoutForm({
             <FieldWrap label="Durasi Program" required error={errors.programDetail?.message}>
               <select {...register("programDetail")} className={inputCls}>
                 <option value="">-- Pilih durasi --</option>
-                {DURATION_OPTIONS.map((d) => <option key={d}>{d}</option>)}
+                {(selectedProgram?.includes("Holiday") ? HOLIDAY_DURATION_OPTIONS : DURATION_OPTIONS).map((d) => (
+                  <option key={d}>{d}</option>
+                ))}
               </select>
             </FieldWrap>
           )}
@@ -425,17 +486,33 @@ export function CheckoutForm({
                <h3 className="font-bold text-orange-800 text-sm uppercase tracking-widest border-b border-orange-200/60 pb-3">Informasi Khusus Holiday Program</h3>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FieldWrap label="Gelombang (Batch)" required>
+                 <FieldWrap label="Periode & Gelombang (Batch)" required>
                    <select 
                      value={gelombang} 
-                     onChange={(e) => setGelombang(e.target.value)} 
+                     onChange={(e) => {
+                       const selectedVal = e.target.value;
+                       setGelombang(selectedVal);
+                       for (const period of HOLIDAY_BATCH_PERIODS) {
+                         const found = period.batches.find((b) => b.value === selectedVal);
+                         if (found) {
+                           setValue("startDate", found.startDate, { shouldValidate: true });
+                           break;
+                         }
+                       }
+                     }} 
                      required={isHolidayProgram}
                      className={inputCls}
                    >
-                     <option value="" disabled>-- Pilih Gelombang --</option>
-                     <option value="Gel 1 (15 Juni - 20 Juni 2026)">Gel 1 (15 Juni - 20 Juni 2026)</option>
-                     <option value="Gel 2 (22 Juni - 27 Juni 2026)">Gel 2 (22 Juni - 27 Juni 2026)</option>
-                     <option value="Gel 3 (29 Juni - 4 Juli 2026)">Gel 3 (29 Juni - 4 Juli 2026)</option>
+                     <option value="" disabled>-- Pilih Periode & Gelombang --</option>
+                     {HOLIDAY_BATCH_PERIODS.map((period) => (
+                       <optgroup key={period.periodLabel} label={period.periodLabel}>
+                         {period.batches.map((b) => (
+                           <option key={b.value} value={b.value}>
+                             {b.label}
+                           </option>
+                         ))}
+                       </optgroup>
+                     ))}
                    </select>
                  </FieldWrap>
 

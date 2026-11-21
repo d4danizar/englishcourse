@@ -73,6 +73,7 @@ function getBasePrice(program: string, duration?: string): number {
       if (weeks === 1) return 750000;
       if (weeks === 2) return 1400000;
       if (weeks === 3) return 2150000;
+      if (weeks >= 4) return 2800000;
       return 750000;
     }
 
@@ -82,6 +83,7 @@ function getBasePrice(program: string, duration?: string): number {
       if (weeks === 1) return 1100000;
       if (weeks === 2) return 1900000;
       if (weeks === 3) return 4000000;
+      if (weeks >= 4) return 5000000;
       return 1100000;
     }
 

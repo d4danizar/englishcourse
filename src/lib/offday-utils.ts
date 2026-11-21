@@ -5,6 +5,7 @@ export function getRequiredClassDays(durationOption: string): number {
   if (normalized.includes("1_minggu") || normalized === "1 minggu" || normalized.includes("1_week")) return 5;
   if (normalized.includes("2_minggu") || normalized === "2 minggu" || normalized.includes("2_weeks")) return 10;
   if (normalized.includes("3_minggu") || normalized === "3 minggu" || normalized.includes("3_weeks")) return 15;
+  if (normalized.includes("4_minggu") || normalized === "4 minggu" || normalized.includes("4_weeks")) return 20;
   
   // 1 Bulan = 4 weeks = 20 active days
   if (normalized.includes("1_bulan") || normalized === "1 bulan" || normalized.includes("1_month")) return 20;
@@ -14,6 +15,14 @@ export function getRequiredClassDays(durationOption: string): number {
   if (normalized.includes("6_bulan") || normalized === "6 bulan" || normalized.includes("6_months")) return 120;
   
   return 20; // Default fallback to 1 month
+}
+
+function getHolidayWeeks(durationOption: string | null): number {
+  const norm = (durationOption || "").toLowerCase();
+  if (norm.includes("4")) return 4;
+  if (norm.includes("3")) return 3;
+  if (norm.includes("2")) return 2;
+  return 1;
 }
 
 export function calculateEndDate(
@@ -27,6 +36,16 @@ export function calculateEndDate(
   start.setHours(0, 0, 0, 0); // Normalisasi ke tengah malam
 
   const cleanProgram = String(programType || "").toUpperCase().trim();
+
+  // === FIXED CALENDAR FOR HOLIDAY PROGRAMS (Monday–Saturday per Batch) ===
+  // Ensures fixed batch end dates (e.g., Dec 21–26 2026 and Dec 28 2026–Jan 2 2027)
+  // are exact and not shifted across year boundaries by global OffDay logic.
+  if (cleanProgram.includes("HOLIDAY")) {
+    const weeks = getHolidayWeeks(durationOption);
+    const holidayEnd = new Date(start);
+    holidayEnd.setDate(holidayEnd.getDate() + (weeks * 7 - 2) + (leaveUsed || 0));
+    return holidayEnd;
+  }
 
   // OVERRIDE for EFT and EFK natively across the app
   let requiredDays = getRequiredClassDays(durationOption || "");
