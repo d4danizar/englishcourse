@@ -6,8 +6,13 @@ import type { NextRequest } from "next/server";
 const STAFF_ROLES = ["SUPER_ADMIN", "MANAGER", "CS", "MARKETING", "CREATOR", "HEAD_TUTOR"];
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const userRole = (token?.role as string) ?? "";
 
   // ── Protect authenticated routes ──────────────────────────────────────────

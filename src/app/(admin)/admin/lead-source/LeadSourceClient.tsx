@@ -13,10 +13,24 @@ type Lead = {
   id: string;
   name: string;
   whatsapp: string;
+  branch?: string | null;
   createdAt: Date;
   discoverySource: string | null;
   notes?: string | null;
 };
+
+type BranchTabKey = "ALL" | "KARTASURA" | "CABANG_2" | "OTHER";
+
+const BRANCH_LABELS: Record<string, string> = {
+  KARTASURA: "Kartasura",
+  CABANG_2: "Serengan",
+  CABANG_3: "Cabang 3",
+};
+
+function formatBranchLabel(branch?: string | null): string {
+  if (!branch) return "Kartasura";
+  return BRANCH_LABELS[branch] || branch;
+}
 
 type MarketingSource = {
   id: string;
@@ -67,6 +81,7 @@ export default function LeadSourceClient({
   };
 
   // Filters
+  const [selectedBranch, setSelectedBranch] = useState<BranchTabKey>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
@@ -83,26 +98,49 @@ export default function LeadSourceClient({
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // Apply filters
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = 
-      lead.whatsapp?.includes(searchQuery) || 
+  // Base filter (search + date) to compute accurate per-branch tab counts
+  const dateAndSearchLeads = leads.filter((lead) => {
+    const matchesSearch =
+      lead.whatsapp?.includes(searchQuery) ||
       lead.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Date check (ignoring time by resetting to midnight for safe comparison)
+
     const leadDate = new Date(lead.createdAt);
-    leadDate.setHours(0,0,0,0);
-    
+    leadDate.setHours(0, 0, 0, 0);
+
     const start = startDate ? new Date(startDate) : null;
-    if (start) start.setHours(0,0,0,0);
-    
+    if (start) start.setHours(0, 0, 0, 0);
+
     const end = endDate ? new Date(endDate) : null;
-    if (end) end.setHours(0,0,0,0);
+    if (end) end.setHours(0, 0, 0, 0);
 
     const matchesStart = start ? leadDate >= start : true;
     const matchesEnd = end ? leadDate <= end : true;
 
     return matchesSearch && matchesStart && matchesEnd;
+  });
+
+  const branchCounts = {
+    ALL: dateAndSearchLeads.length,
+    KARTASURA: 0,
+    CABANG_2: 0,
+    OTHER: 0,
+  };
+
+  dateAndSearchLeads.forEach((lead) => {
+    const b = lead.branch || "KARTASURA";
+    if (b === "KARTASURA") branchCounts.KARTASURA++;
+    else if (b === "CABANG_2") branchCounts.CABANG_2++;
+    else branchCounts.OTHER++;
+  });
+
+  // Apply branch filter on top of dateAndSearchLeads
+  const filteredLeads = dateAndSearchLeads.filter((lead) => {
+    if (selectedBranch === "ALL") return true;
+    const b = lead.branch || "KARTASURA";
+    if (selectedBranch === "OTHER") {
+      return b !== "KARTASURA" && b !== "CABANG_2";
+    }
+    return b === selectedBranch;
   });
 
   // Chart Data Preparation
@@ -124,6 +162,7 @@ export default function LeadSourceClient({
       // Use filteredLeads instead of all leads
       const exportData = filteredLeads.map(lead => ({
         "Tanggal Masuk": format(new Date(lead.createdAt), "dd MMMM yyyy", { locale: id }),
+        "Cabang": formatBranchLabel(lead.branch),
         "Nama": lead.name,
         "Nomor WhatsApp": lead.whatsapp,
         "Asal Iklan": lead.discoverySource || "Belum Ditentukan"
@@ -134,14 +173,28 @@ export default function LeadSourceClient({
       // Auto-size columns
       worksheet["!cols"] = [
         { wch: 20 }, // Tanggal
+        { wch: 15 }, // Cabang
         { wch: 40 }, // Nama
         { wch: 20 }, // WhatsApp
         { wch: 20 }, // Asal Iklan
       ];
 
+      const branchFileSlug =
+        selectedBranch === "KARTASURA"
+          ? "Kartasura"
+          : selectedBranch === "CABANG_2"
+          ? "Serengan"
+          : selectedBranch === "OTHER"
+          ? "Cabang_Lainnya"
+          : "Semua_Cabang";
+
+      const now = new Date();
+      const ymYear = currentYear || now.getFullYear();
+      const ymMonth = String(currentMonth || now.getMonth() + 1).padStart(2, "0");
+
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Data Leads");
-      XLSX.writeFile(workbook, "Tracking_Iklan_Leads.xlsx");
+      XLSX.writeFile(workbook, `Tracking_Iklan_${branchFileSlug}_${ymYear}-${ymMonth}.xlsx`);
     } catch (error) {
       console.error("Failed to export Excel:", error);
       alert("Gagal mengekspor data ke Excel.");
@@ -221,8 +274,48 @@ export default function LeadSourceClient({
         </div>
       </div>
 
-      {/* Control Panel: Filters Only */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
+      {/* Control Panel: Branch Tabs + Filters */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        {/* Horizontal Branch Pill Tabs */}
+        <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-100">
+          {(
+            [
+              { key: "ALL", label: "Semua Cabang", count: branchCounts.ALL },
+              { key: "KARTASURA", label: "Kartasura", count: branchCounts.KARTASURA },
+              { key: "CABANG_2", label: "Serengan", count: branchCounts.CABANG_2 },
+              ...(branchCounts.OTHER > 0
+                ? [{ key: "OTHER", label: "Cabang Lainnya", count: branchCounts.OTHER }]
+                : []),
+            ] as { key: BranchTabKey; label: string; count: number }[]
+          ).map((tab) => {
+            const isActive = selectedBranch === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSelectedBranch(tab.key)}
+                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-white text-slate-600 border border-slate-200/80"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4">
         {/* Search */}
         <div className="relative w-full md:w-1/3">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -278,6 +371,7 @@ export default function LeadSourceClient({
             className="w-full sm:w-auto p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-slate-900"
           />
         </div>
+        </div>
       </div>
 
       {/* Conditional Chart Section */}
@@ -314,6 +408,7 @@ export default function LeadSourceClient({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-6 py-4">Tanggal Masuk</th>
+                <th className="px-6 py-4">Cabang</th>
                 <th className="px-6 py-4">Nama Lead</th>
                 <th className="px-6 py-4">No. WhatsApp</th>
                 <th className="px-6 py-4">Asal Iklan</th>
@@ -322,15 +417,29 @@ export default function LeadSourceClient({
             <tbody className="divide-y divide-slate-100">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500 font-medium">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
                     {leads.length === 0 ? "Belum ada data leads." : "Tidak ada lead yang cocok dengan filter."}
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => (
+                filteredLeads.map((lead) => {
+                  const branchCode = lead.branch || "KARTASURA";
+                  const isSerengan = branchCode === "CABANG_2";
+                  return (
                   <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {format(new Date(lead.createdAt), "dd MMM yyyy", { locale: id })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
+                          isSerengan
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        {formatBranchLabel(branchCode)}
+                      </span>
                     </td>
                     <td 
                       className="px-6 py-4 text-sm font-bold text-slate-900 max-w-[200px] sm:max-w-[300px] truncate"
@@ -357,7 +466,8 @@ export default function LeadSourceClient({
                       </select>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

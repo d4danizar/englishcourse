@@ -78,6 +78,7 @@ export async function getLeadsForTracking(startDate?: Date, endDate?: Date) {
           name: true,
           whatsapp: true,
           phone: true,
+          branch: true,
           source: true,
           status: true,
           createdAt: true,
